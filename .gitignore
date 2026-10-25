@@ -1,0 +1,19 @@
+# Never commit: phone partition backups, device dumps, third-party/Apple sources, build output.
+/backup/
+/ref/
+/device/*
+!/device/*.md
+*.img
+*.dtb
+*.ipsw
+*.tar
+*.log
+out/
+outq/
+__pycache__/
+/tools/pinfile/pinfile
+out-root/
+
+# Local test payloads
+shim/loader/tctest/
+*.bin
