@@ -1,0 +1,55 @@
+--- a/bsd/dev/pandora_dpu.c
++++ b/bsd/dev/pandora_dpu.c
+@@ -318,9 +318,9 @@
+ #define SC_SLOTS          16u
+ #define SC_PIPES          2u                 /* VIG0, VIG1 */
+ #define SC_FLUSH          ((1u << 0) | (1u << 1) | (1u << 17))
+-#define SC_PANEL_W        1220u
+-#define SC_HALF_W         610u
+-#define SC_PANEL_H        2656u
++#define SC_PANEL_W        1216u
++#define SC_HALF_W         608u
++#define SC_PANEL_H        2688u
+ /* REC block registers (dpu_hw_sspp_v13.c) */
+ #define SC_OP_MODE        0x08u
+ #define SC_SRC_SIZE       0x14u
+--- a/bsd/dev/pandora_touch.c
++++ b/bsd/dev/pandora_touch.c
+@@ -1297,11 +1297,11 @@
+ 		}
+ 		int x, y;
+ 		if (pt.fill) {
+-			x = px[id] * 1125 / 1220;
+-			y = py[id] * 2436 / 2656;
++			x = px[id] * 1125 / 1216;
++			y = py[id] * 2436 / 2688;
+ 		} else {
+-			x = px[id] - (1220 - 1125) / 2;
+-			y = py[id] - (2656 - 2436) / 2;
++			x = px[id] - (1216 - 1125) / 2;
++			y = py[id] - (2688 - 2436) / 2;
+ 		}
+ 		pt.px[id] = px[id];
+ 		pt.py[id] = py[id];
+@@ -1406,8 +1406,8 @@
+ 		}
+ 		mask |= 1u << id;
+ 		/* IC units (0..max) -> panel pixels, 1220 x 2656 */
+-		px[id] = (int)((uint64_t)xs[id] * 1220 / (pt.max_x + 1));
+-		py[id] = (int)((uint64_t)ys[id] * 2656 / (pt.max_y + 1));
++		px[id] = (int)((uint64_t)xs[id] * 1216 / (pt.max_x + 1));
++		py[id] = (int)((uint64_t)ys[id] * 2688 / (pt.max_y + 1));
+ 	}
+ 	if (mask) {
+ 		pt.last_ic_touch = mach_absolute_time();
+@@ -1474,8 +1474,8 @@
+ 			if (pt.thp_flip & 2u) {
+ 				yc = (long)yn * 16 - yc;
+ 			}
+-			fx[found] = (int)(xc * 1220 / ((long)xn * 16));
+-			fy[found] = (int)(yc * 2656 / ((long)yn * 16));
++			fx[found] = (int)(xc * 1216 / ((long)xn * 16));
++			fy[found] = (int)(yc * 2688 / ((long)yn * 16));
+ 			fv[found] = v;
+ 			if (pt.thp_logs < 40) {
+ 				printf("PANDORA TOUCH: THP peak cell %u,%u value %d -> panel %d,%d\n", r, c, v,
