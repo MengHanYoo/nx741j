@@ -1,0 +1,85 @@
+name: metal
+
+# Build the NativeMetal Metal->Vulkan plugin (NativeAdrenoMetal.bundle) and mtltest for iOS 16 arm64.
+# tools/metal/build_plugin.sh: UniXNU's build-native-metal-bridge.py + build-adreno-metal-plugin.py
+# without the probe daemon, the A740 replay and the 4 KiB signing. Runs on macOS with Xcode.
+# The repository is public: no minute limit.
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: metal-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  UNIXNU_SHA: 1a01c2afa197d975d04da892325c56b6b14aaecb
+  NATIVEADRENO_SHA: b686b9054f57d393c80195b82568a09f8ca106a2
+  MESA_SHA: 85fda3b36405bcaea8bffc64aa4f2651dc90770d
+  NATIVEMETAL_SHA: c6d29caad6d880cc8204ebe3bc34d77479a3255d
+  M2V_SHA: 720ef1ce9ae2a2068999a8675717418b9416283e
+
+jobs:
+  build:
+    runs-on: macos-14
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deps
+        run: |
+          brew install glslang bison flex ninja llvm
+          echo "$(brew --prefix llvm)/bin" >> "$GITHUB_PATH"
+          rustup toolchain install 1.98.0 --profile minimal 2>/dev/null || \
+            rustup toolchain install stable --profile minimal
+          rustup target add aarch64-apple-ios --toolchain 1.98.0 2>/dev/null || \
+            rustup target add aarch64-apple-ios
+
+      - name: Sources
+        run: |
+          mkdir -p out
+          exec > >(tee -a out/build.log) 2>&1
+          fetch() {  # DIR URL SHA
+            git init -q "$1"
+            git -C "$1" fetch -q --depth 1 "$2" "$3"
+            git -C "$1" checkout -q FETCH_HEAD
+          }
+          fetch unixnu https://github.com/UniXNU/UniXNU.git "$UNIXNU_SHA"
+          fetch nativeadreno https://github.com/UniXNU/NativeAdreno.git "$NATIVEADRENO_SHA"
+          fetch nativemetal https://github.com/UniXNU/NativeMetal.git "$NATIVEMETAL_SHA"
+          fetch metal2vulkan https://github.com/steelbrain/metal2vulkan.git "$M2V_SHA"
+          fetch mesa https://chromium.googlesource.com/external/gitlab.freedesktop.org/mesa/mesa "$MESA_SHA" ||
+            fetch mesa https://gitlab.freedesktop.org/mesa/mesa.git "$MESA_SHA"
+          for p in $(python3 -c 'import json; print(" ".join(json.load(open("unixnu/scripts/data/adreno-compiler-inputs.json"))["patches"]))'); do
+            echo "== $p"
+            git -C mesa apply --whitespace=nowarn "$PWD/unixnu/$p"
+          done
+          ls nativeadreno/NativeAdrenoABI.h nativemetal/NativeAdrenoMetalPlugin.mm metal2vulkan/Cargo.toml
+
+      - name: Build
+        timeout-minutes: 60
+        run: |
+          mkdir -p out
+          set -o pipefail
+          bash tools/metal/build_plugin.sh unixnu nativemetal nativeadreno metal2vulkan mesa out 2>&1 | tee -a out/build.log
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo '### errors'; echo '```'
+            grep -E 'error:|FAILED:|fatal|ERROR:|error\[' out/build.log 2>/dev/null | head -60 || true
+            echo '```'; echo '### last lines'; echo '```'
+            tail -40 out/build.log 2>/dev/null || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: metal-plugin
+          path: |
+            out/NativeAdrenoMetal.bundle
+            out/mtltest
+            out/SHA256SUMS
+            out/build.log
