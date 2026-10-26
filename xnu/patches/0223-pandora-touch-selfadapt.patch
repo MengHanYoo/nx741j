@@ -1,0 +1,71 @@
+--- a/bsd/dev/pandora_touch.c
++++ b/bsd/dev/pandora_touch.c
+@@ -750,7 +750,9 @@
+ {
+ 	pt_step("apps RSC DRV 2", PT_RSC_PA);
+ 	rh_drv = ml_io_map(PT_RSC_PA, 0x10000);
+-	rh_db = ml_io_map(PT_CMDDB_PA, PT_CMDDB_SIZE);
++	if (!rh_db) {
++		rh_db = ml_io_map(PT_CMDDB_PA, PT_CMDDB_SIZE);
++	}
+ 	if (!rh_drv || !rh_db) {
+ 		return ENOMEM;
+ 	}
+@@ -1672,6 +1674,16 @@
+ 	(void)PE_parse_boot_argn("pandora_thp_swap", &pt.thp_swap, sizeof(pt.thp_swap));
+ 	(void)PE_parse_boot_argn("pandora_thp_flip", &pt.thp_flip, sizeof(pt.thp_flip));
+ 	printf("PANDORA TOUCH: pandora_touch=%#x, starting in %u s\n", mask, delay_s);
++	/* NX741J: the cmd-db name table can be read this early, so a dump survives even if the
++	 * rest of the boot does not get far. pandora_cmddb_dump=1 */
++	int early_dump = 0;
++	(void)PE_parse_boot_argn("pandora_cmddb_dump", &early_dump, sizeof(early_dump));
++	if (early_dump) {
++		rh_db = ml_io_map(PT_CMDDB_PA, PT_CMDDB_SIZE);
++		if (rh_db) {
++			rh_dump_names();
++		}
++	}
+ 	pt_sleep(delay_s * 1000u);
+ 	pt.gcc = ml_io_map(PT_GCC_PA, 0x1f0000);
+ 	pt.tlmm = ml_io_map(PT_TLMM_PA, 0xa0000);
+@@ -1713,9 +1725,6 @@
+ 	 * reset low 10 ms, 200 ms before the first read). */
+ 	pt_gpio(PT_RESET, 0, 0, 2, 0);
+ 	pt_gpio(PT_IRQ, 0, 0, 2, -1);
+-	for (unsigned p = 48; p <= 51; p++) {
+-		pt_gpio(p, 1, 1, 6, -1);
+-	}
+ 	/* The 17 Pro drives avdd through GPIO 117; other boards power it over RPMh,
+ 	 * so pandora_touch_gpio117=0 skips it (a foreign pin must not be driven). */
+ 	int use117 = 1;
+@@ -1723,8 +1732,28 @@
+ 	if (use117) {
+ 		pt_gpio(PT_AVDD, 0, 0, 2, 1);
+ 	}
+-	pt_sleep(50);
+-	if ((err = pt_ic_start())) {
++	/* NX741J: the SPI pins' QUP function number is board specific. pandora_touch_mux=N
++	 * pins it down; unset tries 1..7 and keeps the first that answers. */
++	int mux_lo = 1, mux_hi = 7;
++	if (PE_parse_boot_argn("pandora_touch_mux", &mux_lo, sizeof(mux_lo))) {
++		mux_hi = mux_lo;
++	}
++	if (mux_lo < 1 || mux_lo > 7) {
++		mux_lo = 1;
++		mux_hi = 7;
++	}
++	for (unsigned f = (unsigned)mux_lo; f <= (unsigned)mux_hi; f++) {
++		for (unsigned p = 48; p <= 51; p++) {
++			pt_gpio(p, 1, f, 6, -1);
++		}
++		pt_sleep(50);
++		err = pt_ic_start();
++		printf("PANDORA TOUCH: mux %u -> %d\n", f, err);
++		if (!err) {
++			break;
++		}
++	}
++	if (err) {
+ 		printf("PANDORA TOUCH: TouchComm set-up failed %d\n", err);
+ 		goto out;
+ 	}
