@@ -1,0 +1,169 @@
+--- a/bsd/dev/pandora_touch.c
++++ b/bsd/dev/pandora_touch.c
+@@ -746,7 +746,7 @@
+ 
+ /* One ACTIVE TCS with three commands (voltage, mode, enable), as sweet_rpmh.c. */
+ static int
+-pt_rpmh_vote(void)
++pt_rpmh_vote(const char *res, uint32_t mv)
+ {
+ 	pt_step("apps RSC DRV 2", PT_RSC_PA);
+ 	rh_drv = ml_io_map(PT_RSC_PA, 0x10000);
+@@ -769,7 +769,7 @@
+ 	uint32_t magic = pt_rd(rh_db, 4);
+ 	printf("PANDORA TOUCH: cmd-db version=%#x magic=%#x\n", pt_rd(rh_db, 0), magic);
+ 	uint32_t address = 0;
+-	if (magic != RH_DB_MAGIC || rh_lookup("L4I_E0", &address)) {
++	if (magic != RH_DB_MAGIC || rh_lookup(res, &address)) {
+ 		return ENODEV;
+ 	}
+ 	uint32_t tcs = RH_TCS_OFF;
+@@ -795,7 +795,8 @@
+ 	if (!rh_sync(tcs + 0, irq_en & ~bit)) {
+ 		return EIO;
+ 	}
+-	static const uint32_t offs[3] = {0, 8, 4}, vals[3] = {1800, 7, 1};
++	static const uint32_t offs[3] = {0, 8, 4};
++	uint32_t vals[3] = {mv, 7, 1};
+ 	for (unsigned c = 0; c < 3; c++) {
+ 		uint32_t cmd = b + c * L->cmd_stride;
+ 		if (!rh_sync(cmd + L->msgid, RH_WRITE_ACK) || !rh_sync(cmd + L->addr, address + offs[c]) ||
+@@ -821,8 +822,8 @@
+ 			delay(1);
+ 		}
+ 	}
+-	printf("PANDORA TOUCH: L4I_E0 1800 mV vote TCS%u done=%d irq=%#x cmd-status=%#x/%#x/%#x\n",
+-	    t, done, pt_rd(rh_drv, tcs + 4), cs[0], cs[1], cs[2]);
++	printf("PANDORA TOUCH: rail %s %u mV vote TCS%u done=%d irq=%#x cmd-status=%#x/%#x/%#x\n",
++	    res, mv, t, done, pt_rd(rh_drv, tcs + 4), cs[0], cs[1], cs[2]);
+ 	if (!done) {
+ 		return ETIMEDOUT;
+ 	}
+@@ -833,6 +834,96 @@
+ 	pt_wr(rh_drv, tcs + 8, bit);
+ 	(void)rh_sync(tcs + 0, irq_en);
+ 	return 0;
++}
++
++/*
++ * PANDORA/NX741J: print the regulator names the cmd-db holds (the key is the name's first
++ * eight bytes), so a board's rails can be named in the boot-args instead of being guessed.
++ * pandora_cmddb_dump=1
++ */
++static void
++rh_dump_names(void)
++{
++	unsigned lines = 0;
++	for (unsigned i = 0; i < 8 && lines < 200; i++) {
++		uint32_t h = 8u + 16u * i;
++		unsigned slave = rh_db16(h);
++		if (!slave) {
++			break;
++		}
++		uint32_t entries = RH_DB_HEADER + rh_db16(h + 2);
++		unsigned count = rh_db16(h + 6);
++		if ((entries & 3u) || entries + count * RH_DB_ENTRY > PT_CMDDB_SIZE) {
++			continue;
++		}
++		for (unsigned j = 0; j < count && lines < 200; j++) {
++			uint32_t e = entries + RH_DB_ENTRY * j;
++			uint32_t kk[2] = {pt_rd(rh_db, e), pt_rd(rh_db, e + 4)};
++			char nm[9];
++			for (unsigned b = 0; b < 8; b++) {
++				nm[b] = (char)((kk[b / 4] >> (8u * (b % 4))) & 0xffu);
++			}
++			nm[8] = 0;
++			/* regulators are L/S/V..., the rest (clocks, buses) start elsewhere */
++			if (nm[0] != 'L' && nm[0] != 'S' && nm[0] != 'V' && nm[0] != 'B') {
++				continue;
++			}
++			printf("PANDORA TOUCH: cmddb %s addr=%#x slave=%u\n", nm, pt_rd(rh_db, e + 16), slave);
++			lines++;
++		}
++	}
++	printf("PANDORA TOUCH: cmddb dump end (%u lines)\n", lines);
++}
++
++/*
++ * PANDORA/NX741J: one or two rails, named in the boot-args:
++ *   pandora_touch_rail1=NAME:mV   (default L4I_E0:1800, the Xiaomi 17 Pro iovdd)
++ *   pandora_touch_rail2=NAME:mV   (default off)
++ * The Z80 Ultra's touch needs pmh0101_l4 (1.8 V, vdd) and pmh0101_l14 (3.2 V, avdd).
++ */
++static int
++pt_rpmh_rails(void)
++{
++	char arg[64];
++	int last = 0;
++	for (unsigned i = 0; i < 2; i++) {
++		char name[16];
++		unsigned n = 0;
++		uint32_t mv = 0;
++		const char *key = i ? "pandora_touch_rail2" : "pandora_touch_rail1";
++		if (!PE_parse_boot_argn(key, arg, sizeof(arg))) {
++			if (i != 0) {
++				continue;
++			}
++			const char *d = "L4I_E0";
++			while (d[n] && n < sizeof(name) - 1) {
++				name[n] = d[n];
++				n++;
++			}
++			name[n] = 0;
++			mv = 1800;
++		} else {
++			const char *p = arg;
++			while (*p && *p != ':' && n < sizeof(name) - 1) {
++				name[n++] = *p++;
++			}
++			name[n] = 0;
++			if (*p == ':') {
++				p++;
++				while (*p >= '0' && *p <= '9') {
++					mv = mv * 10u + (uint32_t)(*p++ - '0');
++				}
++			}
++			if (n == 0 || mv == 0) {
++				printf("PANDORA TOUCH: %s=%s malformed (NAME:mV)\n", key, arg);
++				continue;
++			}
++		}
++		int err = pt_rpmh_vote(name, mv);
++		printf("PANDORA TOUCH: rail %s %u mV -> %d\n", name, mv, err);
++		last = err;
++	}
++	return last;
+ }
+ 
+ /* ---- TouchComm ----------------------------------------------------------------- */
+@@ -1592,8 +1683,13 @@
+ 	pt_step("SE0 registers", PT_SE_PA);
+ 	pt_se_dump("before");
+ 	if (mask & 2u) {
+-		err = pt_rpmh_vote();
+-		printf("PANDORA TOUCH: L4I_E0 vote -> %d\n", err);
++		int dump = 0;
++		(void)PE_parse_boot_argn("pandora_cmddb_dump", &dump, sizeof(dump));
++		if (dump) {
++			rh_dump_names();
++		}
++		err = pt_rpmh_rails();
++		printf("PANDORA TOUCH: rails vote -> %d\n", err);
+ 	}
+ 	if (!(mask & 4u)) {
+ 		goto out;
+@@ -1609,7 +1705,13 @@
+ 	for (unsigned p = 48; p <= 51; p++) {
+ 		pt_gpio(p, 1, 1, 6, -1);
+ 	}
+-	pt_gpio(PT_AVDD, 0, 0, 2, 1);
++	/* The 17 Pro drives avdd through GPIO 117; other boards power it over RPMh,
++	 * so pandora_touch_gpio117=0 skips it (a foreign pin must not be driven). */
++	int use117 = 1;
++	(void)PE_parse_boot_argn("pandora_touch_gpio117", &use117, sizeof(use117));
++	if (use117) {
++		pt_gpio(PT_AVDD, 0, 0, 2, 1);
++	}
+ 	pt_sleep(50);
+ 	if ((err = pt_ic_start())) {
+ 		printf("PANDORA TOUCH: TouchComm set-up failed %d\n", err);
