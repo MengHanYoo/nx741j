@@ -561,3 +561,82 @@ AMFI: code signature validation failed.
 3. **信任缓存是进系统的前置**：静态信任缓存让 launchd 能 exec；插件也要单独加 cdhash。
 4. **ld64.lld ≠ Apple ld64**：kalloc_type 合成只有 Apple ld64 有。
 5. **MobileGestalt 容器缺失 = lsd 死锁 = 永久 logo**，且日志里只表现为 `___ulock_wait`。
+6. **本地重链接必须显式列出所有改过的文件**：`local_build.sh` 只用 CI 对象补其余文件；
+   漏传 `bsd/dev/pandora_touch.c` 就会退回 CI 里旧的 `L4I_E0`，触摸立刻失效。
+7. **驱动参数要能从手机 DT 生成**：`tools/gen_z80_gpu_tables.py` 读 `/sys/firmware/fdt`，
+   输出 `gpu_opps`/`gmu_opps`/`gpu_opp_bw`，别再手工抄别的机型。
+
+---
+
+## 13. 2026-10-28 实测记录（GPU 插件加载）
+
+### 13.1 从 Z80 自己的 DT 生成的 GPU 表（已验证）
+
+`tools/gen_z80_gpu_tables.py` 读手机 live DT（`/sys/firmware/fdt`：
+
+```
+qcom,kgsl-3d0@3d00000  qcom,gpu-model = "Adreno840"
+                       compatible = "qcom,adreno-gpu-gen8-2-0"
+reg            kgsl 0x3d00000/0x40000, rscc 0x3d50000/0x10000,
+               cx_dbgc 0x3d61000/0x3000, cx_misc 0x3d9e000/0x2000
+interrupts     SPI 0x12c (300) kgsl_3d0_irq, SPI 0x50 (80) cx_host_irq
+qcom,chipid    0x44050a00
+initial-pwrlevel = 14 (222 MHz)
+qcom,gmu@3d37000  reg gmu 0x3d37000/0x68000 + gmu_ao_blk_dec0 0x3d40000/0x10000
+                  iommus <0x377 5>, gmu-freq-table = 475 MHz (0x38), 700 MHz (0x80)
+```
+
+生成的表（17 档，**最高 1050 MHz**）：
+
+```
+{160,0x32}{191,0x33}{222,0x34}{282,0x36}{342,0x38}{382,0x3c}{422,0x40}{461,0x4c}
+{500,0x50}{539,0x60}{578,0x80}{646,0x90}{726,0xc0}{826,0xe0}{902,0x100}{967,0x140}{1050,0x1a0}
+GMU: {475,0x38}{700,0x80}
+bus: 1,2,2,2,2,2,3,3,3,3,3,5,5,7,7,7,11
+```
+
+实测：`HFI perf table ACKED`、`level 14 (user interface) done` —— 表被 GMU 接受。
+（17 Pro 的旧表是 18 档、含 1100/1200 MHz、GMU 4 档，已清除。）
+
+### 13.2 GPU 服务与打开类型（实测）
+
+| 配置 | `open AGXAccelerator type 1` | 插件是否运行 |
+|---|---|---|
+| type 1 接受（`PandoraGpuAccel`） | `-> 0x0`（成功） | ❌ 无 `0x4147` 打开 |
+| type 1 拒绝（原生） | `-> 0xe00002c7`（Unsupported） | ❌ |
+
+驱动日志里**始终没有** `PANDORA GPU UC: client N opened ...`，即插件从未打开设备。
+
+### 13.3 插件 bundle 封装的实测（关键否定结果）
+
+| 镜像 | 内核 | 结果 | 标记 |
+|---|---|---|---|
+| 无 `_CodeSignature` | type1 接受 | ✅ 进锁屏、触摸正常 | GPU `busy 0%` |
+| 有 `_CodeSignature` | type1 接受 | ❌ 卡 logo | — |
+| 有 `_CodeSignature` | type1 拒绝 + 标记日志 | ❌ 卡 logo | **`PANDORA GPU MARK` 一条都没有** |
+
+结论：
+
+1. `ldid -S <bundle>` 能生成 `_CodeSignature/CodeResources`（只封 `Info.plist`，SHA-1）
+2. 但加封装**并不能**让 Metal 加载插件（无 `0x6800` 标记）
+3. 加封装还会让系统卡 logo，原因不在插件（插件没跑）
+
+### 13.4 下一步（按优先级）
+
+1. **弄清 Metal 的插件发现路径**：UniXNU 用 `add-gpu-plugin-data.py --publish base.dbr gpu.dbr`
+   把插件写进 **Data seed**，再用 `--data-ramdisk` 随 payload 下发；我们目前只是把文件
+   放进根镜像的 `/System/Library/Extensions`，可能不是 iOS 16 实际查找的位置。
+2. 在 `AGXAccelerator` 服务上补齐 Metal 需要的属性（除 `MetalPluginName`/`MetalPluginClassName`
+   外，IOGPU 还会读 `IOGLBundleName`、`MetalPluginCanBeUsedAsAccelerator` 等）。
+3. 观察 backboardd 是否真的调用 `IOServiceMatching("IOAcceleratorES")` 后去 `dlopen`
+   —— 可用 `DYLD_PRINT_*` 或插件内 `mark()` 验证（当前连 `0x6800` 都没有，说明没被 dlopen）。
+
+### 13.5 当前可用基线
+
+`METAL10-boot_a.img`（type1 接受 + 无封装 + `L4B_E0` 触摸轨）：
+
+- 进锁屏、触摸正常、设置不再黑屏
+- GPU `busy 0%`、相册闪退、滑动卡顿
+
+镜像：`iospull.img`（MG 容器 + backboardd 偏好 + 无封装插件）。
+
