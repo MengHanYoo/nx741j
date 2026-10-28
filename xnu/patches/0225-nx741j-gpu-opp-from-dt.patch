@@ -1,0 +1,29 @@
+--- a/bsd/dev/pandora_gpu.c
++++ b/bsd/dev/pandora_gpu.c
+@@ -1018,11 +1018,11 @@
+ static const struct { uint32_t hz, level; } gpu_opps[] = {
+ 	{ 160000000, 0x32 }, { 191000000, 0x33 }, { 222000000, 0x34 }, { 282000000, 0x36 },
+ 	{ 342000000, 0x38 }, { 382000000, 0x3c }, { 422000000, 0x40 }, { 461000000, 0x4c },
+-	{ 500000000, 0x50 }, { 578000000, 0x80 }, { 646000000, 0x90 }, { 726000000, 0xc0 },
+-	{ 826000000, 0xe0 }, { 902000000, 0x100 }, { 1000000000, 0x180 }, { 1050000000, 0x1a0 },
+-	{ 1100000000, 0x1b0 }, { 1200000000, 0x1c0 },
++	{ 500000000, 0x50 }, { 539000000, 0x60 }, { 578000000, 0x80 }, { 646000000, 0x90 },
++	{ 726000000, 0xc0 }, { 826000000, 0xe0 }, { 902000000, 0x100 }, { 967000000, 0x140 },
++	{ 1050000000, 0x1a0 },
+ }, gmu_opps[] = {
+-	{ 475000000, 0x38 }, { 575000000, 0x40 }, { 700000000, 0x80 }, { 750000000, 0x100 },
++	{ 475000000, 0x38 }, { 700000000, 0x80 },
+ };
+ #define NGPU (1 + sizeof(gpu_opps) / sizeof(gpu_opps[0]))      /* with the "off" level */
+ #define NGMU (1 + sizeof(gmu_opps) / sizeof(gmu_opps[0]))
+@@ -3279,7 +3279,9 @@
+ #define DCVS_CEILING_NS     (50ull * NSEC_PER_MSEC)
+ 
+ /* qcom,gpu-pwrlevels-1 qcom,bus-freq per level, in gpu_opps order (160 .. 1200 MHz). */
+-static const uint8_t gpu_opp_bw[] = { 1, 1, 1, 2, 2, 2, 3, 3, 3, 3, 5, 5, 7, 7, 9, 9, 11, 11 };
++/* NX741J: qcom,bus-freq per qcom,gpu-pwrlevel, ascending (Z80 live DT
++ * /sys/firmware/fdt): 160 MHz -> 1 ... 1050 MHz -> 11. */
++static const uint8_t gpu_opp_bw[] = { 1, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 5, 5, 7, 7, 7, 11 };
+ 
+ static uint64_t
+ gpu_busy_ticks(void)
