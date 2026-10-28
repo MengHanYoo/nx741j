@@ -691,3 +691,50 @@ open('com.apple.MobileGestalt.plist','wb').write(
 ### 14.5 宸ヤ綔娴佺▼鏁欒锛堥噸瑕侊級
 
 1. **涓嶈鍐嶆嬁鏈湴鏃у壇鏈鐩栨暟鎹垎鍖?*锛歩OS 姣忔鍚姩閮戒細鍐欏叆鐘舵€侊紙搴撱€佺紦瀛樸€佸鍣級锛?   瑕嗙洊浼氭妸瀹冩姽鎺夛紝浜庢槸姣忔閮借閲嶆柊寤哄簱銆侀噸鏂拌俯 MG 绔炰簤銆?2. **瀹為獙鍙崲 payload / 鍐呮牳**锛涘繀椤绘敼闀滃儚鏃讹紝鍏?`pull_iosroot.ps1` 鎷夊洖鏈€鏂帮紝鍐嶆敼銆?3. 鍒ゆ柇銆屽崱浣忋€嶈繕鏄€屽湪寤哄簱銆嶏細鑷冲皯绛?25鈥?0 鍒嗛挓锛涘缓搴撴湡闂?CPU 楂樸€佹棩蹇楁寔缁闀裤€?
+---
+
+## 15. 2026-10-29 鍑屾櫒锛欸PU 鎻掍欢缁堜簬璺戣捣鏉ヤ簡锛堝崱鍦?Vulkan loader 璺緞锛?
+### 15.1 涓夊潡缂哄け鐨勬嫾鍥撅紙閮藉凡瀹氫綅锛?
+| 缂哄け | 鐜拌薄 | 淇 |
+|---|---|---|
+| `pandora_gpu=14` | 鐢ㄦ埛瀹㈡埛绔笉瀹屾暣 | **`pandora_gpu=15`**锛堝畼鏂?`gpu_test.sh: LEVEL=15`锛?|
+| `NativeAdrenoMetal.clients` | 鎻掍欢涓嶇粰浠讳綍杩涚▼鍙戣澶?| 鍐欏叆 `/System/Library/Extensions/NativeAdrenoMetal.clients`锛屽唴瀹?`backboardd` |
+| Turnip 鏈畨瑁?| 鎻掍欢鏍囪瑙ｇ爜涓?`no-turnip ` | `libvulkan_freedreno.dylib` 鈫?`/usr/lib/` |
+
+### 15.2 鏍囪鏃ュ織鐨勭敤娉曪紙鍏抽敭璋冭瘯鎵嬫锛?
+鍐呮牳鎶婃彃浠剁殑 `gpu.mark()` 鎵撳嵃鎴?`PANDORA GPU MARK: 4147XXXX by <杩涚▼>`锛?鍏朵腑浣?8 浣嶆槸 ASCII 瀛楃銆乣0x7fff` 鏄垎闅旂銆傝В鐮佽剼鏈紙鏈粨搴撳伐鍏凤級锛?
+```python
+marks = [(int(m.group(1),16)) for ... ]
+b = v & 0xff
+```
+
+瀹炴祴搴忓垪锛?
+| 閰嶇疆 | 瑙ｇ爜缁撴灉 |
+|---|---|
+| 鏃?Turnip | `no-turnip ` |
+| 瑁呬簡 Turnip锛坄libvulkan_freedreno.dylib`锛?| `no-device device: LoaderNotFound(LoaderNotFound { tried:` |
+
+璇存槑鎻掍欢**宸茶鍔犺浇骞惰繍琛?*锛孴urnip 妫€鏌ュ凡閫氳繃銆?
+### 15.3 鍓╀綑闃诲锛歏ulkan loader 鍚嶅瓧
+
+`metal2vulkan-runtime/src/device/create.rs: default_loaders()` 鍦?iOS锛堥潪 macos/android/linux锛?钀藉埌 `else` 鍒嗘敮锛屽彧灏濊瘯锛?
+```rust
+vec![PathBuf::from("libvulkan.so.1")]
+```
+
+鎴戜滑鏀惧叆 `/usr/lib/libvulkan.so.1`锛圱urnip 鐨勫壇鏈級浠嶇劧 `LoaderNotFound`鈥斺€?寰堝彲鑳芥槸 backboardd 娌欑涓嶅厑璁?dlopen 涓嶅湪 dyld 鍏变韩缂撳瓨涓殑 `/usr/lib` 搴撱€?
+### 15.4 涓嬩竴姝ワ紙涓ゆ潯锛屽缓璁厛鍋?A锛?
+**A. 璁?loader 鎸囧悜鎻掍欢鑷繁鐩綍閲岀殑 Turnip锛堟渶鍙兘鎴愬姛锛?*
+
+1. 鎶?Turnip 鏀捐繘 `/System/Library/Extensions/NativeAdrenoMetal.bundle/`
+2. 缁?metal2vulkan-runtime 鎵撹ˉ涓侊細`default_loaders()` 鐨?iOS 鍒嗘敮鍏堝皾璇?   `/System/Library/Extensions/NativeAdrenoMetal.bundle/libvulkan_freedreno.dylib`
+3. 閲嶇紪 Rust 妗?+ 鎻掍欢锛坄wsl/build_metal_plugin_linux.sh`锛岀害 5 鍒嗛挓锛?4. 閲嶆柊绠?cdhash 鈫?淇′换妯″潡 鈫?閲嶆墦 payload 鈫?瑁呴暅鍍?
+鎻掍欢鐩綍鏄畠宸茬粡鑳借鐨勪綅缃紙`.clients` 灏辨斁鍦ㄩ偅閲岋級锛屾矙绠卞繀鐒舵斁琛屻€?
+**B. 璁?backboardd 鐨勬矙绠辨斁琛?`/usr/lib/libvulkan.so.1`**
+锛堟敼 sandbox profile锛屾垨鎶婂簱鏀捐繘 dyld 鍏变韩缂撳瓨鈥斺€旀垚鏈洿楂橈級
+
+### 15.5 浠婃棩宸茬‘璁ょ殑鍙敤鍩虹嚎
+
+- 闀滃儚锛歚iosroot-SEAL.img`锛圙OLDEN + 灏佽鎻掍欢 + clients + Turnip + loader 鍒悕锛屽亣 MG 缂撳瓨宸插垹锛?- 鍐呮牳锛歚METAL14-boot_a.img`锛坄pandora_gpu=15`銆乑80 OPP 17 妗ｃ€乣L4B_E0`銆佹爣璁版棩蹇楋級
+- 鍚姩锛?*绾?2鈥? 鍒嗛挓杩涢攣灞?*锛堝簱宸插缓濂斤級锛岃Е鎽告甯?- GPU锛氭彃浠跺凡鍔犺浇锛屽崱鍦?Vulkan loader
+
