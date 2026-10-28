@@ -738,3 +738,50 @@ vec![PathBuf::from("libvulkan.so.1")]
 - 闀滃儚锛歚iosroot-SEAL.img`锛圙OLDEN + 灏佽鎻掍欢 + clients + Turnip + loader 鍒悕锛屽亣 MG 缂撳瓨宸插垹锛?- 鍐呮牳锛歚METAL14-boot_a.img`锛坄pandora_gpu=15`銆乑80 OPP 17 妗ｃ€乣L4B_E0`銆佹爣璁版棩蹇楋級
 - 鍚姩锛?*绾?2鈥? 鍒嗛挓杩涢攣灞?*锛堝簱宸插缓濂斤級锛岃Е鎽告甯?- GPU锛氭彃浠跺凡鍔犺浇锛屽崱鍦?Vulkan loader
 
+---
+
+## 16. 2026-10-29 00:30 鈥斺€?GPU 鐪熸璺戣捣鏉ヤ簡锛堟柊閲岀▼纰戯級
+
+### 16.1 瑙ｉ攣 GPU 鐨勬渶鍚庝竴鎶婇挜鍖欙細Turnip 涔熻杩涗俊浠荤紦瀛?
+涔嬪墠鐨勫け璐ユ爣璁?`no-device: LoaderNotFound` 涓嶆槸璺緞闂锛堟彃浠堕噷 `default_loaders()`
+宸叉寜鎴戜滑琛ヤ竵鍏堟壘 bundle 鍐呰矾寰勶級锛岃€屾槸 **AMFI 鎷掔粷 dlopen 鏈彈淇＄殑 Turnip**銆?
+鎶?Turnip 鐨?cdhash 涔熷苟鍏?static 淇′换妯″潡鍚庯紝鏃ュ織绔嬪埢鍙樻垚锛?
+```
+PANDORA GPU UC: client 0 opened by backboardd through AGXAccelerator   鈫?鎻掍欢杩炰笂 GPU
+PANDORA GPU IRQ: 1062 interrupts (1059 fences)                        鈫?涓柇姝ｅ父锛屾覆浜?1059 甯?PANDORA GPU DCVS: busy 99%, MHz:time 1050:100%, now 1050 MHz           鈫?婊¤浇鏈€楂橀
+```
+
+**杩欐槸鏈」鐩涓€娆¤ Adreno 840 鍦?iOS 涓婄湡姝ｆ墽琛?Turnip 鎻愪氦銆?*
+
+### 16.2 鏂扮殑銆佷篃鏄渶鍚庣殑闃诲锛欱uffer Object 鍒嗛厤鑰楀敖
+
+```
+PANDORA GPU UC: client 0 method 2 in 16 out 8 -> 0xe00002bd    鈫?kIOReturnNoMemory
+PANDORA GPU UC: client 0 short fence polls timed out 59001 times
+PANDORA GPU HANG 脳16                                           鈫?绾?120 绉掑悗 GPU 鎸備綇
+```
+
+`method 2` = `NativeAdrenoMethodBoAlloc`锛坄PandoraAdrenoGpu.cpp: AGXDeviceUserClient::method`锛夛紝
+瀹冭皟鐢?`pandora_gpu_bo_alloc(client_, bytes, align_log2, &handle)`銆?
+鍓?1059 甯т竴鍒囨甯革紝涔嬪悗鍒嗛厤寮€濮嬪け璐?鈫?鍏稿瀷鐨?**BO 娉勬紡 / 姹犺€楀敖**
+锛堟垨 `NativeAdrenoAbiMaxBoBytesShift` 涓婇檺杩囦綆锛夈€?
+### 16.3 涓嬩竴姝ワ紙鏄庣‘锛?
+1. 鍦?`pandora_gpu_bo_alloc` 閲屽姞璁℃暟涓庝笂闄愭棩蹇楋紝纭鏄€屾€婚噺瓒呮睜銆嶈繕鏄€屽崟娆¤繃澶с€?2. 妫€鏌?`NativeAdrenoMethodBoFree` 鏄惁鐪熺殑鎶?buffer 杩樼粰姹狅紙瀵圭収 client 鐨?free 璺緞锛?3. 瀵圭収涓婃父 `NativeAdrenoClient.cpp` 鐨?BO 鐢熷懡鍛ㄦ湡锛堝紩鐢ㄨ鏁般€乧lient teardown锛?4. 蹇呰鏃舵彁楂樻睜澶у皬锛堝綋鍓?1 GiB锛岃 ADT `--gpu-pool`锛?
+### 16.4 褰撳墠鍙敤閰嶇疆锛堟渶寮虹増锛?
+| 缁勪欢 | 鍊?|
+|---|---|
+| 鍐呮牳 | `METAL16-boot_a.img`锛坄pandora_gpu=15`銆佹爣璁版棩蹇椼€乑80 OPP 17 妗ｃ€乣L4B_E0`锛?|
+| 闀滃儚 | `iosroot-SEAL.img`锛圙OLDEN + 搴撳凡寤?+ MG 缂撳瓨鐢?iOS 鐢熸垚 + 灏佽鎻掍欢 + bundle 鍐?Turnip + `.clients=backboardd`锛?|
+| 淇′换 | static 妯″潡鍚?**鎻掍欢 cdhash `cbce9ba2鈥** 涓?**Turnip cdhash `899d39cd鈥** |
+| 鍚姩 | 2鈥? 鍒嗛挓杩涢攣灞忥紝瑙︽懜姝ｅ父 |
+| GPU | 鉁?宸叉墽琛?1059 甯с€佷腑鏂甯革紱鉂?BO 鍒嗛厤鑰楀敖鍚庢寕璧?|
+
+### 16.5 鐥囩姸瀵圭収
+
+| 鐜拌薄 | 鍘熷洜 |
+|---|---|
+| 澹佺焊绾壊 | AegirPoster 娓叉煋澶辫触锛圙PU 鎻愪氦鍚庢嬁涓嶅埌瀹屾垚/鍐呭瓨锛?|
+| 鐩稿唽闂€€ | 鍚屼笂锛屽垎閰嶅け璐?|
+| 璁剧疆 About 鍗℃ | MobileGestalt 鐩稿叧锛堝彟涓€涓嫭绔嬮棶棰橈級 |
+| 婊戝姩鎱?| 鍚堟垚甯ф渶缁堜粛璧?CPU 鎷峰睆锛屼笖 GPU 鎸傝捣鍚庢棤鍔犻€?|
+
