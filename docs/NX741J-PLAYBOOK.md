@@ -640,3 +640,54 @@ bus: 1,2,2,2,2,2,3,3,3,3,3,5,5,7,7,7,11
 
 镜像：`iospull.img`（MG 容器 + backboardd 偏好 + 无封装插件）。
 
+---
+
+## 14. 2026-10-28 鏅氾細鍗?logo 鐨勭湡姝ｆ牴鍥?鈥斺€?MG 缂撳瓨缂哄け锛堝凡淇锛?
+### 14.1 鐥囩姸涓庤鍒?
+鍚屼竴濂楀唴鏍?闀滃儚锛?*鏈夋椂鑳借繘閿佸睆銆佹湁鏃跺崱 logo**锛岀湅璧锋潵鍍?鐜勫"銆?鏈熼棿璇垽杩囷細GPU 鎻掍欢 init 鎸備綇銆乥undle 灏佽鏈夐棶棰樸€乼ype 1 澶勭悊鏈夐棶棰樸€?
+### 14.2 鐪熸鍘熷洜
+
+闀滃儚閲屾湁 MG 瀹瑰櫒鐩綍锛屼絾**娌℃湁缂撳瓨鏂囦欢**锛?
+```
+/private/var/containers/Shared/SystemGroup/
+    systemgroup.com.apple.mobilegestaltcache/
+        .com.apple.mobile_container_manager.metadata.plist   鉁?鍦?        Library/Caches/                                       鉁?鍦?        Library/Caches/com.apple.MobileGestalt.plist          鉂?缂?```
+
+缂哄皯缂撳瓨鏃?libMobileGestalt 璧?棣栨鍒涘缓"璺緞锛屽湪 containermanagerd 灏氭湭灏辩华鏃?**姝荤瓑淇″彿閲?* 鈫?lsd 鐨勭嚎绋嬪叏閮ㄥ牭浣?鈫?LaunchServices 寤哄簱姘歌繙涓嶅畬鎴?鈫?鍗?logo銆?绗﹀彿鍖栨爤鍥哄畾涓猴細
+
+```
+_semaphore_wait_trap
+_dispatch_sema4_wait
+_dispatch_semaphore_wait_slow
+func_19c57c4bc  func_19c57c6e8  func_19c57c0f8  func_19c571770
+```
+
+### 14.3 淇锛堜竴琛屾枃浠讹級
+
+鍐欏叆 `/private/var/containers/Shared/SystemGroup/
+systemgroup.com.apple.mobilegestaltcache/Library/Caches/com.apple.MobileGestalt.plist`锛?binary plist锛?
+```python
+import plistlib
+inner = plistlib.dumps({}, fmt=plistlib.FMT_BINARY)      # CacheData锛歡estalt 瀛楀吀
+outer = {'CacheVersion': 1, 'CacheData': inner}
+open('com.apple.MobileGestalt.plist','wb').write(
+    plistlib.dumps(outer, fmt=plistlib.FMT_BINARY))
+```
+
+灞炰富 `0:0`銆佹潈闄?`644`銆?
+**鏁堟灉**锛氬啓鍏ュ悗鍚屼竴娆″紑鏈?19 鍒嗛挓鍐呭畬鎴愬缓搴撳苟**杩涢攣灞?*锛堟鍓嶈繛缁け璐ワ級銆?
+### 14.4 鐢辨寰楀埌鐨勩€屽紩瀵煎悗瀹屾暣銆嶉暅鍍忥紙鏂板熀鍑嗭級
+
+杩涢攣灞忓悗鎶?16 GiB 闀滃儚浠庢墜鏈烘媺鍥烇紙`pull_iosroot.ps1`锛?61 绉掞級锛?
+| 妫€鏌ラ」 | 淇鍓?| **GOLDEN 闀滃儚** |
+|---|---|---|
+| LaunchServices `csstore` | 0 | **2** 鉁?|
+| MG 缂撳瓨 plist | 0 | **1** 鉁?|
+| SystemGroup UUID 瀹瑰櫒 | 68 | **100** 鉁?|
+| 杩佺Щ鏍囪 | 鏈?| 鏈?鉁?|
+| disabled.plist / bb 鍋忓ソ / 鎻掍欢 | 鏈?| 鏈?鉁?|
+
+浜х墿锛歚iosroot-GOLDEN.img`锛?7,179,869,184 B锛宖sck -fy 鍚?OK锛夈€?
+### 14.5 宸ヤ綔娴佺▼鏁欒锛堥噸瑕侊級
+
+1. **涓嶈鍐嶆嬁鏈湴鏃у壇鏈鐩栨暟鎹垎鍖?*锛歩OS 姣忔鍚姩閮戒細鍐欏叆鐘舵€侊紙搴撱€佺紦瀛樸€佸鍣級锛?   瑕嗙洊浼氭妸瀹冩姽鎺夛紝浜庢槸姣忔閮借閲嶆柊寤哄簱銆侀噸鏂拌俯 MG 绔炰簤銆?2. **瀹為獙鍙崲 payload / 鍐呮牳**锛涘繀椤绘敼闀滃儚鏃讹紝鍏?`pull_iosroot.ps1` 鎷夊洖鏈€鏂帮紝鍐嶆敼銆?3. 鍒ゆ柇銆屽崱浣忋€嶈繕鏄€屽湪寤哄簱銆嶏細鑷冲皯绛?25鈥?0 鍒嗛挓锛涘缓搴撴湡闂?CPU 楂樸€佹棩蹇楁寔缁闀裤€?
