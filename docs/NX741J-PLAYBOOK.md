@@ -785,3 +785,71 @@ PANDORA GPU HANG 脳16                                           鈫?绾?120 绉
 | 璁剧疆 About 鍗℃ | MobileGestalt 鐩稿叧锛堝彟涓€涓嫭绔嬮棶棰橈級 |
 | 婊戝姩鎱?| 鍚堟垚甯ф渶缁堜粛璧?CPU 鎷峰睆锛屼笖 GPU 鎸傝捣鍚庢棤鍔犻€?|
 
+---
+
+## 17. 2026-10-29 13:00鈥?4:25 鈥斺€?GPU 椹卞姩淇ソ鐨勬渶鍚庝袱涓牴鍥狅紙vktest 瀹炴祴锛?
+### 17.1 姝ラ 3.4 缁堜簬璺戦€氾細鐢ㄥ畼鏂?`sweetexecswap` 璺?vktest
+
+launchd 鏂瑰紡瑁?`vktest` 鏃犳晥锛堟枃浠朵笉钀界洏銆乨aemon 涓嶆墽琛岋級銆傛纭仛娉曟槸椤圭洰鑷甫鏈哄埗锛?
+```
+sweetexecswap=bluetoothd:/usr/bin/vktest
+```
+
+鍗崇敤鍐呮牳鐨?exec-swap 鎶婃煇涓紑鏈哄繀鍚殑瀹堟姢杩涚▼鏇挎崲鎴?vktest锛岃緭鍑虹洿鎺ヨ繘鍐呮牳鏃ュ織銆?娉ㄦ剰锛?*琚浛鎹㈢殑杩涚▼蹇呴』鍦?`disabled.plist` 閲屾槸鍚敤鐨?*锛堟垜浠師鏉ョ鐢ㄤ簡 bluetoothd锛?鎵€浠ユ浛鎹笉瑙﹀彂锛涙妸 `com.apple.bluetoothd` 鏀规垚 `false` 鍚庢墠璺戣捣鏉ワ級銆?
+### 17.2 vktest 绗竴杞粨鏋滐細GPU 娓叉煋姝ｇ‘锛屼絾 550 绉掑悗姘镐箙鍋滀綇
+
+```
+VKTEST: part 1: vkCreateInstance -> 0
+VKTEST: device 'Adreno (TM) 840 (raytracing disabled)' vendor 0x5143 device 0x44050a31 api 1.4.354
+VKTEST: part 3: pixels ffbf8040 ... 0 of 4096 wrong.      鈫?鍍忕礌鍥炶姝ｇ‘
+VKTEST: part 5: pixel (8,8) ff00ff00 (56,56) ff000000; 0 clearly wrong   鈫?涓夎褰㈡纭?VKTEST: PASS (0 failures)   鈫?鍓?~550 绉掑弽澶嶉€氳繃
+...
+VKTEST: part 2/3/4/5: vkWaitForFences -> 2 FAIL (VK_TIMEOUT)
+VKTEST: FAIL (4 failures)   鈫?姝ゅ悗姘镐箙澶辫触
+```
+
+### 17.3 鏍瑰洜锛歳ing 鍐欐寚閽堣鐩栨湭娑堣垂鍛戒护
+
+`gpu_submit()`锛坄bsd/dev/pandora_gpu.c`锛夋瘡娆℃彁浜ゅ線 ring 鍐欑害 40 涓?dword锛?**浣嗕粠涓嶆鏌?`CP_RB_RPTR`**銆俽ing 鍙湁 32 KiB锛?192 dword锛岀害 200 娆℃彁浜や竴鍦堬級锛?涓€鏃?GPU 钀藉悗锛屽啓鎸囬拡杩戒笂鏈秷璐瑰懡浠?鈫?CP 鍋滄 鈫?涔嬪悗鎵€鏈?fence 姘镐笉瀹屾垚
+锛堣〃鐜帮細鐢婚潰鍗′綇銆丟PU 浠?1050 MHz 婊¤浇鍙戠儹锛夈€?
+**淇**锛堥〉闈€宺ing 鎺ㄨ繘 / fence 鍗′綇鏃朵粛浼氬け鏁堛€嶏級锛?
+```c
+static void
+ring_wait_space(uint32_t need)
+{
+	const uint32_t total = (uint32_t)(gpu_bufs[0].bytes / 4);
+	for (unsigned spin = 0; spin < 2000; spin++) {
+		const uint32_t rptr = gr(CP_RB_RPTR) % total;
+		const uint32_t used = (ring_wptr + total - rptr) % total;
+		if (used + need + 8 < total) {
+			return;
+		}
+		delay(1);
+	}
+	printf("PANDORA GPU: ring full (wptr %u rptr %u need %u)\n", ring_wptr, gr(CP_RB_RPTR), need);
+}
+```
+鍦?`gpu_submit()` 寮€澶磋皟鐢?`ring_wait_space(96);`銆?
+### 17.4 淇鍚庡疄娴嬶紙鍐冲畾鎬э級
+
+```
+VKTEST: PASS (0 failures)  脳35   鏈€鍚庝竴娆?3464.889 s锛堢害 58 鍒嗛挓锛?VKTEST: FAIL               脳0
+[bo pool] used 1291/4096 580 MiB, free 548 MiB, extents 11/1024   锛堢ǔ瀹氾級
+```
+
+**GPU 鍦ㄦ弧杞戒笅绋冲畾杩愯 58 鍒嗛挓銆佸儚绱犲畬鍏ㄦ纭€侀浂澶辫触銆?*
+姝ゅ墠 `2026-10-29 00:30` 鐨勫彟涓€澶勪慨澶嶏紙`GPU_POOL_EXTENTS 512鈫?024`锛夎В鍐充簡
+`kIOReturnNoMemory` 涓?`PANDORA GPU HANG`锛涗袱澶勫悎璧锋潵鎵嶈 GPU 鐪熸绋冲畾銆?
+### 17.5 鐜板湪鍓╀笅鐨勯棶棰樹笉鍦?GPU 娓叉煋
+
+GPU 娓叉煋宸查獙璇佹纭笖绋冲畾锛屽墿涓嬬殑鐢ㄦ埛鍙闂灞炰簬**鍚堟垚/鍛堢幇璺緞**锛?
+| 鐜拌薄 | 褰掑睘 |
+|---|---|
+| 閿佸睆/妗岄潰澹佺焊绾壊 | CARenderServer 鍚堟垚鏈蛋 GPU锛坧ublish 妯″紡 / CA 璺緞锛?|
+| 蹇€熸粦鍔ㄦ椂鐢婚潰寮傚父 | 鍛堢幇涓庡抚鍚屾锛圕PU 鎷峰睆 vs GPU 鎻愪氦锛?|
+| 璁剧疆 About 鍗℃ | MobileGestalt 鏌ヨ锛堜笌鏈棶棰樻棤鍏筹級 |
+| 鐩稿唽闂€€ | 涓婂眰渚濊禆锛圓ssetsLibrary/濯掍綋锛夛紝闇€鍦ㄥ叾涓婄户缁獙璇?|
+
+### 17.6 鍏抽敭缁忛獙
+
+1. **vktest 蹇呴』鍏堣窇閫?*锛氬畠鎶娿€孏PU 绠楅敊銆嶅拰銆屾樉绀洪摼璺敊銆嶅交搴曞垎寮€銆?2. **exec-swap 鐨勫涓昏繘绋嬪繀椤诲惎鐢?*锛氱鐢ㄥ垪琛ㄩ噷鐨勮繘绋嬩笉浼氳鏇挎崲銆?3. **ring 绌洪棿妫€鏌ヤ笉鑳界渷**锛氱煭鏃堕棿姝ｅ父銆侀暱鏃堕棿蹇呮寕锛屽鏄撹璇垽涓恒€孏PU 鍋跺彂鏁呴殰銆嶃€?4. **`[bo pool]` 琛屽緢鏈夌敤**锛氳兘绔嬪埢鎺掗櫎銆屽唴瀛樻硠婕?姹犺€楀敖銆嶈繖绫昏鍒ゃ€?
