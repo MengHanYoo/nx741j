@@ -1,0 +1,125 @@
+--- a/bsd/dev/pandora_gpu.c
++++ b/bsd/dev/pandora_gpu.c
+@@ -1018,11 +1018,11 @@
+ static const struct { uint32_t hz, level; } gpu_opps[] = {
+ 	{ 160000000, 0x32 }, { 191000000, 0x33 }, { 222000000, 0x34 }, { 282000000, 0x36 },
+ 	{ 342000000, 0x38 }, { 382000000, 0x3c }, { 422000000, 0x40 }, { 461000000, 0x4c },
+-	{ 500000000, 0x50 }, { 578000000, 0x80 }, { 646000000, 0x90 }, { 726000000, 0xc0 },
+-	{ 826000000, 0xe0 }, { 902000000, 0x100 }, { 1000000000, 0x180 }, { 1050000000, 0x1a0 },
+-	{ 1100000000, 0x1b0 }, { 1200000000, 0x1c0 },
++	{ 500000000, 0x50 }, { 539000000, 0x60 }, { 578000000, 0x80 }, { 646000000, 0x90 },
++	{ 726000000, 0xc0 }, { 826000000, 0xe0 }, { 902000000, 0x100 }, { 967000000, 0x140 },
++	{ 1050000000, 0x1a0 },
+ }, gmu_opps[] = {
+-	{ 475000000, 0x38 }, { 575000000, 0x40 }, { 700000000, 0x80 }, { 750000000, 0x100 },
++	{ 475000000, 0x38 }, { 700000000, 0x80 },
+ };
+ #define NGPU (1 + sizeof(gpu_opps) / sizeof(gpu_opps[0]))      /* with the "off" level */
+ #define NGMU (1 + sizeof(gmu_opps) / sizeof(gmu_opps[0]))
+@@ -1507,6 +1507,31 @@
+ }
+ 
+ /* a6xx_flush + fenced write: publish the ring, write WPTR, retry while the GMU fence drops it. */
++/*
++ * NX741J: the ring is 32 KiB (8192 dwords) and a submission writes about 40 dwords, so
++ * writing without looking at the read pointer lets the writer overtake commands the CP has
++ * not consumed yet. Once that happens the CP stalls and every later fence times out for good
++ * (vktest: PASS for ~550 s, then vkWaitForFences -> VK_TIMEOUT forever). Wait for space first.
++ */
++static void
++ring_wait_space(uint32_t need)
++{
++	const uint32_t total = (uint32_t)(gpu_bufs[0].bytes / 4);
++	if (!total) {
++		return;
++	}
++	for (unsigned spin = 0; spin < 2000; spin++) {
++		const uint32_t rptr = gr(CP_RB_RPTR) % total;
++		const uint32_t used = (ring_wptr + total - rptr) % total;
++		if (used + need + 8 < total) {
++			return;
++		}
++		delay(1);
++	}
++	printf("PANDORA GPU: ring full (wptr %u rptr %u need %u); submitting anyway\n",
++	    ring_wptr, gr(CP_RB_RPTR), need);
++}
++
+ static void
+ ring_kick(void)
+ {
+@@ -1820,7 +1845,7 @@
+ static vm_offset_t gpu_pool_va;
+ static uint64_t gpu_pool_pa, gpu_pool_bytes;
+ static bool gpu_pool_carved;    /* RAM the loader kept from XNU (ADT pandora-gpu-pool), mapped write-combined */
+-#define GPU_POOL_EXTENTS  512u
++#define GPU_POOL_EXTENTS  1024u
+ static uint64_t gpu_ext_off[GPU_POOL_EXTENTS], gpu_ext_len[GPU_POOL_EXTENTS];
+ static unsigned gpu_next;
+ 
+@@ -2058,6 +2083,7 @@
+ gpu_submit(const uint64_t *ib, const uint32_t *dwords, unsigned n, uint32_t thread, bool reset)
+ {
+ 	const uint64_t mem = gpu_bufs[2].iova + MEMPTRS_OFF, fence = mem + 4, bv = mem + 12;
++	ring_wait_space(96);
+ 	const uint32_t seq = ++gpu_seqno;
+ 	uint32_t v;
+ 	v = 0x80000001u; ring_put_n(0x17, &v, 1);               /* CP_THREAD_CONTROL SYNC|BR */
+@@ -2526,6 +2552,21 @@
+ 		}
+ 		break;
+ 	}
++	if (err) {
++		unsigned used = 0;
++		for (unsigned i = 0; i < GPU_MAX_BOS; i++) {
++			if (gpu_bos[i].used) {
++				used++;
++			}
++		}
++		uint64_t freeb = 0;
++		for (unsigned i = 0; i < gpu_next; i++) {
++			freeb += gpu_ext_len[i];
++		}
++		printf("PANDORA GPU ALLOC FAIL: bytes %llu align %u | bos %u/%u extents %u/%u free %llu MiB\n",
++		    bytes, align_log2, used, GPU_MAX_BOS, gpu_next, GPU_POOL_EXTENTS,
++		    freeb >> 20);
++	}
+ 	lck_mtx_unlock(&gpu_lock);
+ 	return err;
+ }
+@@ -3279,7 +3320,9 @@
+ #define DCVS_CEILING_NS     (50ull * NSEC_PER_MSEC)
+ 
+ /* qcom,gpu-pwrlevels-1 qcom,bus-freq per level, in gpu_opps order (160 .. 1200 MHz). */
+-static const uint8_t gpu_opp_bw[] = { 1, 1, 1, 2, 2, 2, 3, 3, 3, 3, 5, 5, 7, 7, 9, 9, 11, 11 };
++/* NX741J: qcom,bus-freq per qcom,gpu-pwrlevel, ascending (Z80 live DT
++ * /sys/firmware/fdt): 160 MHz -> 1 ... 1050 MHz -> 11. */
++static const uint8_t gpu_opp_bw[] = { 1, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 5, 5, 7, 7, 7, 11 };
+ 
+ static uint64_t
+ gpu_busy_ticks(void)
+@@ -3424,7 +3467,23 @@
+ 				}
+ 				at_level[l] = 0;
+ 			}
+-			printf("PANDORA GPU DCVS: busy %llu%%, MHz:time%s, %u changes, %u boosts, %u failed, now %u MHz\n",
++			{
++		unsigned used = 0;
++		uint64_t usedb = 0;
++		for (unsigned i = 0; i < GPU_MAX_BOS; i++) {
++			if (gpu_bos[i].used) {
++				used++;
++				usedb += gpu_bos[i].bytes;
++			}
++		}
++		uint64_t freeb = 0;
++		for (unsigned i = 0; i < gpu_next; i++) {
++			freeb += gpu_ext_len[i];
++		}
++		printf("[bo pool] used %u/%u %llu MiB, free %llu MiB, extents %u/%u\n",
++		    used, GPU_MAX_BOS, usedb >> 20, freeb >> 20, gpu_next, GPU_POOL_EXTENTS);
++	}
++	printf("PANDORA GPU DCVS: busy %llu%%, MHz:time%s, %u changes, %u boosts, %u failed, now %u MHz\n",
+ 			    win_busy * 100 / win_ns, used, changes, boosts, failed, gpu_opps[cur - 1].hz / 1000000);
+ 			uint64_t fired, unreg, hard;
+ 			sweet_gic_counts(&fired, &unreg, &hard);

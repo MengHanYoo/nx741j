@@ -1,0 +1,18 @@
+--- a/iokit/Kernel/arm/PandoraAdrenoGpu.cpp
++++ b/iokit/Kernel/arm/PandoraAdrenoGpu.cpp
+@@ -540,6 +540,15 @@
+ pandora_gpu_new_client(IOService *owner, task_t owningTask, void *securityID, UInt32 type, IOUserClient **handler)
+ {
+ 	if (type != PANDORA_GPU_OPEN_TYPE) {
++		char mname[32];
++		proc_selfname(mname, sizeof(mname));
++		if ((type & 0xffff0000u) == 0x41470000u) {
++			/* The plugin's gpu.mark(): progress markers 0x6800.. carry the
++			 * stage it reached (NativeAdrenoMetalPlugin.mm). */
++			IOLog("PANDORA GPU MARK: %08x by %s\n", type, mname);
++		} else {
++			IOLog("PANDORA GPU UC: open type %u refused for %s\n", type, mname);
++		}
+ 		return kIOReturnUnsupported;
+ 	}
+ 	int c = pandora_gpu_open();
