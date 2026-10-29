@@ -1,0 +1,90 @@
+--- a/iokit/Kernel/arm/PandoraAdrenoGpu.cpp
++++ b/iokit/Kernel/arm/PandoraAdrenoGpu.cpp
+@@ -155,8 +155,8 @@
+ 	{ 0, sizeof(NativeAdrenoAbiStatus) },
+ 	{ sizeof(NativeAdrenoAbiMetadata), 0 },
+ 	{ sizeof(NativeAdrenoAbiMetadata), sizeof(NativeAdrenoAbiMetadata) },
+-	{ 0xffff, 0xffff },
+-	{ 0xffff, 0xffff },
++	{ sizeof(NativeAdrenoAbiQueue), sizeof(NativeAdrenoAbiQueueReply) },   /* CreateQueue */
++	{ sizeof(NativeAdrenoAbiQueue), 0 },                                   /* CloseQueue */
+ 	{ sizeof(NativeAdrenoAbiBoCpuMap), sizeof(NativeAdrenoAbiBoCpuMapReply) },
+ 	{ sizeof(NativeAdrenoAbiBoCpuUnmap), 0 },
+ 	{ 0, sizeof(NativeAdrenoAbiDeviceInfo) },
+@@ -243,6 +243,28 @@
+ 		memcpy(out, &r, sizeof(r));
+ 		return pandora_gpu_ret(err);
+ 	}
++	case NativeAdrenoMethodCreateQueue: {
++		/*
++		 * NX741J: Turnip creates a queue while building its Vulkan device; this method used to
++		 * be advertised as unsupported, so vkCreateDevice failed with VK_ERROR_INITIALIZATION_FAILED
++		 * (-3) and the Metal frontend had "no device answer" for every capability question.
++		 * One command ring serves every client, so a stable id is enough.
++		 */
++		NativeAdrenoAbiQueue a;
++		NativeAdrenoAbiQueueReply r = { 0 };
++		memcpy(&a, in, sizeof(a));
++		if (a.queue != 0) {
++			return kIOReturnBadArgument;
++		}
++		r.queue = 1;
++		memcpy(out, &r, sizeof(r));
++		return kIOReturnSuccess;
++	}
++	case NativeAdrenoMethodCloseQueue: {
++		NativeAdrenoAbiQueue a;
++		memcpy(&a, in, sizeof(a));
++		return a.queue ? kIOReturnSuccess : kIOReturnBadArgument;
++	}
+ 	case NativeAdrenoMethodWaitFence: {
+ 		NativeAdrenoAbiWaitFence a;
+ 		memcpy(&a, in, sizeof(a));
+@@ -267,6 +289,23 @@
+ 		if (a.reserved || (set && a.bytes > NativeAdrenoAbiMetadataBytes)) {
+ 			return kIOReturnBadArgument;
+ 		}
++		/*
++		 * The plugin streams its own status line through SetMetadata with handle 0
++		 * (NativeAdrenoMetalPlugin.mm: streamText). That is the "[gpu client text]"
++		 * row the GPU porting guide points at, so print it instead of attaching it
++		 * to a buffer object that does not exist.
++		 */
++		if (set && a.handle == 0) {
++			char line[224];
++			uint32_t n = a.bytes < sizeof(line) - 1 ? a.bytes : (uint32_t)sizeof(line) - 1;
++			for (uint32_t i = 0; i < n; i++) {
++				const char c = a.text[i];
++				line[i] = (c >= 0x20 && c < 0x7f) ? c : '.';
++			}
++			line[n] = 0;
++			IOLog("[gpu client text] %d: %s\n", client_, line);
++			return kIOReturnSuccess;
++		}
+ 		uint32_t len = set ? a.bytes : 0;
+ 		int err = pandora_gpu_bo_meta(client_, a.handle, set, a.text, &len);
+ 		if (!set && !err) {
+@@ -539,7 +578,22 @@
+ static IOReturn
+ pandora_gpu_new_client(IOService *owner, task_t owningTask, void *securityID, UInt32 type, IOUserClient **handler)
+ {
+-	if (type != PANDORA_GPU_OPEN_TYPE) {
++	/*
++	 * NX741J: the Darwin KMD opens the device twice. 0x4147 ("AG") is the main connection; the
++	 * second open uses 0x4148 and was refused, so the Metal frontend reported
++	 * "no device answer for supportsConditionalLoadStore" and VK_ERROR_INITIALIZATION_FAILED
++	 * (log: "open type 16712 refused for backboardd"). Serve both with the same client.
++	 */
++	if (type != PANDORA_GPU_OPEN_TYPE && type != (PANDORA_GPU_OPEN_TYPE + 1)) {
++		char mname[32];
++		proc_selfname(mname, sizeof(mname));
++		if ((type & 0xffff0000u) == 0x41470000u) {
++			/* The plugin's gpu.mark(): progress markers 0x6800.. carry the
++			 * stage it reached (NativeAdrenoMetalPlugin.mm). */
++			IOLog("PANDORA GPU MARK: %08x by %s\n", type, mname);
++		} else {
++			IOLog("PANDORA GPU UC: open type %u refused for %s\n", type, mname);
++		}
+ 		return kIOReturnUnsupported;
+ 	}
+ 	int c = pandora_gpu_open();
