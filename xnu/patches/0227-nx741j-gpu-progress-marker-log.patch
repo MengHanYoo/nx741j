@@ -1,6 +1,30 @@
 --- a/iokit/Kernel/arm/PandoraAdrenoGpu.cpp
 +++ b/iokit/Kernel/arm/PandoraAdrenoGpu.cpp
-@@ -540,6 +540,15 @@
+@@ -267,6 +267,23 @@
+ 		if (a.reserved || (set && a.bytes > NativeAdrenoAbiMetadataBytes)) {
+ 			return kIOReturnBadArgument;
+ 		}
++		/*
++		 * The plugin streams its own status line through SetMetadata with handle 0
++		 * (NativeAdrenoMetalPlugin.mm: streamText). That is the "[gpu client text]"
++		 * row the GPU porting guide points at, so print it instead of attaching it
++		 * to a buffer object that does not exist.
++		 */
++		if (set && a.handle == 0) {
++			char line[224];
++			uint32_t n = a.bytes < sizeof(line) - 1 ? a.bytes : (uint32_t)sizeof(line) - 1;
++			for (uint32_t i = 0; i < n; i++) {
++				const char c = a.text[i];
++				line[i] = (c >= 0x20 && c < 0x7f) ? c : '.';
++			}
++			line[n] = 0;
++			IOLog("[gpu client text] %d: %s\n", client_, line);
++			return kIOReturnSuccess;
++		}
+ 		uint32_t len = set ? a.bytes : 0;
+ 		int err = pandora_gpu_bo_meta(client_, a.handle, set, a.text, &len);
+ 		if (!set && !err) {
+@@ -540,6 +557,15 @@
  pandora_gpu_new_client(IOService *owner, task_t owningTask, void *securityID, UInt32 type, IOUserClient **handler)
  {
  	if (type != PANDORA_GPU_OPEN_TYPE) {
