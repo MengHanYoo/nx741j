@@ -50,14 +50,14 @@
 | 「桥接层从不返回 nil encoder，被拒的 pass 得到拒绝的 encoder」 | ✅ | 日志 `commandBuffer refused` 属设计行为 |
 | 进程文本行 `[gpu client text]` | ✅ | 已实现并解出 `Compile(NeedsInput(FunctionConstant…))` |
 | AIR → SPIR-V → NIR → IR3 | ✅ | metal2vulkan + Turnip |
-| **分别测量首次 pipeline 编译与缓存复用时间** | ⚠ | 插件已按 runtime shader cache 的 miss/hit 把管线创建拆成 `T pipe compile` / `T pipe reuse` 两行（`NativeBridgeMetalFrontend.mm`，补丁 `wsl/metal-patches/0001-*.patch`）；已装进镜像并刷 `METAL54`（cdhash `a6d73531…`），**待读日志** |
+| **分别测量首次 pipeline 编译与缓存复用时间** | ⚠ | 插件已按 runtime shader cache 的 miss/hit 把管线创建拆成 `T pipe compile` / `T pipe reuse` 两行（`NativeBridgeMetalFrontend.mm`，补丁 `wsl/metal-patches/0001-*.patch`）；已装进镜像（plugin7，cdhash `e9e6cc05…`）并刷 `METAL55`；上机只跑 26 s，未到 100 个管线，**待跑满 3 分钟取数** |
 
 ## 待办（按页面顺序）
 
 1. ✅ `[vm unmap]` 日志（0235，METAL53 上机确认）
 2. ✅ unmap 的 512 页分界（0235，page 995 / asid 76 两条分支都在跑）
 3. ✅ 映射自有/导入内存的批量规则（0236，skipped 2927 / checked 884 / refused 0）
-4. ⚠ 首次 pipeline 编译 vs 缓存复用分别计时（METAL54 已上机，待日志出现 `T pipe compile` / `T pipe reuse` 两行）
+4. ⚠ 首次 pipeline 编译 vs 缓存复用分别计时（METAL55 已装；待跑满 3 分钟看 `pandora-metal pipe split` 与状态行 `pc/pr`）
 5. ⚠ Data seed / `--data-ramdisk` 流程对齐
 
 ## 本轮改动（2026-10-30 23:39，patch 0235）
