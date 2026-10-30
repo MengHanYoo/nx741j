@@ -1,0 +1,62 @@
+--- a/NativeBridgeMetalFrontend.mm
++++ b/NativeBridgeMetalFrontend.mm
+@@ -86,6 +86,15 @@
+ struct Timed {std::atomic<uint64_t> count{0},total{0},slowest{0};
+  void add(uint64_t began){const uint64_t took=nowUs()-began;count++;total+=took;uint64_t seen=slowest.load();while(took>seen && !slowest.compare_exchange_weak(seen,took)){}}};
+ static Timed gTimePipeline,gTimeLibrary,gTimeFunction,gTimeEncodeToCommit;
++// data-a-live (page 4): the first pipeline compile and a cache reuse are different numbers. The runtime's shader cache
++// says which one happened: a miss it reported during the creation is a compile, a hit is a reuse.
++static Timed gTimePipelineCompile,gTimePipelineReuse;
++static bool gPipeCacheBefore(NmbShaderCacheStats *s) {return gDevice && nmb_device_shader_cache_stats(gDevice,s);}
++static void gPipeCacheAfter(bool known,const NmbShaderCacheStats &before,uint64_t began) {
++ NmbShaderCacheStats now={};
++ const bool fresh=!known || !nmb_device_shader_cache_stats(gDevice,&now) || now.misses>before.misses || now.driver_misses>before.driver_misses;
++ (fresh?gTimePipelineCompile:gTimePipelineReuse).add(began);
++}
+ static Timed gTimeWaitScheduled,gTimeWaitCompleted;
+ static Timed gTimeResourceWait;
+ static std::atomic<uint64_t> gResourceChecks,gResourceSkipped;
+@@ -1879,8 +1888,10 @@
+  if(reflection)*reflection=nil;
+  if(![(id)function isKindOfClass:[NBFunction class]]){if(error)*error=nbError(@"foreign function");return nil;}
+  const NmbPipelineOptions creation={(uint64_t)options,nullptr,0};
++ NmbShaderCacheStats cache0={};const bool cacheKnown=gPipeCacheBefore(&cache0);
+  const uint64_t pipelineBegan=nowUs();
+  NmbComputePipeline *handle=nmb_compute_pipeline_new_with_options(gDevice,[(NBFunction *)function handle],&creation);gTimePipeline.add(pipelineBegan);
++ gPipeCacheAfter(cacheKnown,cache0,pipelineBegan);
+  if(!handle)return failWith<id<MTLComputePipelineState>>(error,@"compute pipeline",nil);
+  NBComputePipeline *state=[NBComputePipeline new];state.handle=handle;gPipelines++;if(error)*error=nil;return (id<MTLComputePipelineState>)state;
+ }
+@@ -1891,8 +1902,10 @@
+  std::vector<NmbBinaryArchive *> archives;
+  if(!pipelineArchives(d.binaryArchives,archives,error))return nil;
+  const NmbPipelineOptions creation={(uint64_t)options,archives.data(),archives.size()};
++ NmbShaderCacheStats cache0={};const bool cacheKnown=gPipeCacheBefore(&cache0);
+  const uint64_t pipelineBegan=nowUs();
+  NmbComputePipeline *handle=nmb_compute_pipeline_new_with_descriptor(gDevice,&p,&creation);gTimePipeline.add(pipelineBegan);
++ gPipeCacheAfter(cacheKnown,cache0,pipelineBegan);
+  if(!handle)return failWith<id<MTLComputePipelineState>>(error,@"compute pipeline",nil);
+  NBComputePipeline *state=[NBComputePipeline new];state.handle=handle;state.label=d.label;gPipelines++;
+  if(error)*error=nil;return (id<MTLComputePipelineState>)state;
+@@ -1908,8 +1921,10 @@
+  std::vector<NmbBinaryArchive *> archives;
+  if(!pipelineArchives(d.binaryArchives,archives,error)){delete p;return nil;}
+  const NmbPipelineOptions creation={(uint64_t)options,archives.data(),archives.size()};
++ NmbShaderCacheStats cache0={};const bool cacheKnown=gPipeCacheBefore(&cache0);
+  const uint64_t pipelineBegan=nowUs();const NBCost costBegan=NBCost::now();
+  NmbRenderPipeline *handle=nmb_render_pipeline_new_with_options(gDevice,p,&creation);delete p;gTimePipeline.add(pipelineBegan);
++ gPipeCacheAfter(cacheKnown,cache0,pipelineBegan);
+  journalRenderPipeline(d,pipelineBegan,handle?nullptr:nmb_last_error(),gJournalPath.empty()?std::string():NBCost::now().since(costBegan));
+  if(!handle)return failWith<id<MTLRenderPipelineState>>(error,@"render pipeline",nil);
+  NBRenderPipeline *state=[NBRenderPipeline new];state.handle=handle;gPipelines++;if(error)*error=nil;
+@@ -2200,6 +2215,10 @@
+   (unsigned long long)gDraws.load(),(unsigned long long)gFullScreenPasses.load(),(unsigned long long)(gBiggestPass.load()>>10),
+   (unsigned long long)gDispatches.load(),(unsigned long long)gBlits.load());
+  row("T pipeline n=%llu total=%llums max=%llums",(unsigned long long)gTimePipeline.count.load(),ms(gTimePipeline.total.load()),ms(gTimePipeline.slowest.load()));
++ row("T pipe compile n=%llu total=%llums max=%llums",(unsigned long long)gTimePipelineCompile.count.load(),
++  ms(gTimePipelineCompile.total.load()),ms(gTimePipelineCompile.slowest.load()));
++ row("T pipe reuse n=%llu total=%llums max=%llums",(unsigned long long)gTimePipelineReuse.count.load(),
++  ms(gTimePipelineReuse.total.load()),ms(gTimePipelineReuse.slowest.load()));
+  row("T library n=%llu total=%llums max=%llums",(unsigned long long)gTimeLibrary.count.load(),ms(gTimeLibrary.total.load()),ms(gTimeLibrary.slowest.load()));
+  row("T function n=%llu total=%llums max=%llums",
+   (unsigned long long)gTimeFunction.count.load(),ms(gTimeFunction.total.load()),ms(gTimeFunction.slowest.load()));

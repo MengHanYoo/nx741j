@@ -50,14 +50,14 @@
 | 「桥接层从不返回 nil encoder，被拒的 pass 得到拒绝的 encoder」 | ✅ | 日志 `commandBuffer refused` 属设计行为 |
 | 进程文本行 `[gpu client text]` | ✅ | 已实现并解出 `Compile(NeedsInput(FunctionConstant…))` |
 | AIR → SPIR-V → NIR → IR3 | ✅ | metal2vulkan + Turnip |
-| **分别测量首次 pipeline 编译与缓存复用时间** | ❌ | 只测了总耗时（45–72 ms/draw），未分开 |
+| **分别测量首次 pipeline 编译与缓存复用时间** | ⚠ | 插件已按 runtime shader cache 的 miss/hit 把管线创建拆成 `T pipe compile` / `T pipe reuse` 两行（`NativeBridgeMetalFrontend.mm`，补丁 `wsl/metal-patches/0001-*.patch`），本地构建通过（`NativeAdrenoMetal` sha256 `d06f6058…`）；**尚未装进镜像、未上机** |
 
 ## 待办（按页面顺序）
 
 1. ✅ `[vm unmap]` 日志（0235，METAL53 上机确认）
 2. ✅ unmap 的 512 页分界（0235，page 995 / asid 76 两条分支都在跑）
 3. ✅ 映射自有/导入内存的批量规则（0236，skipped 2927 / checked 884 / refused 0）
-4. ❌ 首次 pipeline 编译 vs 缓存复用分别计时
+4. ⚠ 首次 pipeline 编译 vs 缓存复用分别计时（插件已实现并编译，待装镜像上机）
 5. ⚠ Data seed / `--data-ramdisk` 流程对齐
 
 ## 本轮改动（2026-10-30 23:39，patch 0235）
@@ -98,5 +98,13 @@
 
 - `native-metal: no device answer: the device has no answer for supports ConditionalLoadStore`
 - `render pipeline: MetalError … call: new_render_pipeline_state, domain: AGXMetalG15X_M1, code: 3, localizedDescription: Rasterizati… problem: UnrasterizedVertexReturn`
+
+## 本轮改动（2026-10-31 00:25，待办 4：管线计时拆分）
+
+- `NativeBridgeMetalFrontend.mm`（插件侧，不在内核树）：新增 `gTimePipelineCompile` / `gTimePipelineReuse`，在三个创建点（render with options、compute with function、compute with descriptor）用 `nmb_device_shader_cache_stats()` 前后的 `misses`/`driver_misses` 增量判断本次是**首次编译**还是**缓存复用**，并累加各自耗时；telemetry 表新增两行 `T pipe compile …` / `T pipe reuse …`（随 `STn` 分块进内核日志）。
+- 构建：`bash wsl/build_metal_plugin_linux.sh` → rust 5.1 s、bundle 21,954,296 B，`METAL_LOCAL_DONE`；签名后 sha256 `d06f6058…`。
+- 补丁归档：`wsl/metal-patches/0001-pipeline-compile-vs-reuse-timing.patch`（5 个 hunk）。
+- **下一步**：`wsl_seal_new_plugin.sh` 加平台标志 + 新 trust 模块 → QEMU 装进 `iosroot-SEAL.img` → 用新 `pluginN.trst` 重打 payload → `METAL54-boot_a.img` → 上机看两行计时。
+
 
 
