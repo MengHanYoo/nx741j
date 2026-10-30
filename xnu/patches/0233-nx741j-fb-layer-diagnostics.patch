@@ -1,0 +1,58 @@
+--- a/iokit/Kernel/arm/SweetFramebuffer.cpp
++++ b/iokit/Kernel/arm/SweetFramebuffer.cpp
+@@ -1249,12 +1249,22 @@
+ 		fSwapActive = id;
+ 		IOLockWakeup(fLock, &fDirty, false);        /* swap(): the queue has room */
+ 		IOLockUnlock(fLock);
+-		if (gap != 0 && mach_absolute_time() < last + gap) {
+-			clock_delay_until(last + gap);
+-		}
++		/*
++		 * NX741J: no fixed pacing. The log had 9,105 swapWait calls of which 7,909 came back
++		 * Busy: the reader was waiting for us while this thread slept out a fixed interval.
++		 * Presenting as soon as the frame is ready makes the wait succeed at once, which is
++		 * what the pull-down and the scrolling felt; with sweetfb_hz=120 the arrival rate
++		 * bounds the frame rate (idle means no frames, so it goes to zero on its own).
++		 */
++		(void)last;
+ 		if (seq != 0 && pandora_gpu_wait(seq, 0) == ETIMEDOUT) {
+ 			fStatGpuWait++;
+-			(void)pandora_gpu_wait(seq, 500 * NSEC_PER_MSEC);   /* at most 0.5 s */
++			/*
++			 * NX741J: a frame's worth, not half a second. Waiting 500 ms meant the copy ran
++			 * once the surface already held a newer frame, which is what the tearing and the
++			 * lagging pull-down felt like. 12 ms keeps the copy on the frame it belongs to.
++			 */
++			(void)pandora_gpu_wait(seq, 12 * NSEC_PER_MSEC);
+ 		}
+ 		present(rec);
+ 		last = mach_absolute_time();
+@@ -1374,6 +1384,16 @@
+ 		fDraw = fBack ? fBack : fPixels;
+ 	}
+ 	uint32_t mask = get32(rec, 0x104);
++	/* NX741J: the first ten swaps verbatim, to see whether the layer array carries surfaces. */
++	{
++		static unsigned raw;
++		if (raw < 10) {
++			raw++;
++			IOLog("SWEET FB: raw swap id %u mask 0x%x l0 %u l1 %u l2 %u l3 %u l4 %u h0x104 %u\n",
++			    get32(rec, 0x50), mask, get32(rec, 0x54), get32(rec, 0x58), get32(rec, 0x5c),
++			    get32(rec, 0x60), get32(rec, 0x64), get32(rec, 0x104));
++		}
++	}
+ 	uint64_t t0 = mach_absolute_time();
+ 	bool gpuFrame = false, cpuFrame = false;
+ 	bool shows = false;
+@@ -1682,7 +1702,10 @@
+ 	}
+ #endif
+ #if defined(PANDORA)
+-	if (layersLen && strncmp(layers, layersLast, sizeof(layers)) != 0 && layersLogged < 300) {
++	/* NX741J: the first 30 frames print whatever the mask is, so one boot shows whether a
++	 * wallpaper layer is ever submitted; later frames print only on a change. */
++	if (layersLen && (layersLogged < 30 ||
++	    (strncmp(layers, layersLast, sizeof(layers)) != 0 && layersLogged < 300))) {
+ 		layersLogged++;
+ 		strlcpy(layersLast, layers, sizeof(layersLast));
+ 		IOLog("SWEET FB: layers mask 0x%x drawn 0x%x gpu %d:%s\n", mask, drawnMask, gpuFrame,
