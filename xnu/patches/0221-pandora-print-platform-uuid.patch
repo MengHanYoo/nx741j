@@ -1,0 +1,12 @@
+--- a/iokit/Kernel/IOPlatformExpert.cpp
++++ b/iokit/Kernel/IOPlatformExpert.cpp
+@@ -2200,6 +2200,9 @@
+ 				digest[8] = (digest[8] & 0x3F) | 0x80;
+ 
+ 				uuid_unparse( digest, uuid );
++				/* PANDORA/NX741J: the data partition's ByHost preferences are named after
++				 * this UUID, so the boot log has to name it. */
++				printf("PANDORA UUID: %s\n", uuid);
+ 				string = OSString::withCString( uuid );
+ 			}
+ 		}

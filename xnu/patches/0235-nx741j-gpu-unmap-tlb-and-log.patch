@@ -1,0 +1,165 @@
+--- a/bsd/dev/pandora_gpu.c
++++ b/bsd/dev/pandora_gpu.c
+@@ -1766,7 +1766,10 @@
+ 
+ /* Map [iova, iova + bytes) to pa in a live context's tables, 4K leaves in the ArmSmmu4K format
+  * (normal non-cacheable, outer shareable, as NativeAdreno maps user buffers), table pages taken
+- * from the rest of the context's pool, then TLBIALL for the bank. Refuses pages already mapped. */
++ * from the rest of the context's pool. Refuses pages already mapped, and does no TLB
++ * invalidation: the guide's submit rule, a map only fills leaves that were invalid (an unmap
++ * invalidated its own pages before the range was released), so no cached translation exists for
++ * the IOVA. TLBIALL here emptied the GPU's whole TLB on every map. */
+ static bool
+ smmu_map_pages(struct smmu_ctx *c, uint64_t iova, uint64_t pa, const uint64_t *pages, uint64_t bytes,
+     unsigned perm);
+@@ -1829,12 +1832,6 @@
+ 		clean_dcache64((addr64_t)(pool + ((vm_offset_t)leaf - c->tva)), 8, TRUE);
+ 	}
+ 	__asm__ volatile ("dsb sy" ::: "memory");
+-	ArmSmmu4KProgramResult r;
+-	ArmSmmu4KStatus st = ArmSmmu4KInvalidateAllOwnedContext(&smmu_io, c->bank, &c->ctx, 1000, &r);
+-	if (st != ArmSmmu4KSuccess) {
+-		printf("PANDORA GPU: TLB invalidate for bank %u: status %d\n", c->bank, st);
+-		return false;
+-	}
+ 	return true;
+ }
+ 
+@@ -2243,6 +2240,12 @@
+ };
+ static struct gpu_bo gpu_bos[GPU_MAX_BOS];
+ 
++/* [vm unmap]: every release since boot, the pages it dropped, and how the TLB took the change
++ * (the guide: at most 512 pages one TLBIVAL each, more by ASID). The totals let a change be
++ * compared with the lines before it. */
++static uint64_t gpu_unmap_calls, gpu_unmap_own, gpu_unmap_imported, gpu_unmap_pages;
++static uint64_t gpu_unmap_tlb_pages, gpu_unmap_tlb_asid, gpu_unmap_ns;
++
+ /* iokit/Kernel/arm/PandoraAdrenoGpu.cpp: unpin an imported buffer's pages. */
+ extern void pandora_gpu_release_ref(void *ref);
+ 
+@@ -2252,6 +2255,11 @@
+ {
+ 	if (b->iova) {
+ 		smmu_unmap(&gpu_smmu, b->iova, b->bytes);
++		if (b->pages) {
++			gpu_unmap_imported++;
++		} else {
++			gpu_unmap_own++;
++		}
+ 	}
+ 	if (b->pages) {
+ 		kfree_data(b->pages, (vm_size_t)(b->bytes >> 12) * sizeof(uint64_t));
+@@ -2305,12 +2313,16 @@
+ 	return gpu_chip_id;
+ }
+ 
+-/* Clear the leaves of [iova, iova + bytes) and TLBIALL; table pages stay. */
++/* Clear the leaves of [iova, iova + bytes) and drop the translations they held; table pages
++ * stay. At most ArmSmmu4KTlbPageLimit pages take one TLBIVAL each, a larger range takes the
++ * bank's ASID invalidation (the guide's unmap rule: the pages this unmap dropped go, every
++ * other cached translation stays). */
+ static void
+ smmu_unmap(struct smmu_ctx *c, uint64_t iova, uint64_t bytes)
+ {
+ 	uint64_t pool = c->tables.root_physical;
+ 	unsigned in = c->tcfg.input_bits, start = c->tables.start_level;
++	const uint64_t t0 = mach_absolute_time();
+ 	for (uint64_t off = 0; off < bytes; off += 0x1000) {
+ 		uint64_t va = iova + off, *t = (uint64_t *)c->tva;
+ 		for (unsigned level = start; level < 3 && t; level++) {
+@@ -2326,7 +2338,24 @@
+ 	}
+ 	__asm__ volatile ("dsb sy" ::: "memory");
+ 	ArmSmmu4KProgramResult r;
+-	(void)ArmSmmu4KInvalidateAllOwnedContext(&smmu_io, c->bank, &c->ctx, 1000, &r);
++	ArmSmmu4KStatus st;
++	if (bytes && bytes <= (uint64_t)ArmSmmu4KTlbPageLimit * 0x1000) {
++		ArmSmmu4KRange range = { iova, 0, bytes, ArmSmmu4KRead, 0, 2 };
++		st = ArmSmmu4KSyncContextTlbPages(&smmu_io, c->cb, c->ctx.asid, &range, 1, 1000, &r);
++		gpu_unmap_tlb_pages++;
++	} else {
++		st = ArmSmmu4KInvalidateAllOwnedContext(&smmu_io, c->bank, &c->ctx, 1000, &r);
++		gpu_unmap_tlb_asid++;
++	}
++	gpu_unmap_calls++;
++	gpu_unmap_pages += bytes >> 12;
++	uint64_t ns = 0;
++	absolutetime_to_nanoseconds(mach_absolute_time() - t0, &ns);
++	gpu_unmap_ns += ns;
++	if (st != ArmSmmu4KSuccess) {
++		printf("PANDORA GPU: unmap TLB for bank %u: status %d (%llu bytes)\n", c->bank, st,
++		    (unsigned long long)bytes);
++	}
+ }
+ 
+ static struct gpu_bo *
+@@ -3292,6 +3321,12 @@
+ 			printf("[vm kinds] own %llu imported %llu pooled MiB %llu\n",
+ 			    (unsigned long long)own_n, (unsigned long long)imp_n,
+ 			    (unsigned long long)(pool_n >> 20));
++			printf("[vm unmap] %llu released (%llu own %llu imported) %llu pages, "
++			    "tlb %llu page / %llu asid, %llu us\n",
++			    (unsigned long long)gpu_unmap_calls, (unsigned long long)gpu_unmap_own,
++			    (unsigned long long)gpu_unmap_imported, (unsigned long long)gpu_unmap_pages,
++			    (unsigned long long)gpu_unmap_tlb_pages, (unsigned long long)gpu_unmap_tlb_asid,
++			    (unsigned long long)(gpu_unmap_ns / 1000));
+ 		}
+ 		printf("PANDORA GPU WATCH: %u s ring timestamp %u (issued %u) rbbm %08x cp int %08x rptr %u wptr %u\n",
+ 			    (t + 1) * 5, ring, gpu_seqno, gr(RBBM_STATUS_A8XX), gr(CP_INTERRUPT_STATUS_GLOBAL),
+--- a/bsd/dev/adreno/ArmSmmu4KProgram.c
++++ b/bsd/dev/adreno/ArmSmmu4KProgram.c
+@@ -187,6 +187,38 @@
+     if(status==ArmSmmu4KSuccess)r->phase=9;
+     return status;
+ }
++ArmSmmu4KStatus ArmSmmu4KSyncContextTlbPages(const ArmSmmu4KIo *io,uint64_t context_offset,unsigned asid,
++    const ArmSmmu4KRange *ranges,size_t count,unsigned budget,ArmSmmu4KProgramResult *r)
++{
++    if(!r)return ArmSmmu4KArgument;
++    *r=(ArmSmmu4KProgramResult){0};r->must_retain_tables=1;
++    if(!io || !io->write32 || !io->write64 || !io->read32 || !io->barrier || !budget || budget>1048576 || !context_offset ||
++        context_offset>io->register_bytes || io->register_bytes-context_offset<0x7f8 || !count || !ranges || asid>0xffff)
++        return ArmSmmu4KArgument;
++    size_t pages=0;
++    for(size_t i=0;i<count;++i) {
++        if(((ranges[i].iova|ranges[i].bytes)&4095) || !ranges[i].bytes || ranges[i].bytes/4096>ArmSmmu4KTlbPageLimit-pages)
++            return ArmSmmu4KArgument;
++        pages+=(size_t)(ranges[i].bytes/4096);
++    }
++    r->context_offset=context_offset;r->tlb_synchronized=0;
++    const size_t cb=(size_t)context_offset;
++    if(io->barrier(io->cookie))return ArmSmmu4KIoError;
++    /* TLBIVAL (+0x620), AArch64 format: VA[55:12] in bits 43:0, the ASID in bits 63:48. Leaf entries only: the tables above the leaves
++     * are fixed for the context's life. */
++    for(size_t i=0;i<count;++i)for(uint64_t offset=0;offset<ranges[i].bytes;offset+=4096)
++        if(write64(io,cb+0x620,(((ranges[i].iova+offset)>>12)&((UINT64_C(1)<<44)-1))|((uint64_t)asid<<48),r))return ArmSmmu4KIoError;
++    if(write32(io,cb+0x7f0,UINT32_MAX,r) || io->barrier(io->cookie))return ArmSmmu4KIoError;
++    for(unsigned i=0;i<budget;++i) {
++        uint32_t status;++r->poll_reads;
++        if(io->read32(io->cookie,cb+0x7f4,&status))return ArmSmmu4KIoError;
++        if(!(status&1)) {
++            if(io->barrier(io->cookie))return ArmSmmu4KIoError;
++            r->tlb_synchronized=1;r->phase=9;return ArmSmmu4KSuccess;
++        }
++    }
++    return ArmSmmu4KTimeout;
++}
+ ArmSmmu4KStatus ArmSmmu4KSynchronizeOwnedContext(const ArmSmmu4KIo *io,unsigned bank,
+     const ArmSmmu4KContextConfig *config,unsigned budget,ArmSmmu4KProgramResult *r)
+ {return synchronize(io,bank,config,0,budget,r);}
+--- a/bsd/dev/adreno/ArmSmmu4KProgram.h
++++ b/bsd/dev/adreno/ArmSmmu4KProgram.h
+@@ -58,6 +58,12 @@
+  * between its whole-verification updates). */
+ ArmSmmu4KStatus ArmSmmu4KSyncContextTlb(const ArmSmmu4KIo *,uint64_t context_offset,unsigned asid,unsigned all,
+     unsigned poll_budget,ArmSmmu4KProgramResult *);
++/* As ArmSmmu4KSyncContextTlb, but TLBIVAL of every page of the given ranges (4K aligned, at most ArmSmmu4KTlbPageLimit pages) for the ASID
++ * instead of TLBIASID, then the bounded TLBSYNC: an unmap drops the translations it removed and keeps every other cached one, as
++ * Linux's io-pgtable unmap does (TLBIASID on each unmap emptied the GPU's whole TLB). For leaf changes only. */
++enum {ArmSmmu4KTlbPageLimit=512};
++ArmSmmu4KStatus ArmSmmu4KSyncContextTlbPages(const ArmSmmu4KIo *,uint64_t context_offset,unsigned asid,
++    const ArmSmmu4KRange *ranges,size_t count,unsigned poll_budget,ArmSmmu4KProgramResult *);
+ /* As ArmSmmu4KSynchronizeOwnedContext, but with TLBIALL for the bank instead of TLBIASID: every cached translation of the bank goes,
+  * whatever ASID it was tagged with. */
+ ArmSmmu4KStatus ArmSmmu4KInvalidateAllOwnedContext(const ArmSmmu4KIo *,unsigned bank,

@@ -23,9 +23,9 @@ void fatal(void) __attribute__((noreturn));
 
 #define FB          0xfc800000ull
 #define FB_SIZE     0x2b00000ull
-#define FB_W        1220u
-#define FB_H        2656u
-#define FB_STRIDE   (1220u * 4)
+#define FB_W        1216u
+#define FB_H        2688u
+#define FB_STRIDE   (1216u * 4)
 /* Kernel RAM must stay inside the clean 0x8c0000000 + 13 GiB range (DT_FINDINGS.md). */
 #define RAM_LO      0x8c0000000ull
 #define RAM_HI      0xc00000000ull

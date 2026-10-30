@@ -17,3 +17,4 @@ out-root/
 # Local test payloads
 shim/loader/tctest/
 *.bin
+/build/

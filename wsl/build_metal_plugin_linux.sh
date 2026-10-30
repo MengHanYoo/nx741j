@@ -6,9 +6,9 @@ G=/opt/work/gpu
 U=$G/UniXNU
 NM=$G/NativeMetal
 NA=$G/NativeAdreno
-M2V=$G/metal2vulkan
+M2V=$G/m2v-src
 MESA=$G/mesa-src
-ROOT=/mnt/c/Users/MengHanYooo/Documents/deepseek-harness/default-workspace/z80u-collect/repos/nx741j
+ROOT=/mnt/e/default-workspace/z80u-collect/repos/nx741j
 OUT=$G/metal-out
 B=$OUT/build
 CC=/usr/local/bin/clang-ios
@@ -17,7 +17,9 @@ export PATH=/root/.cargo/bin:$PATH
 mkdir -p "$B/gen" "$OUT"
 
 echo '== 0. NativeMetal 按 iOS 16 适配'
-python3 "$ROOT/tools/metal/adapt_ios16.py" "$NM" 2>&1 | tail -3
+python3 "$ROOT/tools/metal/adapt_ios16.py" "$NM" > /tmp/adapt16.log 2>&1 ||
+  echo "   (source already adapted, skipping)"
+tail -3 /tmp/adapt16.log 2>/dev/null || true
 
 echo '== 1. smoke shaders'
 {
@@ -81,11 +83,11 @@ ls -l "$BRIDGE"
 echo '== 5. 插件 bundle'
 BUNDLE=$OUT/NativeAdrenoMetal.bundle
 rm -rf "$BUNDLE"; mkdir -p "$BUNDLE"
-$CC -std=c11 -c "$U/kits/AdrenoPM4/AdrenoPM4.c" -o "$B/AdrenoPM4.o"
-$CC -std=c++17 -fobjc-arc -Wno-deprecated-declarations -bundle \
+$CC -std=c11 -O2 -DNDEBUG -c "$U/kits/AdrenoPM4/AdrenoPM4.c" -o "$B/AdrenoPM4.o"
+$CC -std=c++17 -O2 -DNDEBUG -fno-exceptions -fobjc-arc -Wno-deprecated-declarations -bundle \
   -I "$NA" -I "$U/kits/AdrenoPM4" -I "$MESA/include" -I "$B/gen" \
   -x objective-c++ "$NM/NativeAdrenoMetalPlugin.mm" "$NM/NativeBridgeMetalFrontend.mm" -x none \
-  "$B/AdrenoPM4.o" "$BRIDGE" -Wl,-dead_strip -lobjc -framework Foundation -framework Metal -framework IOSurface \
+  "$B/AdrenoPM4.o" "$BRIDGE" -Wl,-dead_strip -lc++ -lc++abi -lobjc -framework Foundation -framework Metal -framework IOSurface \
   -o "$BUNDLE/NativeAdrenoMetal"
 /usr/bin/llvm-strip -x "$BUNDLE/NativeAdrenoMetal" || true
 ls -la "$BUNDLE"

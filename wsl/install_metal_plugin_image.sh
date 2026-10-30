@@ -1,7 +1,7 @@
 #!/bin/bash
 # 把 NativeAdrenoMetal.bundle 装进 iOS 根镜像的 /System/Library/Extensions/
 set -u
-IMG=/mnt/c/Users/MengHanYooo/Documents/deepseek-harness/default-workspace/z80u-collect/iospull.img
+IMG=/mnt/e/default-workspace/z80u-collect/iospull.img
 W=/root/hfswork
 SRC=/opt/work/gpu/metal-out/NativeAdrenoMetal.bundle
 

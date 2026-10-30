@@ -1,0 +1,151 @@
+--- a/bsd/dev/pandora_gpu.c
++++ b/bsd/dev/pandora_gpu.c
+@@ -2240,6 +2240,72 @@
+ };
+ static struct gpu_bo gpu_bos[GPU_MAX_BOS];
+ 
++/*
++ * NX741J (0236): the guide's map rule (NativeAdrenoVm::preflight, exclusivePages). A mapping may
++ * share physical pages with another mapping of its own cache/shareability/privilege class, never
++ * with one of another class. Driver memory owns the pool until its unmap completes, so its map is
++ * the bare table write with no alias pass; an import's pages (an IOSurface) any process may map
++ * again, so an import is checked only while a mapping of the other class is live. Every GPU
++ * mapping here is normal non-cacheable, outer shareable and unprivileged, so the class is the
++ * write permission alone.
++ */
++static unsigned
++gpu_alias_class(uint32_t perm, bool readonly)
++{
++	return ((perm & 2) && !readonly) ? 1u : 0u;
++}
++static uint64_t gpu_map_pages_cls[2];       /* live mapped 4K pages, per alias class */
++static uint64_t gpu_import_pages_cls[2];    /* the imported ones, per alias class */
++static uint64_t gpu_alias_maps, gpu_alias_skips, gpu_alias_checks, gpu_alias_refused;
++
++/* Does [pa, pa + bytes) touch a page of B: its pool run, or an import's own pages? */
++static bool
++gpu_bo_touches(const struct gpu_bo *b, uint64_t pa, uint64_t bytes)
++{
++	if (!bytes || !b->bytes) {
++		return false;
++	}
++	if (!b->pages) {
++		uint64_t at = gpu_pool_pa + b->off;
++		return at < pa + bytes && pa < at + b->bytes;
++	}
++	for (uint64_t i = 0; i < (b->bytes >> 12); i++) {
++		uint64_t at = b->pages[i];
++		if (at < pa + bytes && pa < at + 0x1000) {
++			return true;
++		}
++	}
++	return false;
++}
++
++/* The alias pass for an import of CLASS: no live mapping of another class may share a page with
++ * it, and no page may lie in the BO pool (driver memory is never an import). */
++static bool
++gpu_alias_pass(const struct gpu_bo *b, unsigned cls)
++{
++	if (gpu_pool_bytes && gpu_bo_touches(b, gpu_pool_pa, gpu_pool_bytes)) {
++		printf("PANDORA GPU: import of client %d covers BO pool pages\n", b->client);
++		return false;
++	}
++	for (unsigned i = 0; i < GPU_MAX_BOS; i++) {
++		const struct gpu_bo *o = &gpu_bos[i];
++		bool hit;
++		if (!o->used || !o->iova || gpu_alias_class(o->perm, o->readonly) == cls) {
++			continue;
++		}
++		hit = o->pages ? false : gpu_bo_touches(b, gpu_pool_pa + o->off, o->bytes);
++		for (uint64_t p = 0; !hit && o->pages && p < (o->bytes >> 12); p++) {
++			hit = gpu_bo_touches(b, o->pages[p], 0x1000);
++		}
++		if (hit) {
++			printf("PANDORA GPU: import of client %d aliases client %d mapping %#llx\n", b->client,
++			    o->client, o->iova);
++			return false;
++		}
++	}
++	return true;
++}
++
+ /* [vm unmap]: every release since boot, the pages it dropped, and how the TLB took the change
+  * (the guide: at most 512 pages one TLBIVAL each, more by ASID). The totals let a change be
+  * compared with the lines before it. */
+@@ -2254,6 +2320,11 @@
+ gpu_bo_release(struct gpu_bo *b)
+ {
+ 	if (b->iova) {
++		unsigned cls = gpu_alias_class(b->perm, b->readonly);
++		gpu_map_pages_cls[cls] -= b->bytes >> 12;
++		if (b->pages) {
++			gpu_import_pages_cls[cls] -= b->bytes >> 12;
++		}
+ 		smmu_unmap(&gpu_smmu, b->iova, b->bytes);
+ 		if (b->pages) {
+ 			gpu_unmap_imported++;
+@@ -2269,6 +2340,8 @@
+ 	}
+ 	b->pages = NULL;
+ 	b->ref = NULL;
++	b->perm = 0;
++	b->readonly = false;
+ 	b->used = false;
+ }
+ static struct {
+@@ -2622,13 +2695,36 @@
+ 		err = EINVAL;
+ 	} else if (b->iova) {
+ 		err = EBUSY;
+-	} else if (!smmu_map_pages(&gpu_smmu, iova, gpu_pool_pa + b->off, b->pages, b->bytes,
+-	    ArmSmmu4KRead | ((perm & 2) && !b->readonly ? ArmSmmu4KWrite : 0))) {
+-		err = EEXIST;
+ 	} else {
+-		b->iova = iova;
+-		b->perm = perm;
+-		gpu_clients[client].maps++;
++		const unsigned cls = gpu_alias_class(perm, b->readonly);
++		/* The full pass only when a mapping of the other class is live: driver memory never
++		 * needs it (the pool is ours until the unmap), an import whose class every live
++		 * mapping shares cannot conflict. */
++		const bool pass = b->pages &&
++		    (gpu_map_pages_cls[cls ^ 1] != 0 || gpu_import_pages_cls[cls ^ 1] != 0);
++		gpu_alias_maps++;
++		if (pass) {
++			gpu_alias_checks++;
++			if (!gpu_alias_pass(b, cls)) {
++				gpu_alias_refused++;
++				err = EEXIST;
++			}
++		} else {
++			gpu_alias_skips++;
++		}
++		if (!err && !smmu_map_pages(&gpu_smmu, iova, gpu_pool_pa + b->off, b->pages, b->bytes,
++		    ArmSmmu4KRead | ((perm & 2) && !b->readonly ? ArmSmmu4KWrite : 0))) {
++			err = EEXIST;
++		}
++		if (!err) {
++			b->iova = iova;
++			b->perm = perm;
++			gpu_map_pages_cls[cls] += b->bytes >> 12;
++			if (b->pages) {
++				gpu_import_pages_cls[cls] += b->bytes >> 12;
++			}
++			gpu_clients[client].maps++;
++		}
+ 	}
+ 	lck_mtx_unlock(&gpu_lock);
+ 	return err;
+@@ -3327,6 +3423,11 @@
+ 			    (unsigned long long)gpu_unmap_imported, (unsigned long long)gpu_unmap_pages,
+ 			    (unsigned long long)gpu_unmap_tlb_pages, (unsigned long long)gpu_unmap_tlb_asid,
+ 			    (unsigned long long)(gpu_unmap_ns / 1000));
++			printf("[vm alias] %llu maps: %llu skipped (driver memory or one class), "
++			    "%llu checked, %llu refused; ro %llu rw %llu pages\n",
++			    (unsigned long long)gpu_alias_maps, (unsigned long long)gpu_alias_skips,
++			    (unsigned long long)gpu_alias_checks, (unsigned long long)gpu_alias_refused,
++			    (unsigned long long)gpu_map_pages_cls[0], (unsigned long long)gpu_map_pages_cls[1]);
+ 		}
+ 		printf("PANDORA GPU WATCH: %u s ring timestamp %u (issued %u) rbbm %08x cp int %08x rptr %u wptr %u\n",
+ 			    (t + 1) * 5, ring, gpu_seqno, gr(RBBM_STATUS_A8XX), gr(CP_INTERRUPT_STATUS_GLOBAL),

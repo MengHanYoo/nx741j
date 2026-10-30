@@ -98,3 +98,22 @@ t=158 s   d_c=1323 d_d=1324 d_p=+89   R=+10661  D=+111151   → 45.34 ms/draw
 1. **判定 swap 记录布局**：`raw swap` 的 `l0–l4` 是否全 0 → 决定是解析偏移错误还是 CA 直出。
 2. **管线缓存**：确认 `p` 是否开机就接近 180（缓存生效）还是从 0 增长（需开机预热）。
 3. **撕裂**：只有 DPU 双缓冲换址能根治；`scanout=1` 目前实现不完整。
+
+## 8. 已构建、待上机（2026-10-31 00:05）
+
+`METAL53-boot_a.img`（54,362,112 B，sha256 `c5596734…`）= 0235 + 0236，四层标记齐全（kernel / k34 / payload / `NX741J KERNEL`）。
+手机 23:42 之后掉线（`adb devices` 空、USB PnP 无设备），所以**0235 的 unmap 分流与 0236 的别名规则都还没有设备证据**。
+
+上机后按顺序看三条：
+
+| 检查 | 期望 |
+|---|---|
+| `[vm alias]` | skipped 占绝大多数；checked 只在 backboardd 的 RO/RW 导入并存时增长；refused 为 0——若非 0，同期会有 `aliases client N mapping …` 行，说明确有跨类别共享 |
+| `[vm unmap]` | `tlb … page / … asid` 两列按 512 页分界各自增长；`… us` 与改动前同量级 |
+| `VKTEST: PASS (0 failures)` | 去掉提交前 TLBIALL 后，已知图像仍逐像素正确 |
+
+映射规则的实现依据（`NativeAdrenoVm::preflight` / `exclusivePages`）：映射可与**同类别**的映射共享物理页，
+绝不可与另一类别共享；类别 = cache 属性 | shareability | 特权。本驱动三层都固定，类别退化为写权限，
+因此自有内存（池页在 unmap 完成前无人可 import）完全不需要遍历，导入内存（IOSurface，任何进程可再 import）
+只在另一类别有活映射时才逐页比对。
+

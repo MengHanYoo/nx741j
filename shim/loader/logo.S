@@ -2,4 +2,4 @@
  * empty when there is none. Apple's image: built in, never committed (out/ is ignored). */
 .section .logo, "a"
 .balign 16
-.incbin LOGO
+.incbin "out/logo.bin"
