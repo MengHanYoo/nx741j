@@ -50,14 +50,14 @@
 | 「桥接层从不返回 nil encoder，被拒的 pass 得到拒绝的 encoder」 | ✅ | 日志 `commandBuffer refused` 属设计行为 |
 | 进程文本行 `[gpu client text]` | ✅ | 已实现并解出 `Compile(NeedsInput(FunctionConstant…))` |
 | AIR → SPIR-V → NIR → IR3 | ✅ | metal2vulkan + Turnip |
-| **分别测量首次 pipeline 编译与缓存复用时间** | ⚠ | 插件已按 runtime shader cache 的 miss/hit 把管线创建拆成 `T pipe compile` / `T pipe reuse` 两行（`NativeBridgeMetalFrontend.mm`，补丁 `wsl/metal-patches/0001-*.patch`）；已装进镜像（plugin7，cdhash `e9e6cc05…`）并刷 `METAL55`；上机只跑 26 s，未到 100 个管线，**待跑满 3 分钟取数** |
+| **分别测量首次 pipeline 编译与缓存复用时间** | ✅ | plugin7 上机 197 s，`pandora-metal pipe split` 9 条：**首次编译 495 次 / 平均 27.3 ms / 最大 992 ms；缓存复用 405 次 / 平均 17.8 ms / 最大 444 ms**（复用占 45%，但命中仍要 17.8 ms） |
 
 ## 待办（按页面顺序）
 
 1. ✅ `[vm unmap]` 日志（0235，METAL53 上机确认）
 2. ✅ unmap 的 512 页分界（0235，page 995 / asid 76 两条分支都在跑）
 3. ✅ 映射自有/导入内存的批量规则（0236，skipped 2927 / checked 884 / refused 0）
-4. ⚠ 首次 pipeline 编译 vs 缓存复用分别计时（METAL55 已装；待跑满 3 分钟看 `pandora-metal pipe split` 与状态行 `pc/pr`）
+4. ✅ 首次 pipeline 编译 vs 缓存复用分别计时（197 s 实测：compile 27.3 ms/次、reuse 17.8 ms/次）
 5. ⚠ Data seed / `--data-ramdisk` 流程对齐
 
 ## 本轮改动（2026-10-30 23:39，patch 0235）
@@ -107,6 +107,27 @@
 - 装机（2026-10-31 00:31）：`ldid` + 平台标志 → 新 cdhash `a6d735310d6ce1666614b342ceecbbdb66887d00`；`plugin6.trst` 2765 条（并入旧插件 / Turnip / vktest）；QEMU 写入 `iosroot-SEAL.img`（镜像内 `NativeAdrenoMetal` 22,126,160 B）。
 - payload `33d35620…`（54,311,968 B，新 cdhash 在信任缓存里，`a6d73531…` 命中 1 次）；`METAL54-boot_a.img` 54,362,112 B sha256 `4cb9770b…`，已刷 `boot_a` 并重启。
 - 回滚留底：`/root/hfswork/old-plugin-2026-10-31/NativeAdrenoMetal`（sha256 `a3521fc6…`），重跑 `02_install_plugin.sh` 换回即可。
+
+## 待办 4 实测（2026-11-02 13:04–13:08，METAL55 + plugin7，197 s）
+
+日志 `ioslog_m56.txt`，`pandora-metal pipe split` 共 9 条：
+
+| t (s) | 首次编译 n | 编译总 ms | 编译最大 ms | 缓存复用 n | 复用总 ms | 复用最大 ms |
+|---|---|---|---|---|---|---|
+| 79.9 | 3 | 190 | 115 | 97 | 191 | 6 |
+| 130.0 | 47 | 848 | 175 | 153 | 563 | 179 |
+| 140.2 | 90 | 1485 | 175 | 210 | 1113 | 179 |
+| 155.5 | 104 | 3324 | 992 | 296 | 5032 | 444 |
+| 173.9 | 205 | 6929 | 992 | 395 | 7192 | 444 |
+| 197.0 | 495 | 13524 | 992 | 405 | 7195 | 444 |
+
+结论：
+
+- **首次编译**：495 次、平均 **27.3 ms**、最坏 **992 ms**（单个管线近 1 秒）；
+- **缓存复用**：405 次、平均 **17.8 ms**、最坏 **444 ms**——命中缓存依然不便宜，说明复用时仍在做描述符翻译 / IR3 查找 / VkPipeline 取用；
+- 复用数在 174 s 后停在 405，编译数继续涨到 495：滚动和新界面仍在生成新管线变体；
+- 管线创建合计约 20.7 s CPU（197 s 内占约 10%），与「控制中心下拉 45–72 ms/draw」的观感一致。
+
 
 
 
