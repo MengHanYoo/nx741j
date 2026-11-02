@@ -1,0 +1,282 @@
+{
+ "base": "iosroot-GOLDEN.img",
+ "artifacts": "z80u-collect/image-artifacts",
+ "install": [
+  {
+   "src": "iOSRoot/Library/Wallpaper/Collections/iOS_16~iphone.wallpaperCollection/Wallpapers/7400.WWDC_2022-375w-812h@3x~iphone.wallpaper/7400.WWDC_2022_Background-375w-812h@3x~iphone.ca/assets/Head Mask.png",
+   "dest": "/Library/Wallpaper/Collections/iOS_16~iphone.wallpaperCollection/Wallpapers/7400.WWDC_2022-375w-812h@3x~iphone.wallpaper/7400.WWDC_2022_Background-375w-812h@3x~iphone.ca/assets/Head Mask.png",
+   "size": 111095,
+   "sha256": "c2fbd09f722d6fec85064c786b892d36ba1098557d7fc2d09a557d3f49d31219",
+   "mode": "644",
+   "owner": "0:0",
+   "kind": "added"
+  },
+  {
+   "src": "iOSRoot/Library/Wallpaper/Collections/iOS_16~iphone.wallpaperCollection/Wallpapers/7400.WWDC_2022-375w-812h@3x~iphone.wallpaper/7400.WWDC_2022_Background-375w-812h@3x~iphone.ca/assets/Head.png",
+   "dest": "/Library/Wallpaper/Collections/iOS_16~iphone.wallpaperCollection/Wallpapers/7400.WWDC_2022-375w-812h@3x~iphone.wallpaper/7400.WWDC_2022_Background-375w-812h@3x~iphone.ca/assets/Head.png",
+   "size": 1324645,
+   "sha256": "32451cb49b22ab75b06b6f4e69d2807522a53b0523a322a2457cc9219a05b5f1",
+   "mode": "644",
+   "owner": "0:0",
+   "kind": "added"
+  },
+  {
+   "src": "iOSRoot/Library/Wallpaper/Collections/iOS_16~iphone.wallpaperCollection/Wallpapers/7400.WWDC_2022-375w-812h@3x~iphone.wallpaper/7400.WWDC_2022_Background-375w-812h@3x~iphone.ca/assets/Leg.png",
+   "dest": "/Library/Wallpaper/Collections/iOS_16~iphone.wallpaperCollection/Wallpapers/7400.WWDC_2022-375w-812h@3x~iphone.wallpaper/7400.WWDC_2022_Background-375w-812h@3x~iphone.ca/assets/Leg.png",
+   "size": 767129,
+   "sha256": "7500971419c8a48faf819412bfba3fdd75ffac1c9e73e581aa13f934a8c13568",
+   "mode": "644",
+   "owner": "0:0",
+   "kind": "added"
+  },
+  {
+   "src": "iOSRoot/Library/Wallpaper/Collections/iOS_16~iphone.wallpaperCollection/Wallpapers/7400.WWDC_2022-375w-812h@3x~iphone.wallpaper/7400.WWDC_2022_Floating-375w-812h@3x~iphone.ca/assets/Arm.png",
+   "dest": "/Library/Wallpaper/Collections/iOS_16~iphone.wallpaperCollection/Wallpapers/7400.WWDC_2022-375w-812h@3x~iphone.wallpaper/7400.WWDC_2022_Floating-375w-812h@3x~iphone.ca/assets/Arm.png",
+   "size": 1404946,
+   "sha256": "8d7daba7ed7a17d810b9ed130e6f271d4ccae5e04b62e6dc93c183d5fd257f03",
+   "mode": "644",
+   "owner": "0:0",
+   "kind": "added"
+  },
+  {
+   "src": "iOSRoot/Library/Wallpaper/Collections/iOS_16~iphone.wallpaperCollection/Wallpapers/7400.WWDC_2022-375w-812h@3x~iphone.wallpaper/7400.WWDC_2022_Foreground-375w-812h@3x~iphone.ca/assets/Body.png",
+   "dest": "/Library/Wallpaper/Collections/iOS_16~iphone.wallpaperCollection/Wallpapers/7400.WWDC_2022-375w-812h@3x~iphone.wallpaper/7400.WWDC_2022_Foreground-375w-812h@3x~iphone.ca/assets/Body.png",
+   "size": 1671567,
+   "sha256": "f31e554ac44f0c73cf36144e12e292512a8be3d65a75c747e9e1ec4731fe92c7",
+   "mode": "644",
+   "owner": "0:0",
+   "kind": "added"
+  },
+  {
+   "src": "iOSRoot/System/Library/Extensions/NativeAdrenoMetal.bundle/_CodeSignature/CodeResources",
+   "dest": "/System/Library/Extensions/NativeAdrenoMetal.bundle/_CodeSignature/CodeResources",
+   "size": 1798,
+   "sha256": "56cf49c3b238f787b3c6f34fd6320401311dcf5e2c6ded80b561ac7aee74fb5e",
+   "mode": "644",
+   "owner": "0:0",
+   "kind": "added"
+  },
+  {
+   "src": "iOSRoot/System/Library/Extensions/NativeAdrenoMetal.bundle/libvulkan_freedreno.dylib",
+   "dest": "/System/Library/Extensions/NativeAdrenoMetal.bundle/libvulkan_freedreno.dylib",
+   "size": 17193616,
+   "sha256": "c60b09f47386775879012e68f88167c8caf2d8cea0cdad19ff4d45327fbe5f89",
+   "mode": "755",
+   "owner": "0:0",
+   "kind": "added"
+  },
+  {
+   "src": "iOSRoot/System/Library/Extensions/NativeAdrenoMetal.clients",
+   "dest": "/System/Library/Extensions/NativeAdrenoMetal.clients",
+   "size": 11,
+   "sha256": "e21ed31c8482c3fdff78a4d75aa57102e2c6082c87e932f6e05efe006187809b",
+   "mode": "644",
+   "owner": "0:0",
+   "kind": "added"
+  },
+  {
+   "src": "iOSRoot/System/Library/Extensions/NativeAdrenoMetal.publish",
+   "dest": "/System/Library/Extensions/NativeAdrenoMetal.publish",
+   "size": 0,
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "mode": "644",
+   "owner": "0:0",
+   "kind": "added"
+  },
+  {
+   "src": "iOSRoot/System/Library/LaunchDaemons/com.nx741j.vktest.plist",
+   "dest": "/System/Library/LaunchDaemons/com.nx741j.vktest.plist",
+   "size": 505,
+   "sha256": "9916b14d6fdd539395a6eff5c0dac0597b61f3336d94a717cad58d74cf1f9660",
+   "mode": "644",
+   "owner": "0:0",
+   "kind": "added"
+  },
+  {
+   "src": "iOSRoot/private/var/hal-backup/AirPlayHalogen.driver/AirPlayHalogen",
+   "dest": "/private/var/hal-backup/AirPlayHalogen.driver/AirPlayHalogen",
+   "size": 134736,
+   "sha256": "127cbedbaf5aaad80ad33451a91409ba122368dcd157e99d448d29379e7fc8fc",
+   "mode": "755",
+   "owner": "0:0",
+   "kind": "added"
+  },
+  {
+   "src": "iOSRoot/private/var/hal-backup/AirPlayHalogen.driver/Info.plist",
+   "dest": "/private/var/hal-backup/AirPlayHalogen.driver/Info.plist",
+   "size": 982,
+   "sha256": "e79e5c86ca3fc6e0fbcd4c29176218d68fb781e27e4f6b0a5a67216d46310c5a",
+   "mode": "644",
+   "owner": "0:0",
+   "kind": "added"
+  },
+  {
+   "src": "iOSRoot/private/var/hal-backup/AirPlayHalogen.driver/_CodeSignature/CodeResources",
+   "dest": "/private/var/hal-backup/AirPlayHalogen.driver/_CodeSignature/CodeResources",
+   "size": 2467,
+   "sha256": "3c727b0f043e463c0227db49cef54c5567715986d08a46c98923c9bb73585e5a",
+   "mode": "644",
+   "owner": "0:0",
+   "kind": "added"
+  },
+  {
+   "src": "iOSRoot/private/var/hal-backup/AppleTimeSyncAudioClock.driver/AppleTimeSyncAudioClock",
+   "dest": "/private/var/hal-backup/AppleTimeSyncAudioClock.driver/AppleTimeSyncAudioClock",
+   "size": 110224,
+   "sha256": "984d6be0ded5f425f399f22f0ec65ec77d2bf4dcb32ac709802c3c11657820f2",
+   "mode": "755",
+   "owner": "0:0",
+   "kind": "added"
+  },
+  {
+   "src": "iOSRoot/private/var/hal-backup/AppleTimeSyncAudioClock.driver/Info.plist",
+   "dest": "/private/var/hal-backup/AppleTimeSyncAudioClock.driver/Info.plist",
+   "size": 1572,
+   "sha256": "d137aca927d574b04a939498c644efd65d13b0d96d30666fc86816337cd15d17",
+   "mode": "644",
+   "owner": "0:0",
+   "kind": "added"
+  },
+  {
+   "src": "iOSRoot/private/var/hal-backup/AppleTimeSyncAudioClock.driver/_CodeSignature/CodeResources",
+   "dest": "/private/var/hal-backup/AppleTimeSyncAudioClock.driver/_CodeSignature/CodeResources",
+   "size": 2467,
+   "sha256": "3c727b0f043e463c0227db49cef54c5567715986d08a46c98923c9bb73585e5a",
+   "mode": "644",
+   "owner": "0:0",
+   "kind": "added"
+  },
+  {
+   "src": "iOSRoot/usr/bin/vktest",
+   "dest": "/usr/bin/vktest",
+   "size": 102256,
+   "sha256": "5cc05e9cc8f4861cd92165c11aabd1dc050ec8013b3c81262403c4bed769ae4e",
+   "mode": "755",
+   "owner": "0:0",
+   "kind": "added"
+  },
+  {
+   "src": "iOSRoot/usr/lib/libvulkan.1.dylib",
+   "dest": "/usr/lib/libvulkan.1.dylib",
+   "size": 17193616,
+   "sha256": "c60b09f47386775879012e68f88167c8caf2d8cea0cdad19ff4d45327fbe5f89",
+   "mode": "755",
+   "owner": "0:0",
+   "kind": "added"
+  },
+  {
+   "src": "iOSRoot/usr/lib/libvulkan.dylib",
+   "dest": "/usr/lib/libvulkan.dylib",
+   "size": 17193616,
+   "sha256": "c60b09f47386775879012e68f88167c8caf2d8cea0cdad19ff4d45327fbe5f89",
+   "mode": "755",
+   "owner": "0:0",
+   "kind": "added"
+  },
+  {
+   "src": "iOSRoot/usr/lib/libvulkan.so.1",
+   "dest": "/usr/lib/libvulkan.so.1",
+   "size": 17193616,
+   "sha256": "c60b09f47386775879012e68f88167c8caf2d8cea0cdad19ff4d45327fbe5f89",
+   "mode": "644",
+   "owner": "0:0",
+   "kind": "added"
+  },
+  {
+   "src": "iOSRoot/usr/lib/libvulkan_freedreno.dylib",
+   "dest": "/usr/lib/libvulkan_freedreno.dylib",
+   "size": 17193616,
+   "sha256": "c60b09f47386775879012e68f88167c8caf2d8cea0cdad19ff4d45327fbe5f89",
+   "mode": "755",
+   "owner": "0:0",
+   "kind": "added"
+  },
+  {
+   "src": "iOSRoot/usr/libexec/vktest",
+   "dest": "/usr/libexec/vktest",
+   "size": 102256,
+   "sha256": "5cc05e9cc8f4861cd92165c11aabd1dc050ec8013b3c81262403c4bed769ae4e",
+   "mode": "755",
+   "owner": "0:0",
+   "kind": "added"
+  },
+  {
+   "src": "iOSRoot/Library/Wallpaper/Collections/iOS_16~iphone.wallpaperCollection/Wallpapers/7400.WWDC_2022-375w-812h@3x~iphone.wallpaper/7400.WWDC_2022_Background-375w-812h@3x~iphone.ca/main.caml",
+   "dest": "/Library/Wallpaper/Collections/iOS_16~iphone.wallpaperCollection/Wallpapers/7400.WWDC_2022-375w-812h@3x~iphone.wallpaper/7400.WWDC_2022_Background-375w-812h@3x~iphone.ca/main.caml",
+   "size": 18839,
+   "sha256": "b80f489294cfd91a0d844a248a58a9d2feb078adfb692f0b919c6c29f6dc5257",
+   "mode": "644",
+   "owner": "0:0",
+   "kind": "changed"
+  },
+  {
+   "src": "iOSRoot/Library/Wallpaper/Collections/iOS_16~iphone.wallpaperCollection/Wallpapers/7400.WWDC_2022-375w-812h@3x~iphone.wallpaper/7400.WWDC_2022_Floating-375w-812h@3x~iphone.ca/main.caml",
+   "dest": "/Library/Wallpaper/Collections/iOS_16~iphone.wallpaperCollection/Wallpapers/7400.WWDC_2022-375w-812h@3x~iphone.wallpaper/7400.WWDC_2022_Floating-375w-812h@3x~iphone.ca/main.caml",
+   "size": 11588,
+   "sha256": "d1925cd772511819e070e46f7b1631663398a5e5ece62c6e7ba7e66db2aed591",
+   "mode": "644",
+   "owner": "0:0",
+   "kind": "changed"
+  },
+  {
+   "src": "iOSRoot/Library/Wallpaper/Collections/iOS_16~iphone.wallpaperCollection/Wallpapers/7400.WWDC_2022-375w-812h@3x~iphone.wallpaper/7400.WWDC_2022_Foreground-375w-812h@3x~iphone.ca/main.caml",
+   "dest": "/Library/Wallpaper/Collections/iOS_16~iphone.wallpaperCollection/Wallpapers/7400.WWDC_2022-375w-812h@3x~iphone.wallpaper/7400.WWDC_2022_Foreground-375w-812h@3x~iphone.ca/main.caml",
+   "size": 11645,
+   "sha256": "476332278566e45517b05ffb88bfe9ad794b1a24add1cf03c50301b58215d980",
+   "mode": "644",
+   "owner": "0:0",
+   "kind": "changed"
+  },
+  {
+   "src": "iOSRoot/System/Library/Extensions/NativeAdrenoMetal.bundle/NativeAdrenoMetal",
+   "dest": "/System/Library/Extensions/NativeAdrenoMetal.bundle/NativeAdrenoMetal",
+   "size": 22126160,
+   "sha256": "93f9109ac26db8105133a64a8ae86f9f39c2cdeb3b4a08bb717101a0686879c1",
+   "mode": "644",
+   "owner": "0:0",
+   "kind": "changed"
+  },
+  {
+   "src": "iOSRoot/System/Library/LaunchDaemons/com.apple.assetsd.plist",
+   "dest": "/System/Library/LaunchDaemons/com.apple.assetsd.plist",
+   "size": 1202,
+   "sha256": "14e14a74259b8eba3b6f2422e8e534103fbe04a14cd78677a5e1d5ec9937be9a",
+   "mode": "644",
+   "owner": "0:0",
+   "kind": "changed"
+  },
+  {
+   "src": "iOSRoot/private/var/db/com.apple.xpc.launchd/disabled.plist",
+   "dest": "/private/var/db/com.apple.xpc.launchd/disabled.plist",
+   "size": 403,
+   "sha256": "11234725c387015d296f3cf1df44876bb7140dbfb5236ab16b8fe097cd92a158",
+   "mode": "644",
+   "owner": "0:0",
+   "kind": "changed"
+  }
+ ],
+ "mkdir": [
+  "/System/Library/Extensions/NativeAdrenoMetal.bundle/_CodeSignature",
+  "/private/var/hal-backup",
+  "/private/var/hal-backup/AirPlayHalogen.driver",
+  "/private/var/hal-backup/AirPlayHalogen.driver/_CodeSignature",
+  "/private/var/hal-backup/AppleTimeSyncAudioClock.driver",
+  "/private/var/hal-backup/AppleTimeSyncAudioClock.driver/_CodeSignature",
+  "/private/var/mobile/Library/Caches/m2v",
+  "/private/var/mobile/Library/Temp",
+  "/private/var/mobile/Library/Temp/m2v"
+ ],
+ "remove": [
+  "/System/Library/Audio/Plug-Ins/HAL/AirPlayHalogen.driver",
+  "/System/Library/Audio/Plug-Ins/HAL/AirPlayHalogen.driver/AirPlayHalogen",
+  "/System/Library/Audio/Plug-Ins/HAL/AirPlayHalogen.driver/Info.plist",
+  "/System/Library/Audio/Plug-Ins/HAL/AirPlayHalogen.driver/_CodeSignature",
+  "/System/Library/Audio/Plug-Ins/HAL/AirPlayHalogen.driver/_CodeSignature/CodeResources",
+  "/System/Library/Audio/Plug-Ins/HAL/AppleTimeSyncAudioClock.driver",
+  "/System/Library/Audio/Plug-Ins/HAL/AppleTimeSyncAudioClock.driver/AppleTimeSyncAudioClock",
+  "/System/Library/Audio/Plug-Ins/HAL/AppleTimeSyncAudioClock.driver/Info.plist",
+  "/System/Library/Audio/Plug-Ins/HAL/AppleTimeSyncAudioClock.driver/_CodeSignature",
+  "/System/Library/Audio/Plug-Ins/HAL/AppleTimeSyncAudioClock.driver/_CodeSignature/CodeResources",
+  "/private/var/containers/Shared/SystemGroup/systemgroup.com.apple.mobilegestaltcache/Library/Caches/com.apple.MobileGestalt.plist"
+ ]
+}
