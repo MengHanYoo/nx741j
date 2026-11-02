@@ -15,7 +15,7 @@ def main():
     ap.add_argument("--out", default="/root/imgbuild.gz")
     a = ap.parse_args()
 
-    man = json.load(open(a.manifest, encoding="utf-8"))
+    man = json.load(open(a.manifest, encoding="utf-8-sig"))
     work = a.work
     if os.path.exists(work):
         shutil.rmtree(work)
@@ -61,6 +61,15 @@ def main():
     if missing:
         print("missing artifacts: " + str(missing), file=sys.stderr)
         sys.exit(2)
+    seed = man.get("seed")
+    if seed:
+        sp = os.path.join(a.artifacts, seed["src"])
+        if not os.path.exists(sp):
+            print("MISSING SEED " + sp, file=sys.stderr)
+            sys.exit(2)
+        shutil.copy2(sp, os.path.join(work, "seed.tar"))
+        L.append("echo SEED_EXTRACT")
+        L.append('tar xpf /seed.tar -C "/mnt' + seed.get("dest", "") + '" && echo SEED_OK || echo SEED_FAIL')
     L.append("echo APPLY_DONE")
     L.append("sync")
     L.append("umount /mnt && echo UMOUNT_OK")

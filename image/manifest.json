@@ -1,5 +1,5 @@
 {
- "base": "iosroot-GOLDEN.img",
+ "base": "iosroot-IPSW.img",
  "artifacts": "z80u-collect/image-artifacts",
  "install": [
   {
@@ -253,6 +253,15 @@
    "mode": "644",
    "owner": "0:0",
    "kind": "changed"
+  },
+  {
+   "src": "iOSRoot/usr/libexec/assetsdwrap",
+   "dest": "/usr/libexec/assetsdwrap",
+   "size": 50320,
+   "sha256": "fcadcd9c819fc09a92dc4956cab6d95c88757fa550e130806d2d12c7b9b8850c",
+   "mode": "755",
+   "owner": "0:0",
+   "kind": "added"
   }
  ],
  "mkdir": [
@@ -278,5 +287,10 @@
   "/System/Library/Audio/Plug-Ins/HAL/AppleTimeSyncAudioClock.driver/_CodeSignature",
   "/System/Library/Audio/Plug-Ins/HAL/AppleTimeSyncAudioClock.driver/_CodeSignature/CodeResources",
   "/private/var/containers/Shared/SystemGroup/systemgroup.com.apple.mobilegestaltcache/Library/Caches/com.apple.MobileGestalt.plist"
- ]
+ ],
+ "seed": {
+  "src": "seed-var.tar",
+  "dest": "/private",
+  "note": "GOLDEN's whole /private/var (1.04 GB tar made inside QEMU, symlinks/hardlinks preserved); a pristine IPSW root stalls at launchd without it"
+ }
 }
