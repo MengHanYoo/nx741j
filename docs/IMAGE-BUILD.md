@@ -83,4 +83,16 @@ only in SEAL: 0   only in BUILD: 0   size-changed: 0
 - 运行时镜像 = `BUILD`（由 BASE + 补丁集生成），不再手工改 SEAL；
 - 任何修复都以补丁形式进 `image/manifest.json` + `image-artifacts/`；
 - 重建后先比对 marker，再 `write_image.ps1` 推送。
+## 推送提速（2026-11-03）
+
+`write_image.ps1` 从「`adb exec-in` 管道 + `pinfile rawwrite`」改成「`adb push` 暂存 + 设备端 `pinfile rawimport`」：
+
+| 阶段 | 旧 | 新 |
+|---|---|---|
+| 传输 | stdin 管道 56 MB/s | `adb push` **321 MB/s**（USB super-speed-plus） |
+| 写入 | 串行 + 每块 SHA256，55 MB/s | `rawimport` 多线程 **1,450 MB/s** |
+| 17 GB 总计 | 370 s | **70 s** |
+
+`pinfile` 新增 `rawimport PATH DEV STAGE --yes`：从设备上的暂存文件读、并行写进钉住文件的 extents（`PINFILE_THREADS` 默认 8，`PINFILE_BUFFERED=1` 可关 O_DIRECT）。源码在 `repos/data-a-live/tools/pinfile/pinfile.c`，用 NDK r27c 的 `aarch64-linux-android31-clang.cmd -static` 编译。
+
 
