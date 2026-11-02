@@ -54,10 +54,10 @@ def main():
             continue
         flat = rel.replace("/", "__")
         shutil.copy2(src, os.path.join(work, "files", flat))
-        L.append("mkdir -p /mnt" + os.path.dirname(dst))
-        L.append("cp -f /files/" + flat + " /mnt" + dst)
-        L.append("chmod " + item["mode"] + " /mnt" + dst)
-        L.append("chown " + item["owner"] + " /mnt" + dst)
+        L.append('mkdir -p "/mnt' + os.path.dirname(dst) + '"')
+        L.append('cp -f "/files/' + flat + '" "/mnt' + dst + '"')
+        L.append('chmod ' + item["mode"] + ' "/mnt' + dst + '"')
+        L.append('chown ' + item["owner"] + ' "/mnt' + dst + '"')
     if missing:
         print("missing artifacts: " + str(missing), file=sys.stderr)
         sys.exit(2)
