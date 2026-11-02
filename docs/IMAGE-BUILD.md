@@ -68,3 +68,19 @@ pwsh -File repos\nx741j\image\build_image.ps1 -Base <BASE.img> -Out <OUT.img>
 1. 任何修复都进补丁集（manifest + artifacts + 小文件），**不碰 BASE、不在成品上再改**；
 2. 构建后用 7z 校验三个 marker（插件大小、PNG 存在、plist 大小）；
 3. 校验通过才 `write_image.ps1` 推送；推送中断必须整份重推（extents 顺序写，中断=新旧混合）。
+
+## 验证结果（2026-11-02 14:05）
+
+第一次构建时 `Head Mask.png`（文件名带空格）被安装脚本漏掉——`cp` 没加引号被拆成两个参数。加引号重建后：
+
+```
+seal entries: 331635   build entries: 331635
+only in SEAL: 0   only in BUILD: 0   size-changed: 0
+```
+
+即 `GOLDEN + manifest` 与手工累积出来的 `iosroot-SEAL.img` **逐文件一致**（331,635 个条目）。从今以后：
+
+- 运行时镜像 = `BUILD`（由 BASE + 补丁集生成），不再手工改 SEAL；
+- 任何修复都以补丁形式进 `image/manifest.json` + `image-artifacts/`；
+- 重建后先比对 marker，再 `write_image.ps1` 推送。
+
