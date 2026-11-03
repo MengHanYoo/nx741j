@@ -1,6 +1,6 @@
 ﻿# 从原始 BASE 镜像 + image/manifest.json 构建运行时镜像（不在成品镜像上手工改）。
 param(
-  [string]$Base = "E:\default-workspace\z80u-collect\iosroot-GOLDEN.img",
+  [string]$Base = "E:\default-workspace\z80u-collect\iosroot-IPSW.img",
   [string]$Out  = "E:\default-workspace\z80u-collect\iosroot-BUILD.img",
   [string]$Repo = "E:\default-workspace\z80u-collect\repos\nx741j"
 )
