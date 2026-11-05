@@ -1,0 +1,57 @@
+# NX741J 启动配置草稿（依据 https://unixnu.com/zh/reference/boot-configuration）
+#
+# 说明：本文件是 <payload 卷>/EFI/UniXNU/unixnu.toml 的**草案**，尚未打包进 payload。
+# 生成正式 payload 时，`./unixnu payload` 会按 board.toml 的 [payload] 自动生成，
+# 只需把下面的设备相关项合并进去即可。
+#
+# 设备事实来源：porting.toml / board.toml / DT
+#   GOP 1216x2688、面板 1440x3200、UFS、boot_a LBA 119078、efisp LBA 748894(768 扇区)
+
+version = 1
+
+[boot]
+timeout = 5
+rotate = 0
+fallback_timeout = 10
+connect_all = true
+default = "xnu"
+
+[ui]
+title = "NX741J"
+scale = 0
+logo = true
+layout = "auto"          # 1216x2688 比值 452 < 800 -> 自动竖屏
+portrait_below = 800
+console = "auto"
+
+# 内核菜单项：路径相对 payload 卷；参数与 board.toml [payload].kernel_args 保持一致。
+# 计划由 efisp FAT 卷承载 payload，卷内布局沿用 UniXNU 默认（Payloads/ 与 Kexts/）。
+[[entry]]
+id = "xnu"
+title = "UniXNU (NX741J)"
+type = "xnu"
+path = "Payloads/kernel.macho"
+args = "-v serial=3"
+dtb = "firmware"         # 用固件已发布的 FDT（NX741J 真实 DT）
+enabled = true
+
+# 可选：把 iosroot 以块切片形式暴露给 XNU（第 6 层用）。
+# 分区名与长度待第 6 层按实际 GPT 填写，先保留为禁用状态。
+[[block_slice]]
+partition = "userdata"
+name = "iosroot"
+offset = 0
+length = 0
+writable = false
+enabled = false
+
+# 可选：启动前给 /chosen 注入参数（例如调试串口）。
+[[dt_patch]]
+op = "set"
+node = "/chosen"
+prop = "nx741j,bringup"
+value = "layer2"
+type = "string"
+
+# 菜单内置项说明（无需配置）：exit / reset / shutdown / tools
+# tools 子菜单会列出已安装的菜单插件。

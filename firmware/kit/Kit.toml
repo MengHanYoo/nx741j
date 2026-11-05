@@ -1,0 +1,33 @@
+# NX741J 板级 Kit 草案（依据 https://unixnu.com/zh/reference/boot-configuration#kit-toml）
+#
+# 用途：按固件 FDT 根 compatible 匹配后，向 UniXNU 菜单注入驱动 / overlay / dt_patch。
+# 当前只做匹配验证，未注入任何文件（桩驱动在固件 FV 内按 APRIORI 自动加载）。
+#
+# match 依据：固件发布的 FDT 根节点为
+#   compatible = "qcom,canoe-mtp", "qcom,canoe", "qcom,canoep-mtp", "qcom,canoep", "qcom,mtp"
+#   model      = "Qualcomm Technologies, Inc. Canoe MTP + ST54L + Kundu"
+# 注意：该 FDT 是通用 MTP 描述，不是 ZTE 板级 DT；后续若要板级定制需替换 FdtBlob。
+
+schema = 1
+
+[kit]
+name = "NX741J"
+version = "0.1.0"
+description = "Nubia Z80 Ultra (NX741J / SM8850 canoe) bring-up kit"
+
+[match]
+arch = "AARCH64"
+fdt_compatible = ["qcom,canoe-mtp", "qcom,canoe"]
+
+# 可选：若将来把桩驱动拆成独立 EFI 文件放在 kit 内，可在此登记。
+# [[driver]]
+# file = "SmemStubDxe.efi"
+# args = ""
+
+# 启动前向 /chosen 注入板级标识，便于内核侧识别。
+[[dt_patch]]
+op = "set"
+node = "/chosen"
+prop = "nx741j,board"
+value = "nx741j"
+type = "string"

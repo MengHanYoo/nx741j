@@ -1,0 +1,37 @@
+## @file
+#  Stub EFI_KERNEL_PROTOCOL (Qualcomm scheduler interface) for BootShim bring-up.
+#
+#  XBL normally provides this interface through the Scheduler Interface HOB.
+#  ChipInfoDxe (and other drivers) call Kernel->Lock->InitRecursiveLock() and
+#  assert when the protocol is absent.
+#
+#  SPDX-License-Identifier: BSD-2-Clause-Patent
+##
+
+[Defines]
+  INF_VERSION                    = 0x00010005
+  BASE_NAME                      = KernelStubDxe
+  FILE_GUID                      = 2C6D8E41-7B19-4F53-9A0E-5D3B1F84C672
+  MODULE_TYPE                    = DXE_DRIVER
+  VERSION_STRING                 = 1.0
+  ENTRY_POINT                    = KernelStubEntry
+
+[Sources]
+  KernelStubDxe.c
+
+[Packages]
+  MdePkg/MdePkg.dec
+  QcomPkg/QcomPkg.dec
+
+[LibraryClasses]
+  BaseMemoryLib
+  DebugLib
+  MemoryAllocationLib
+  UefiBootServicesTableLib
+  UefiDriverEntryPoint
+
+[Protocols]
+  gEfiKernelProtocolGuid
+
+[Depex]
+  TRUE

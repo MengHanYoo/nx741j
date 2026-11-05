@@ -1,0 +1,37 @@
+## @file
+#  SMEM stub driver: installs EFI_SMEM_PROTOCOL without the vendor SmemDxe.
+#
+#  Replaces Binaries/nx741j/QcomPkg/Drivers/SmemDxe/SmemDxe.inf in the DXE
+#  dispatch order. The vendor driver cannot start when the FV is entered
+#  through BootShim because the SMEM region (0x81D00000) is not mapped.
+#
+#  SPDX-License-Identifier: BSD-2-Clause-Patent
+##
+
+[Defines]
+  INF_VERSION                    = 0x00010005
+  BASE_NAME                      = SmemStubDxe
+  FILE_GUID                      = 6F1B2C4D-8E37-4A95-B0D2-5C7E9A13F648
+  MODULE_TYPE                    = DXE_DRIVER
+  VERSION_STRING                 = 1.0
+  ENTRY_POINT                    = SmemStubEntry
+
+[Sources]
+  SmemStubDxe.c
+
+[Packages]
+  MdePkg/MdePkg.dec
+  QcomPkg/QcomPkg.dec
+
+[LibraryClasses]
+  BaseMemoryLib
+  DebugLib
+  MemoryAllocationLib
+  UefiBootServicesTableLib
+  UefiDriverEntryPoint
+
+[Protocols]
+  gEfiSMEMProtocolGuid
+
+[Depex]
+  TRUE
