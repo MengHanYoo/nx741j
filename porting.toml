@@ -275,5 +275,18 @@ component_XnuPrelink = "f876e3ee62e18fc06653dd75ed7dafcfb3950ac0"
 component_DarwinBoot = "3325e352d7df68a9f9ad74832ed94a6acbbd7390"
 pending_publish = "三个仓库已推送 GitHub（private）；unixnu.lock 已可记录 soc 源"
 
+[component_plan]
+# 步骤 2 组件选型决策（2026-11-06）。active = 已加入 board.toml include 并钉 revision；
+# deferred = 明确推迟，附前置条件。revision 均取自 UniXNU/components.toml。
+active_display = { component = "GopFramebuffer", revision = "cf3b42979a9c", why = "硬件通用：EFI GOP 1216x2688 已由 SimpleFbDxe 提供" }
+active_core = { components = ["ArmDTPlatform 417ff95d", "ArmCpu 9066b53b", "XnuPrelink f876e3ee", "DarwinBoot 3325e352"], why = "ARM64 通用，ABI 与 8796 profile 匹配" }
+
+deferred_storage = { component = "ShengUfs", revision = "e2b32cc429e8", why = "SM8550 UFS 控制器口径，本机为 SM8850（KLUGG8NHKB）", needs = "SM8850 时钟表 + ArmSmmu4K" }
+deferred_smmu = { component = "ArmSmmu4K", revision = "8bb168ad058c", why = "通用 MMU-500，需与 UFS/GPU 一起验证", needs = "平台操作" }
+deferred_gpu = { components = ["Adreno740 4e0314df", "AdrenoPM4 282606b5", "AdrenoFirmware 20ad3d7a", "AdrenoMetal 454ff2ce"], why = "Adreno 740 / A6xx-A7xx HFI，本机为 Adreno 840（gen80200 / 8xx）", needs = "Adreno 840 移植（chip id 0x44050a01、GMEM 18 MiB）" }
+deferred_wifi = { component = "Ath12kWifi", revision = "f6bf561f92cc", why = "硬件匹配：ath12k 支持 wcn7850，本机 PCI 17cb:110e 即 WCN7850", needs = "PCIe host（pcie@1c00000）+ 平台操作" }
+deferred_touch = { components = ["ShengHidInput 5f3a37ce", "ShengNovatekTouch a1a6f2b1", "QcomGeniSpi eac47bae"], why = "ShengNovatekTouch 是 Novatek NT36532，本机为 Synaptics TCM", needs = "新建 Synaptics TCM 协议层，复用 ShengHidInput + QcomGeniSpi" }
+deferred_baseline = { component = "Sm8550Platform", revision = "23b2049fcd9e", why = "SM8550 平台操作", needs = "改写成 SM8850 版（soc 仓库 kits/Sm8850Platform）" }
+
 [missing_inputs]
 # 2026-11-06 实机读取后已全部补齐（cpu_midr / cpu_freq_table / wireless_exact_sku）

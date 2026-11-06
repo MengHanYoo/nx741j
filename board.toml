@@ -9,7 +9,7 @@ description = "Nubia Z80 Ultra (NX741J), SM8850/alor"
 kit = "nx741j"
 
 [components]
-include = ["ArmDTPlatform", "ArmCpu", "XnuPrelink", "DarwinBoot"]
+include = ["ArmDTPlatform", "ArmCpu", "XnuPrelink", "DarwinBoot", "GopFramebuffer"]
 
 [kernel]
 defconfig = "nx741j_defconfig"
