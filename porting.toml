@@ -263,8 +263,8 @@ boot_state = "kmparam.debug_policy=0x00000000, secboot_status=1（已解锁/已�
 
 [sources]
 # 步骤 2：共享支持选择与版本固定（详见 docs/SHARED-SUPPORT.md）
-main_repo = "UniXNU @ ed298155d616367664c056f5403988e814445094（tag nx741j-bringup-2026-11-06；vendored 快照，对上游 e2fdae4 无共同祖先，drivers/kits 由子模块提供）"
-arch_profile = "UniXNU/profiles/arch/arm64 @ 同一快照提交 ed298155d616367664c056f5403988e814445094"
+main_repo = "https://github.com/MengHanYoo/UniXNU-main-nx741j @ 257af5bd8b591d817414085051fb277f796f9acf（tag nx741j-bringup-2026-11-06）"
+arch_profile = "UniXNU-main-nx741j/profiles/arch/arm64 @ 257af5bd8b591d817414085051fb277f796f9acf"
 os_profile_source = "UniXNU/profiles/os/ios-16.7.16-20H392 @ 同上"
 soc_repo = "UniXNU-sm8850-common @ 927698d5feca6d391e18ba9f7f2165d9d149735b（https://github.com/MengHanYoo/UniXNU-sm8850-common）"
 device_repo = "UniXNU-nx741j（本仓库）@ 8eee59444c381f946b7e2856a3864d86c5284db6"

@@ -8,7 +8,7 @@
 
 | 位置 | 选择 | 版本（精确） | 核对情况 |
 |---|---|---|---|
-| `UniXNU/profiles/arch/arm64` | 主仓库 arch profile | 主仓库 `11f5b5d4`（本地快照，dirty） | ✅ 含 4 KiB 页表、non-apple 平台、mockfs 等 53 条补丁 |
+| `UniXNU/profiles/arch/arm64` | 主仓库 arch profile | 主仓库快照 `257af5bd`（GitHub: UniXNU-main-nx741j） | ✅ 含 4 KiB 页表、non-apple 平台、mockfs 等 53 条补丁 |
 | `UniXNU-<soc>-common` | **自建 `UniXNU-sm8850-common`**（官方仅到 sm8550） | git `927698d5feca6d391e18ba9f7f2165d9d149735b`（5 文件，2026-11-06 提交） | ✅ 已提交；待推 remote |
 | `UniXNU/profiles/os/<profile>` | `ios-16.7.16-20H392` | 主仓库同一提交 | ✅ xnu `8796.142.1.703.8`，Darwin 23.x |
 | `UniXNU-<device>` | `UniXNU-nx741j` | git `8eee59444c381f946b7e2856a3864d86c5284db6`（20 文件） | ✅ 已提交；待推 remote |
