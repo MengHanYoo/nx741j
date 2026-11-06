@@ -13,9 +13,9 @@ arch = "arm64"
 page_size = 4096
 
 [support]
-os_profile = "ios-16.7.16-20H392"
-xnu = "8796.142.1.703.8"
-xnu_revision = "xnu-8796.141.3"
+os_profile = "ipados-17.7.11-21H461 / xnu 10063.141.1（arm64, Darwin 23.6.0）"
+xnu = "10063.141.1"
+xnu_revision = "d8b80295118ef25ac3a784134bcf95cd8e88109f"
 status = "bringup-layer2-dxe-chain"
 
 [hardware.cpu]
@@ -229,7 +229,7 @@ uefi_build = "KaanapaliLAA/Core/RELEASE_CLANG180LINUX/AARCH64（uefi_a.img 内�
 abl_note = "abl_a.img 内未找到明文版本串（与 XBL 同属 BOOT.MXF.2.5.3 构建链，版本号见 boot_chain）"
 rom = "NebulaAIOS 2.0.15 MR3（NX741J_VG，Android 16）"
 rom_alt = "国际版 MYOS 16.0.16 EEA（另一份备份）"
-os_profile = "ios-16.7.16-20H392 / xnu 8796.142.1.703.8"
+os_profile = "ipados-17.7.11-21H461 / xnu 10063.141.1（arm64, Darwin 23.6.0）"
 device_build = "CP2A.260605.016（实机 ro.build.display.id）"
 device_fingerprint = "Xiaomi/nezha/nezha:17/CP2A.260605.016/OS4.0.0.10.XPACNXM（移植ROM指纹）"
 device_model = "NX741J（ro.product.model），ro.soc.model = SM8850（QTI）"
@@ -263,8 +263,8 @@ boot_state = "kmparam.debug_policy=0x00000000, secboot_status=1（已解锁/已�
 
 [sources]
 # 步骤 2：共享支持选择与版本固定（详见 docs/SHARED-SUPPORT.md）
-main_repo = "UniXNU @ 11f5b5d47a4072978ce2d6fc6f5751a1395e3ba8（本地快照，dirty）"
-arch_profile = "UniXNU/profiles/arch/arm64 @ 同上"
+main_repo = "UniXNU @ ed298155d616367664c056f5403988e814445094（tag nx741j-bringup-2026-11-06；vendored 快照，对上游 e2fdae4 无共同祖先，drivers/kits 由子模块提供）"
+arch_profile = "UniXNU/profiles/arch/arm64 @ 同一快照提交 ed298155d616367664c056f5403988e814445094"
 os_profile_source = "UniXNU/profiles/os/ios-16.7.16-20H392 @ 同上"
 soc_repo = "UniXNU-sm8850-common @ 927698d5feca6d391e18ba9f7f2165d9d149735b（https://github.com/MengHanYoo/UniXNU-sm8850-common）"
 device_repo = "UniXNU-nx741j（本仓库）@ 8eee59444c381f946b7e2856a3864d86c5284db6"
