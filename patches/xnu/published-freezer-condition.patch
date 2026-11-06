@@ -1,12 +1,16 @@
 diff --git a/bsd/kern/kern_memorystatus_freeze.c b/bsd/kern/kern_memorystatus_freeze.c
+index 629a69a22..7ee7ee3c5 100644
 --- a/bsd/kern/kern_memorystatus_freeze.c
 +++ b/bsd/kern/kern_memorystatus_freeze.c
-@@ -133,7 +133,7 @@
- #define FREEZE_APPS_IDLE_DELAY_MULTIPLIER_DEFAULT FREEZE_APPS_IDLE_DELAY_MULTIPLIER_FAST
- unsigned int memorystatus_freeze_apps_idle_delay_multiplier = FREEZE_APPS_IDLE_DELAY_MULTIPLIER_DEFAULT;
+@@ -118,7 +118,11 @@ unsigned int memorystatus_freeze_max_candidate_band = FREEZE_MAX_CANDIDATE_BAND;
+ unsigned int memorystatus_max_frozen_demotions_daily = 0;
+ unsigned int memorystatus_thaw_count_demotion_threshold = 0;
  
--#if (XNU_TARGET_OS_IOS && || XNU_TARGET_OS_WATCH
 +#if XNU_TARGET_OS_IOS || XNU_TARGET_OS_WATCH
- #define FREEZE_ENABLED_DEFAULT true
- #else
- #define FREEZE_ENABLED_DEFAULT false
++boolean_t memorystatus_freeze_enabled = TRUE;
++#else
+ boolean_t memorystatus_freeze_enabled = FALSE;
++#endif
+ int memorystatus_freeze_wakeup = 0;
+ int memorystatus_freeze_jetsam_band = 0; /* the jetsam band which will contain P_MEMSTAT_FROZEN processes */
+ 

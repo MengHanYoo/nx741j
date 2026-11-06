@@ -1,9 +1,10 @@
 diff --git a/iokit/KernelConfigTables.cpp b/iokit/KernelConfigTables.cpp
+index 2b14eda8f..7d4716097 100644
 --- a/iokit/KernelConfigTables.cpp
 +++ b/iokit/KernelConfigTables.cpp
-@@ -61,4 +61,48 @@
-     "     'IOProviderClass' = IOService;"
-     "     'IOExclaveProxy'  = 1:32;"
+@@ -39,4 +39,48 @@ const char * gIOKernelConfigTables =
+     "     'IOProviderClass' = IOPlatformExpertDevice;"
+     "     'IOProbeScore'    = 0:32;"
      "   }"
 +#if defined(XNU_NATIVE_AES) && XNU_NATIVE_AES
 +    "   ,{"
