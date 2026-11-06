@@ -1,3 +1,5 @@
+../../../../../patches/xnu/aa-new-clang-drop-auto-var-init-flag.patch
+../../../../../patches/xnu/ab-iorpc-kernelcontent.patch
 ../../../../../patches/xnu/apple-only-cpu-tunables.patch
 ../../../../../patches/xnu/architectural-timer-entry.patch
 ../../../../../patches/xnu/armvirt-platform-personality.patch
