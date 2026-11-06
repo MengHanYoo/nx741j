@@ -79,7 +79,7 @@ layer1_boot_image = "DONE (gzip shim+FV, FD_BASE=0xFF300000, no DT/ramdisk)"
 layer2_uefi = "BLOCKED at SmemDxe (SMEM page mapping missing in MemoryPeim)"
 layer3_unixnu = "built, not run"
 layer4_darwinboot = "built, not run"
-layer5_kernel = "kernel.macho + ADT ready, not run"
+layer5_kernel = "DONE(compile): 自编 8796 内核编译+链接+prelink 成功（2026-11-07）；kernel.macho 51,691,520 B sha256 9bbfad05…；prelink 报告 abi_qualified=false / runtime_qualified=false"
 layer6_userland = "iosroot-RAW-BUILD.img ready, not run"
 
 [dt_policy]
@@ -246,6 +246,33 @@ power = { uefi = "RpmhDxe + SPMIDxe + PmicDxe + ClockDxe + ICBDxe", xnu = "Sm855
 buttons = { uefi = "ButtonsDxe", xnu = "none", status = "not verified" }
 gpu = { uefi = "none", xnu = "Adreno740 + AdrenoPM4 + AdrenoFirmware + AdrenoMetal", status = "needs Adreno 840 (0x44050a01) port" }
 usb = { uefi = "XhciDxe + 6x Usb*Dxe", xnu = "none", status = "not started" }
+
+[prelink]
+# 2026-11-07：`unixnu build kernel` 首次跑绿（exit 0），内核链路全通。
+document = "https://unixnu.com/zh/concepts/prelink"
+kernel = "build/xnu/ios-obj/DEVELOPMENT_ARM64_BCM2837/mach.development.bcm2837"
+kernelcache = "/opt/work/ipsw/kernelcache.arm64（sha256 2ec297ba…，与 profile 的 kernelcache_sha256 一致）"
+roots = ["com.apple.driver.AppleARMPlatform", "com.apple.filesystems.apfs"]
+components_prelinked = 11
+bindings = 23833
+early_security_init = "未定：本 kernelcache 里 AppleMobileFileIntegrity 早期初始化器的原始 VA 仍需查明（当前显式置空）"
+qualification = "abi_qualified=false、instruction_relocation_complete=false、runtime_qualified=false（工具自评：experimental candidate）"
+notes = [
+  "8 个失败点全部是 8796 与快照工具链的错配，不是硬件问题：uio 过度对齐数组、IORPC.kernelContent、kalloc void* 解引用、缺 osfmk/arm64/kpc.c、缺 .o.json 编译记录、libpthread 519 过新、kernelcache 路径、缺 vfs_getvfs_with_vfsops、缺 sparse-prelink index。",
+  "libpthread 从 519.120.4 下调到 486.100.11（iOS 16.7 同代）；explicit-kernel-address.patch 已按 486 重生成。",
+  "kits/XnuPrelink/patches/ 的两条补丁在 format 2 下不会被自动应用，已用 component: 前缀登记进 arch series。",
+]
+
+[packaging]
+# 步骤 4 收尾（2026-11-07）：一条命令从干净检出产出 boot.img + payload.img。
+# 脚本按文档六步（deps/preflight/patches/build/pack/verify）实现；本快照没有 unixnu release
+# 与 templates/package.sh，因此直接驱动 unixnu defconfig/tree/fetch/build/bootimg。
+script = "scripts/package.sh"
+contract = "https://unixnu.com/zh/porting/packaging"
+check = "scripts/package.sh --check --os ios-16.7.16-20H392"
+ci = ".github/workflows/package.yml"
+status = "check 可跑通（deps/preflight/patches）；build 已能产出 kernel.macho，pack/verify 待 payload 与 bootimg 打通"
+blocked_by = "payload 需要 trust cache 与 unique_chip_id；bootimg 需要固件卷（--uefi）与编译后的 DTB"
 
 [records]
 porting_record = "docs/PORTING-RECORD.md"      # 十八节全量技术归档

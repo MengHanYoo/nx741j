@@ -19,7 +19,10 @@ commit = "30fe6a7d945340ce69cef121132f049e810089a5"
 commit = "a00a4cc36da2110578bcf3b8eeeeb93dcc7f4e11"
 
 [source."libpthread"]
-commit = "c0e60fb5ecfc54cf379c261d3f9572cc22ded891"
+commit = "cf9e1c7e611440e511af230905be2cfefc5c6121"
+
+[source."sm8850"]
+commit = "825a5304e2b72b55ac67501f56d12cc905f2f458"
 
 [source."xnu"]
 commit = "1b191cb58250d0705d8a51287127505aa4bc0789"

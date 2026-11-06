@@ -7,3 +7,8 @@ CONFIG_XNU_ARMCPU=y
 CONFIG_XNU_CRYPTO_BOOTSTRAP="prelinked"
 # CONFIG_XNU_NATIVE_UFS is not set
 # CONFIG_XNU_NATIVE_ADRENO is not set
+# 2026-11-07：本快照的 kernel.py 依赖 startup.o.json / vfs_conf.o.json 编译记录来构建
+# mockfs fixture，但 build-xnu-4k-baseline.sh 与 makedefs 都没有 -MJ 注入，记录永远缺失，
+# 导致 vfs_conf.o 以 -DMOCKFS=1 编译后链接时缺 mockfs_vfsops/mountroot/vnodeop_opv_desc。
+# mockfs 只服务离线可执行根 fixture（layer 6 用户态），内核 bring-up 不需要，先关掉。
+CONFIG_XNU_SOURCE_MOCKFS=n

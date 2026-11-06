@@ -9,12 +9,27 @@ description = "Nubia Z80 Ultra (NX741J), SM8850/alor"
 kit = "nx741j"
 
 [components]
-include = ["ArmDTPlatform", "ArmCpu", "XnuPrelink", "DarwinBoot", "GopFramebuffer"]
+# SoftwareAES：arch profile 的 [kernel].archives 里写了 component:SoftwareAES，
+# 且 common.config 打开 CONFIG_XNU_NATIVE_AES，必须选中才能在归档阶段解析到它。
+include = ["ArmDTPlatform", "ArmCpu", "SoftwareAES", "XnuPrelink", "DarwinBoot", "GopFramebuffer"]
 
 [kernel]
 defconfig = "nx741j_defconfig"
 config_fragments = ["arch:configs/common.config", "soc:configs/sm8850.config", "os:configs/ios.config"]
 patch_series = ["arch:patches/xnu/series", "soc:patches/xnu/series", "os:patches/xnu/series", "device:patches/xnu/series"]
+
+[kernel.prelink]
+# 板级只补 profile 里留作占位的输入：tool / kernelcache_sha256 / slide 来自 OS profile。
+# 原生内核即本仓库自编的链接产物。
+kernel = "build/xnu/ios-obj/DEVELOPMENT_ARM64_BCM2837/mach.development.bcm2837"
+# 保留原始 kernelcache 中的组件树；匹配器再按依赖补全其余组件。
+roots = ["com.apple.driver.AppleARMPlatform", "com.apple.filesystems.apfs"]
+# 待定：本 kernelcache 中 AppleMobileFileIntegrity 早期初始化器的原始 VA。
+# profile 的 REQUIRED_EARLY_SECURITY_INIT 占位会让 emit_prelink 解析失败，故显式置空跳过。
+# 补上真实地址前，AMFI 不会执行早期初始化（见 docs/concepts/security.md）。
+early_security_init = ""
+# 注：原始 kernelcache 里的专有函数（如 _vfs_getvfs_with_vfsops）由 ag/ah 系列补丁在
+# 原生内核里补齐，因此不需要 --allow-missing（且它只对 MH_FILESET 输入有效，本 kernelcache 不是）。
 
 [device_tree]
 source = "device:dts/board.dts"
@@ -55,3 +70,11 @@ pagesize = 4096
 header_version = 4
 # 本机 ABL 不接受 gzip 流之后追加 DTB，也不接受内置 ramdisk；由 pack.sh 保证 ramdisk=0
 kernel_compression = "gzip"
+
+# scripts/package.sh 读取：UniXNU 检出相对本仓库的路径，以及每个 OS profile 使用的 defconfig。
+# 设备名、路径、尺寸、内核参数都不写进脚本。
+[package]
+unixnu = "../UniXNU"
+
+[package.defconfig]
+"ios-16.7.16-20H392" = "nx741j_defconfig"

@@ -1,14 +1,7 @@
 /local.toml
 /build/
 /out/
-__pycache__/
-*.pyc
-.DS_Store
-/local.toml
-/build/
-/out/
 /.cache/
 __pycache__/
 *.pyc
 .DS_Store
-.github/workflows.disabled/

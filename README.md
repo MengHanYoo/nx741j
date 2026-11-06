@@ -1,47 +1,94 @@
-# Device template
+# UniXNU-nx741j
 
-Follow [Port a device](https://unixnu.com/porting/) from input collection through publication. Complete the [driver adaptation checklist](https://unixnu.com/porting/drivers) before selecting board-dependent components.
+Device repository for the **Nubia Z80 Ultra (NX741J)** — Qualcomm **SM8850** (Kaanapali, codename
+`canoe`), 8 cores (6 + 2), Adreno 840, UFS KLUGG8NHKB, panel `bf375`/`rm692h5` 1440×3200.
 
-This template selects shared SM8550 and iPadOS 17.7.11 support. Complete the
-hardware inputs before building.
+Target: **iOS 16.7.16 (20H392)**, XNU **8796.141.3**, arm64, 4 KiB pages. The OS profile is pinned in
+[board.toml](board.toml) (`os_profile = "ios-16.7.16-20H392"`); it is the only IPSW available for this
+port, so the iPadOS 17 / 10063 line is not a valid substitute.
 
-1. Copy this directory to `UniXNU-<device>` and read `AGENTS.md`.
-2. Set the board name, description, firmware paths, and complete component selection. Add the shared `UniXNURamDiskDxe` and filesystem dependencies to the firmware DSC and FDF using the [firmware integration guide](https://unixnu.com/porting/uefi-firmware#required-integration).
-3. Pin a reviewed SoC commit in `feeds.toml`.
-4. Rename `configs/example_defconfig` and `dts/board.dts` for the board, then update `kernel.defconfig` and `device_tree.source`. Fill the DTS model, compatible values, memory map, CPU selection, and peripherals.
-5. List firmware sources and hashes in `proprietary-files.txt`.
-6. Set partition geometry and payload inputs from the device's records.
-7. Match the identity in `porting.toml` to `board.toml`. Cover every selected component and dependency, with board-specific ownership paths, findings and completion criteria.
-8. Enable the template CI workflow and require its `Porting record` check on the official device branch.
-9. Set `example = false`, select the defconfig, fetch, and inspect `status --json`. Commit the generated `unixnu.lock`; keep local overrides in the ignored `local.toml`.
-10. Complete the shared [repository checklist](https://unixnu.com/porting/device-repository#completion), build and record results, then follow [publication](https://unixnu.com/porting/device-repository#publish). Add the **`unixnu` GitHub topic** and verify it appears in the repository topics.
+## Status
 
-The zero memory range and `REQUIRED_` values identify inputs to complete.
-`patches/xnu/series` lists board patches in application order. `package/` contains
-board packaging. Shared resources come from the selected SoC and component sources.
+| Layer | State |
+|---|---|
+| 1 boot image | flashed and verified (gzip shim + FV, `FD_BASE=0xFF300000`, no DT/ramdisk) |
+| 2 UEFI firmware | builds `SILICIUM_UEFI.fd`; stops at `RpmhDxe`/`TzDxeLA` — ABL environment inputs missing (SMEM contents, DTB extension, tzapps) |
+| 3 UniXNU boot manager | built, not booted |
+| 4 DarwinBoot | built, not booted |
+| 5 kernel | XNU 8796.141.3 compiles and links (857 objects) from this repository's patch series; prelink, payload and boot-image regeneration are not reproducible yet |
+| 6 user land | not started |
 
-- [Device repository](https://unixnu.com/porting/device-repository)
-- [Device tree](https://unixnu.com/porting/device-tree)
-- [Component catalog](https://unixnu.com/reference/components)
-- [Migration](https://unixnu.com/porting/migration)
+Per-area evidence, findings and remaining inputs live in [porting.toml](porting.toml); the long-form
+record is [docs/PORTING-RECORD.md](docs/PORTING-RECORD.md).
 
-`porting.toml` is the shared maintainer and agent record. The site renders it
-from the device commit pinned in UniXNU's `devices.toml`. Publish that pin with
-the English and Chinese device pages. Put board driver submodules in this
-device repository. See the [record guide](https://unixnu.com/porting/records)
-and [UFS guide](https://unixnu.com/porting/ufs).
+## Prerequisites
+
+- Linux (WSL2) root shell with 32 parallel jobs available.
+- UniXNU toolchain at `/opt/unixnu-linux` (`scripts/linux/setup-toolchain.py`), XNU sources served from
+  the local mirror cache — see [AGENTS.md](AGENTS.md).
+- The NX741J IPSW `iPhone10,3,iPhone10,6_16.7.16_20H392_Restore.ipsw` (kernel cache, trust cache).
+- Vendor UEFI tree (`uefi-nx741j`) for the firmware step. Its location is a local input, never a
+  repository path.
+
+Local build inputs (paths, `jobs`, kernel command line) belong in a Git-ignored `local.toml` copied from
+[local.toml.example](local.toml.example); they never enter `board.toml`.
+
+## Build
 
 ```sh
-python3 scripts/porting-record.py check --device ../UniXNU-example
+./unixnu defconfig nx741j_defconfig -D ../UniXNU-nx741j
+./unixnu fetch -D ../UniXNU-nx741j
+./unixnu status --json -D ../UniXNU-nx741j      # components, sources, patch order
+./unixnu tree -D ../UniXNU-nx741j
 ```
 
-Run this command from UniXNU.
+Kernel and image steps, from the UniXNU checkout:
 
-## Local builds and boot diagnosis
+```sh
+./unixnu build kernel -D ../UniXNU-nx741j
+./unixnu prelink      -D ../UniXNU-nx741j       # requires [kernel.prelink] in board.toml
+./unixnu payload      -D ../UniXNU-nx741j
+./unixnu bootimg      -D ../UniXNU-nx741j
+```
 
-Copy `unixnu.example.toml` to `unixnu.local.toml` in the main checkout and fill
-in device inputs using the [configuration reference](https://unixnu.com/reference/configuration#local-build-inputs).
-Read [boot arguments](https://unixnu.com/xnu/boot-arguments#apply-arguments)
-before changing the command line. Rebuild the payload and boot image after
-argument changes. Use the [green-bar diagnosis](https://unixnu.com/guide/debugging#green-bar)
-for stalls at loader handoff. Record the last confirmed stage and relevant logs.
+One command for a clean checkout, per the [packaging guide](https://unixnu.com/zh/porting/packaging):
+
+```sh
+scripts/package.sh --check --os ios-16.7.16-20H392   # deps, preflight, patch order, then stop
+scripts/package.sh --no-deps                         # build + pack + verify
+```
+
+Artifacts land in `out/nx741j/ios-16.7.16-20H392/nx741j/`: `kernel/kernel.macho`,
+`payload/payload.img`, `boot/boot.img`, plus `package.manifest.json`.
+
+## Layout
+
+| Path | Contents |
+|---|---|
+| `board.toml` | SoC/OS selection, components, kernel fragments and patch series, firmware, payload, boot image, packaging inputs |
+| `porting.toml` | maintainer and agent record: hardware inventory, firmware versions, component plan, per-layer status |
+| `configs/nx741j_defconfig` | `CONFIG_XNU_*` values (`y`/`n` to `XNU_*` for the kernel build) |
+| `dts/board.dts` | board device tree (`soc:dts` include path) |
+| `patches/xnu/series` | board-level XNU patches, in application order |
+| `package/` | board packaging; becomes `kits/nx741j` in the build tree |
+| `proprietary-files.txt` | firmware file sources and hashes |
+| `scripts/package.sh` | the packaging entry point (see below) |
+| `.github/workflows/` | `porting-record.yml` (record check) and `package.yml` (artifact run) |
+| `unixnu.lock` | resolved source commits; `sm8850` is pinned here |
+
+`package/` is intentionally empty at this stage: no board-level EFI driver or kext is owned by this
+repository yet. Board code currently lives in the vendor UEFI tree (`uefi-nx741j`). When the first
+board package lands, it goes here and only here.
+
+## Documentation
+
+- [Port a device](https://unixnu.com/zh/porting/steps) — the eight-step flow this repository follows
+- [Device repository](https://unixnu.com/zh/porting/device-repository) — field reference and completion list
+- [Packaging](https://unixnu.com/zh/porting/packaging) — `scripts/package.sh` contract
+- [Bring-up order](https://unixnu.com/zh/porting/bring-up) — firmware, menu, loader, kernel, root volume
+- [Porting record](https://unixnu.com/zh/porting/records) — record format and evidence levels
+
+`scripts/package.sh` here follows the documented six steps (`deps`, `preflight`, `patches`, `build`,
+`pack`, `verify`) but is a local implementation: this UniXNU snapshot predates `unixnu release` and
+`templates/package.sh`, so the script drives the equivalent `unixnu` subcommands directly. Replace it
+verbatim once the upstream template is available.

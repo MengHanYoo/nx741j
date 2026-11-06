@@ -1,6 +1,7 @@
 # 额外源：SM8850 共享 SoC 支持（步骤 2 选定，2026-11-06 发布到 GitHub）
+# 2026-11-07：pin 从 927698d5 更正为仓库实际 HEAD 825a530（本地检出与已推送版本一致）
 [[source]]
 name = "sm8850"
 kind = "soc"
 git = "https://github.com/MengHanYoo/UniXNU-sm8850-common"
-commit = "927698d5feca6d391e18ba9f7f2165d9d149735b"
+commit = "825a5304e2b72b55ac67501f56d12cc905f2f458"
