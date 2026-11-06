@@ -1,5 +1,11 @@
 ../../../../../patches/xnu/aa-new-clang-drop-auto-var-init-flag.patch
 ../../../../../patches/xnu/ab-iorpc-kernelcontent.patch
+../../../../../patches/xnu/ac-new-clang-uio-stackbuf-overaligned-array.patch
+../../../../../patches/xnu/ad-new-clang-kalloc-void-ptr-deref.patch
+../../../../../patches/xnu/ae-iorpc-iokit-kernelcontent.patch
+../../../../../patches/xnu/af-missing-arm64-kpc-stub.patch
+../../../../../patches/xnu/ag-emit-compile-records.patch
+../../../../../patches/xnu/ah-backport-vfs-getvfs-with-vfsops.patch
 ../../../../../patches/xnu/apple-only-cpu-tunables.patch
 ../../../../../patches/xnu/architectural-timer-entry.patch
 ../../../../../patches/xnu/armvirt-platform-personality.patch
@@ -53,3 +59,5 @@
 ../../../../../patches/xnu/zzx-pmap-sync-64bit-pa.patch
 ../../../../../patches/xnu/zzy-native-gpu-addon-mount.patch
 ../../../../../patches/xnu/zzy-staged-system-apps.patch
+component:XnuPrelink/patches/xnu-10063.141.1-security-init.patch
+component:XnuPrelink/patches/xnu-10063.141.1-sparse-index.patch

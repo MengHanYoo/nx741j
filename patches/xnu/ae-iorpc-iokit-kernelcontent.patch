@@ -1,0 +1,11 @@
+diff --git a/iokit/IOKit/IORPC.h b/iokit/IOKit/IORPC.h
+--- a/iokit/IOKit/IORPC.h
++++ b/iokit/IOKit/IORPC.h
+@@ -222,6 +222,7 @@
+ struct IORPC {
+ 	IORPCMessageMach * message;
+ 	IORPCMessageMach * reply;
++	IORPCMessage *     kernelContent;
+ 	uint32_t           sendSize;
+ 	uint32_t           replySize;
+ };

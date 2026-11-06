@@ -54,8 +54,8 @@ submodules = [
 name = "libpthread"
 kind = "refer"
 git = "https://github.com/apple-oss-distributions/libpthread.git"
-ref = "libpthread-519.120.4"
-commit = "c0e60fb5ecfc54cf379c261d3f9572cc22ded891"
+ref = "libpthread-486.100.11"
+commit = "cf9e1c7e611440e511af230905be2cfefc5c6121"
 
 [[source]]
 name = "corecrypto-2023"

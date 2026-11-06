@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'scripts'))
 from xnu_symbols import kernel_names
 SOURCE = ROOT / 'refer/libpthread'
-REVISION = 'c0e60fb5ecfc54cf379c261d3f9572cc22ded891'
+REVISION = 'cf9e1c7e611440e511af230905be2cfefc5c6121'
 if subprocess.check_output(['git', '-C', SOURCE, 'rev-parse', 'HEAD'], text=True).strip() != REVISION:
     raise SystemExit('Unexpected libpthread source revision')
 if subprocess.check_output(['git', '-C', SOURCE, 'status', '--porcelain'], text=True):

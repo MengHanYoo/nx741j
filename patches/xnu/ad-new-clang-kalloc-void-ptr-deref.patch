@@ -1,0 +1,20 @@
+diff --git a/osfmk/kern/kalloc.h b/osfmk/kern/kalloc.h
+--- a/osfmk/kern/kalloc.h
++++ b/osfmk/kern/kalloc.h
+@@ -821,12 +821,11 @@
+  * @param ptr           the pointer whose type needs to be checked.
+  * @param type          the type which the pointer will be checked against.
+  */
++/* Compare the pointer type itself: C++ rejects *void_pointer outright and
++ * the -Wvoid-ptr-dereference pragma cannot suppress a hard error. */
+ #define KALLOC_TYPE_IS_COMPATIBLE_PTR(ptr, type)                   \
+-	_Pragma("clang diagnostic push")                               \
+-	_Pragma("clang diagnostic ignored \"-Wvoid-ptr-dereference\"") \
+-	(__builtin_xnu_types_compatible(__typeof__(*(ptr)), type) ||   \
+-	    __builtin_xnu_types_compatible(__typeof__(*(ptr)), void))  \
+-	_Pragma("clang diagnostic pop")
++	(__builtin_xnu_types_compatible(__typeof__(ptr), type *) ||    \
++	    __builtin_xnu_types_compatible(__typeof__(ptr), void *))
+ 
+ #define KALLOC_TYPE_ASSERT_COMPATIBLE_POINTER(ptr, type) \
+ 	_Static_assert(KALLOC_TYPE_IS_COMPATIBLE_PTR(ptr, type), \
