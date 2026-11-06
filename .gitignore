@@ -50,3 +50,5 @@ __pycache__/
 .env
 local.toml
 unixnu.local.toml
+/drivers/
+/kits/

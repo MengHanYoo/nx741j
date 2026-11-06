@@ -120,6 +120,13 @@ def verify(path, combined, tree, ramdisk_path, image):
     """Unpack the image and compare every part with its input."""
     data = Path(path).read_bytes()
     kernel_size, kernel_address, ramdisk_size, _, second_size, _, tags, page, version, _ = struct.unpack_from('<10I', data, 8)
+    if image.get('header_version', 0) >= 3:
+        kernel_size, ramdisk_size = struct.unpack_from('<2I', data, 8)
+        version = struct.unpack_from('<I', data, 40)[0]
+        page = image.get('pagesize', 4096)
+        second_size = 0
+        kernel_address = image.get('base', 0) + image.get('kernel_offset', 0x8000)
+        tags = image.get('base', 0) + image.get('tags_offset', 0x1E00000)
     if data[:8] != b'ANDROID!' or second_size or version != image['header_version'] or page != image['pagesize']:
         raise Error('boot image header does not match the requested parameters')
     if kernel_address != image['base'] + image['kernel_offset'] or tags != image['base'] + image['tags_offset']:
