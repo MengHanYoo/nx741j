@@ -9,11 +9,11 @@
 | 位置 | 选择 | 版本（精确） | 核对情况 |
 |---|---|---|---|
 | `UniXNU/profiles/arch/arm64` | 主仓库 arch profile | 主仓库 `11f5b5d4`（本地快照，dirty） | ✅ 含 4 KiB 页表、non-apple 平台、mockfs 等 53 条补丁 |
-| `UniXNU-<soc>-common` | **自建 `UniXNU-sm8850-common`**（官方仅到 sm8550） | 目录哈希 `05ef8153c9af8d27…`（5 个文件） | ⚠️ 非 git 仓库，需发布后钉 commit |
+| `UniXNU-<soc>-common` | **自建 `UniXNU-sm8850-common`**（官方仅到 sm8550） | git `927698d5feca6d391e18ba9f7f2165d9d149735b`（5 文件，2026-11-06 提交） | ✅ 已提交；待推 remote |
 | `UniXNU/profiles/os/<profile>` | `ios-16.7.16-20H392` | 主仓库同一提交 | ✅ xnu `8796.142.1.703.8`，Darwin 23.x |
-| `UniXNU-<device>` | `UniXNU-nx741j` | 目录哈希 `69a9925d5711ab96…`（18 个文件） | ⚠️ 非 git 仓库 |
+| `UniXNU-<device>` | `UniXNU-nx741j` | git `8eee59444c381f946b7e2856a3864d86c5284db6`（20 文件） | ✅ 已提交；待推 remote |
 | 组件仓库 | `ArmDTPlatform`、`ArmCpu`、`XnuPrelink`、`DarwinBoot` | `417ff95d`、`9066b53b`、`f876e3ee`、`3325e352` | ✅ 均在 `components.toml` 中带 revision |
-| `uefi-<device>` | `/opt/work/uefi-sheng-main`（本地 git） | `b62f2a95`（dirty） | ⚠️ 未发布到 `uefi-nx741j` |
+| `uefi-<device>` | `/opt/work/uefi-sheng-main`（本地 git） | git `586670bcc53c7a05b7dcb9ecac494b209fd9525f`（2026-11-06 提交） | ✅ 已提交；待发布为 `uefi-nx741j` |
 
 ## 2. 为什么这样选
 

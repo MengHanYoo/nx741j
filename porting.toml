@@ -266,14 +266,14 @@ boot_state = "kmparam.debug_policy=0x00000000, secboot_status=1（已解锁/已�
 main_repo = "UniXNU @ 11f5b5d47a4072978ce2d6fc6f5751a1395e3ba8（本地快照，dirty）"
 arch_profile = "UniXNU/profiles/arch/arm64 @ 同上"
 os_profile_source = "UniXNU/profiles/os/ios-16.7.16-20H392 @ 同上"
-soc_repo = "UniXNU-sm8850-common（自建）tree_sha256=05ef8153c9af8d2785abf640e72f76a7c6e4c97cbf97fa313d71ae01f5c81b2e files=5"
-device_repo = "UniXNU-nx741j（本仓库）tree_sha256=69a9925d5711ab96217751e7a4ab5d1f7a91b35ae60d0de14185ceb0876e32a5"
-uefi_repo = "uefi-sheng-main @ b62f2a95019a7ff89e58b180412bdc5aec726cca（dirty，待发布为 uefi-nx741j）"
+soc_repo = "UniXNU-sm8850-common @ 927698d5feca6d391e18ba9f7f2165d9d149735b（本地 git，待发布 remote）"
+device_repo = "UniXNU-nx741j（本仓库）@ 8eee59444c381f946b7e2856a3864d86c5284db6"
+uefi_repo = "uefi-sheng-main @ 586670bcc53c7a05b7dcb9ecac494b209fd9525f（待发布为 uefi-nx741j）"
 component_ArmDTPlatform = "417ff95d6a6e8607ddea9309ec45c3bfd4a67c60"
 component_ArmCpu = "9066b53bbc82e92a98ec44a11dd50fd13eaf1a1b"
 component_XnuPrelink = "f876e3ee62e18fc06653dd75ed7dafcfb3950ac0"
 component_DarwinBoot = "3325e352d7df68a9f9ad74832ed94a6acbbd7390"
-pending_publish = "UniXNU-sm8850-common / UniXNU-nx741j / uefi-sheng-main 尚未建 git 仓库，暂以目录哈希固定"
+pending_publish = "三个仓库已 git init 并提交；待推送 GitHub 后把 devices.toml/feeds.toml 换成 remote revision"
 
 [missing_inputs]
 # 2026-11-06 实机读取后已全部补齐（cpu_midr / cpu_freq_table / wireless_exact_sku）
