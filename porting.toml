@@ -13,9 +13,9 @@ arch = "arm64"
 page_size = 4096
 
 [support]
-os_profile = "ipados-17.7.11-21H461 / xnu 10063.141.1（arm64, Darwin 23.6.0）"
-xnu = "10063.141.1"
-xnu_revision = "d8b80295118ef25ac3a784134bcf95cd8e88109f"
+os_profile = "ios-16.7.16-20H392 / xnu 8796.141.3（arm64, Darwin 22.6.0）"
+xnu = "8796.141.3"
+xnu_revision = "1b191cb58250d0705d8a51287127505aa4bc0789"
 status = "bringup-layer2-dxe-chain"
 
 [hardware.cpu]
@@ -229,7 +229,7 @@ uefi_build = "KaanapaliLAA/Core/RELEASE_CLANG180LINUX/AARCH64（uefi_a.img 内�
 abl_note = "abl_a.img 内未找到明文版本串（与 XBL 同属 BOOT.MXF.2.5.3 构建链，版本号见 boot_chain）"
 rom = "NebulaAIOS 2.0.15 MR3（NX741J_VG，Android 16）"
 rom_alt = "国际版 MYOS 16.0.16 EEA（另一份备份）"
-os_profile = "ipados-17.7.11-21H461 / xnu 10063.141.1（arm64, Darwin 23.6.0）"
+os_profile = "ios-16.7.16-20H392 / xnu 8796.141.3（arm64, Darwin 22.6.0）"
 device_build = "CP2A.260605.016（实机 ro.build.display.id）"
 device_fingerprint = "Xiaomi/nezha/nezha:17/CP2A.260605.016/OS4.0.0.10.XPACNXM（移植ROM指纹）"
 device_model = "NX741J（ro.product.model），ro.soc.model = SM8850（QTI）"
