@@ -1,0 +1,57 @@
+schema_version = 2
+
+[board]
+name = "nx741j"
+soc = "SM8850"
+soc_source = "sm8850"
+os_profile = "ios-16.7.16-20H392"
+description = "Nubia Z80 Ultra (NX741J), SM8850/alor"
+kit = "nx741j"
+
+[components]
+include = ["ArmDTPlatform", "ArmCpu", "XnuPrelink", "DarwinBoot"]
+
+[kernel]
+defconfig = "nx741j_defconfig"
+config_fragments = ["arch:configs/common.config", "soc:configs/sm8850.config", "os:configs/ios.config"]
+patch_series = ["arch:patches/xnu/series", "soc:patches/xnu/series", "os:patches/xnu/series", "device:patches/xnu/series"]
+
+[device_tree]
+source = "device:dts/board.dts"
+include_dirs = ["soc:dts"]
+
+[firmware]
+config = "nx741j"
+dsc = "Platforms/ZTE/nx741jPkg/nx741j.dsc"
+fd = "Build/nx741jPkg/{target}_CLANGPDB/FV/SILICIUM_UEFI.fd"
+packages = ["{uefi}", "{uefi}/Mu_Basecore", "{uefi}/Common/Mu", "{uefi}/Common/Mu_OEM_Sample", "{uefi}/Silicon/Qualcomm", "{uefi}/Silicon/Silicium", "{uefi}/Platforms/ZTE", "{tree}/package", "{tree}/drivers/DarwinBoot", "{edk2}"]
+
+[firmware.defines]
+DEVICE_MODEL = "NX741J"
+ENABLE_SECUREBOOT = "0"
+
+[payload]
+volume = "NX741J"
+size_mib = 64
+loader = "firmware"
+title = "NX741J"
+kernel_args = ["-v", "serial=3"]
+timeout = 5
+tools = false
+panic_screen = false
+# 来自 out/.../payload/payload.json（上一次 payload 构建记录）
+trust_cache_sha256 = ["63e01c03b31e1532a5581a24865490673f0b5c297b0199fe0095637c6100ef4b",
+                        "9cc478fe3525e2683b5b9ea1eea0851eaebebdab21d206556233400e59d2e361"]
+
+[payload.adt]
+chip_id = "207"
+unique_chip_id = "required"
+
+[bootimg.image]
+base = "0x80000000"
+kernel_offset = "0x8000"
+tags_offset = "0x1e00000"
+pagesize = 4096
+header_version = 4
+# 本机 ABL 不接受 gzip 流之后追加 DTB，也不接受内置 ramdisk；由 pack.sh 保证 ramdisk=0
+kernel_compression = "gzip"

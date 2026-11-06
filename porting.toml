@@ -1,0 +1,279 @@
+# NX741J (Nubia Z80 Ultra) porting record
+# 生成日期：2026-11-05；所有数值来自本机 DT / 固件 / 实机日志
+
+[device]
+name = "NX741J"
+codename = "nx741j"
+vendor = "Nubia"
+model = "Z80 Ultra"
+soc = "sm8850"
+soc_codename = "canoe"
+soc_family = "Kaanapali"
+arch = "arm64"
+page_size = 4096
+
+[support]
+os_profile = "ios-16.7.16-20H392"
+xnu = "8796.142.1.703.8"
+xnu_revision = "xnu-8796.141.3"
+status = "bringup-layer2-dxe-chain"
+
+[hardware.cpu]
+cores = 8
+active_cores = 8
+clusters = "6 + 2"
+topology = "cluster0 = cpu@0,100,200,300,400,500（6 核）；cluster1 = cpu@10000,10100（2 核）"
+# 以下数值来自原厂 stock DT：FdtBlob/kaanapali-zte-nx741j.dtb 的 /cpus 与 /cpus/cpu-map
+capacity_dmips_mhz = { cluster0 = 1792, cluster1 = 1894 }        # 0x700 / 0x766
+dynamic_power_coefficient = { cluster0 = 238, cluster1 = 588 }   # 0xEE / 0x24C
+mpidr_reg = { cluster0 = ["0x0", "0x100", "0x200", "0x300", "0x400", "0x500"], cluster1 = ["0x10000", "0x10100"] }
+l2_cache = { cluster0 = "每核一个 l2-cache 节点（cache-level=2）", cluster1 = "共享节点 phandle 0x0e" }
+# DT 不含 CPU 频率与 MIDR，必须实机读取（见 [missing_inputs]）
+midr = { implementer = "0x51 (Qualcomm)", part = "0x002 (Oryon)", all_cores = true }   # 实机 /proc/cpuinfo，8 核同 MIDR
+max_freq_khz = { policy0 = 3628800, policy6 = 4608000 }   # 3.63 GHz（6 核）/ 4.61 GHz（2 核），实机 cpufreq
+
+[hardware.memory]
+ram_base = "0x80000000"
+smem = { base = "0x81D00000", size = "0x200000", init_by = "XBL (xbl_config_a.img)" }
+dxe_heap = { base = "0xB00F0000", size = "0x131A0000" }
+fd = { base = "0xFF300000", size = "0x400000" }
+
+[hardware.display]
+panel = "bf375_rm692h5_6p8_dev0_dsc_cmd"
+native_resolution = "1440x3200"
+uefi_gop = "1216x2688"
+color_depth = 32
+framebuffer_region = "0xFC800000/0x2B00000"
+dsi_mode = "1216x2688@120fps 与 @60fps 双模式（实机 dmesg msm-dsi-info）"
+panel_cmdline = "msm_drm.dsi_display0=qcom,mdss_dsi_bf375_rm692h5_6p8_dev0_dsc_cmd"
+zte_specific = "zte,mdss-dsi-dim-on-commands（ZTE 私有调光命令）"
+
+[hardware.storage]
+type = "UFS"
+boot_lun = 4
+partitions = { boot_a = 119078, uefi_a = 6, efisp = 748894, vbmeta_a = 143706, vendor_boot_a = 302310 }
+ufs_model = "KLUGG8NHKB-F0H1（实机 /sys/block/sda/device/model）"
+ufs_rev = "0500"
+ufs_vendor = "Samsung（KLU 前缀）"
+
+[hardware.gpu]
+name = "Adreno 840"
+firmware = "gpu-fw/gen80200_{aqe.fw,sqe.fw,gmu.bin,zap.mbn}"
+kernel_status = "verified (vktest PASS x35)"
+remaining = "wallpaper black, tearing, 13-30 fps"
+
+[driver_status]
+platform_memory = "OK (after FD/CPU_Vectors/aux remap)"
+ufs = "OK (UFSDxe dispatches)"
+display = "OK (1216x2688)"
+touch = "未验证"
+buttons = "未验证"
+gpu = "内核侧已验证；UEFI 侧未到"
+wifi = "未验证"
+modem = "未验证"
+audio = "未验证"
+power = "未验证"
+
+[layer_status]
+layer1_boot_image = "DONE (gzip shim+FV, FD_BASE=0xFF300000, no DT/ramdisk)"
+layer2_uefi = "BLOCKED at SmemDxe (SMEM page mapping missing in MemoryPeim)"
+layer3_unixnu = "built, not run"
+layer4_darwinboot = "built, not run"
+layer5_kernel = "kernel.macho + ADT ready, not run"
+layer6_userland = "iosroot-RAW-BUILD.img ready, not run"
+
+[dt_policy]
+notes = [
+  "ABL rejects DT appended after the gzip stream; the device tree is carried inside the FV (FdtBlob via DtPlatformDxe).",
+  "Active FDT: live_fdt.dtb (911 KB) from the running device; 14 SKU DTBs available in vendor_boot.",
+]
+
+[partition_strategy]
+# 双系统 payload/config 落点
+primary = "efisp (3 MB, LUN4 @748894)"
+fallback = "userdata FAT image"
+self_contained = "FAT volume inside FV"
+
+[inputs]
+dts = "dts/board.dts"   # 板级 DTS，/include/ "sm8850.dtsi"
+stock_dump = "E:/Nubia_Flash_Brick/backup/ZTEToolBoxParBak_2026.10.24_22.38.43.421"
+uefi_tree = "/opt/work/uefi-sheng-main"
+
+[next_steps]
+items = [
+  "Fix SMEM mapping: gDS->AddMemorySpace + SetMemorySpaceAttributes (image boot-uefi-gds.img built, flash pending).",
+  "After layer2: place EFI/UniXNU/unixnu.toml + payload into efisp.",
+  "Then validate UniXNU -> DarwinBoot -> kernel -> userland.",
+]
+
+# ---- 2026-11-05 补充：来自本机 live_fdt.dtb 的硬件清单 ----
+[hardware.touch]
+chip = "synaptics_tcm"
+bus = "SPI"
+reset_gpio = "<0x33 0x42 0x00>"
+input_device = "synaptics_tcm_touch（实机 /proc/bus/input/devices）"
+fingerprint = "goodix_fp（独立 input device）"
+
+[hardware.wireless]
+# 来源：FdtBlob/kaanapali-zte-nx741j.dtb 的 qcom,cnss-peach@b0000000 与 pcie@1c00000
+wifi_chip = "Qualcomm WCN7850/WCN7851 系列（DT 平台代号 peach，节点 compatible = qcom,cnss-peach）"
+cnss_node = "qcom,cnss-peach@b0000000"
+cnss_compatible = "qcom,cnss-peach"
+bus = "PCIe；控制器 pcie@1c00000（compatible = qcom,pci-msm），linux,pci-domain = 0，BAR 窗口 0x40200000"
+dma_region = "cnss_wlan_region：32 MB shared-dma-pool，reusable，4 MB 对齐"
+iommu = "SMMU stream 0x23/0x100f（cnss-direct-link）"
+pmu_rails = "S1J1=bb, S2J1=rf, S7F0=rf, S8F0=rf（qcom,vreg_pdc_map）"
+bt = "qcom,wcn-bt = <1>（BT 复用同一 WCN 芯片；audio 节点 qcom,canoe-asoc-snd 声明）"
+gpio = "wlan_en=gpio16, sw_ctrl=gpio18, sw_ctrl_wl_cx=gpio19, pcie0_perst=gpio102, pcie0_clkreq=gpio103, pcie0_wake=gpio104"
+exact_sku = "WCN7850（PCI 17cb:110e，驱动前缀 peach_v2，ath12k 支持）"
+status = "未验证（UEFI 侧无 WLAN/BT 驱动；当前不阻塞启动链）"
+
+
+[hardware.modem]
+mpss_region = "0x8AA00000"
+q6_mpss_dtb = "0x99500000"
+smp2p = "qcom,smp2p-modem"
+
+[hardware.interrupt_controller]
+compatible = "arm,gic-v3"
+distributor = { base = "0x17000000", size = "0x10000" }
+redistributor = { base = "0x17080000", size = "0x200000", stride = "0x40000", regions = 1 }
+its = { base = "0x17040000", size = "0x20000", compatible = "arm,gic-v3-its", msi_cells = 1 }
+interrupt_cells = 3
+maintenance_irq = "PPI 9（0x01 0x09 0x04，level high）"
+timer = { compatible = "arm,armv8-timer", clock_hz = 19200000, ppi = "hyp=10(0x0a), virt=11(0x0b), secure_phys=13(0x0d), non_secure_phys=14(0x0e)", flags = "0xFF08 (level, all cores)", always_on = true }
+timer_mem = { node = "timer@17810000", compatible = "arm,armv7-timer-mem", base = "0x17810000", size = "0x1000", clock_hz = 19200000, frame0_ppi = "sec=8(0x08), ns=6(0x06)" }
+dt_interrupt_consumers = 235   # DT 中 interrupts = <...> 出现次数
+# 来源：FdtBlob/kaanapali-zte-nx741j.dtb 的 interrupt-controller@17000000 与 timer 节点
+
+
+[hardware.psci]
+compatible = "arm,psci-1.0"
+method = "smc"
+power_domains = "cpu-pd0..cpu-pd7（8 个 per-core 域，父域 phandle 0x1a）"
+
+[hardware.idle_states]
+cpu_ret = { name = "ret", entry_latency_us = 93, exit_latency_us = 129, min_residency_us = 560 }
+cluster1_ret = { name = "ret", entry_latency_us = 172, exit_latency_us = 130, min_residency_us = 686 }
+domain_idle = "cluster 级 domain-idle-state（见 /cpus/idle-states）"
+
+[hardware.reserved]
+count = 51
+# 来源：FdtBlob/kaanapali-zte-nx741j.dtb 的 /reserved-memory（原厂 stock DT）
+# 格式：name = { base, size, node }，node 为原 DT 节点名
+
+ramoops = { base = "0xE2000000", size = "0x200000", node = "ramoops@E2000000" }
+gunyah_hyp_region = { base = "0x80000000", size = "0xE00000", node = "gunyah_hyp_region@80000000" }
+hypervisor_extended_heap_region = { base = "0x80E00000", size = "0x400000", node = "hypervisor_extended_heap_region@80e00000" }
+cpucp_pdp_region = { base = "0x81200000", size = "0x200000", node = "cpucp_pdp_region@81200000" }
+xbl_dtlog_region = { base = "0x81A00000", size = "0x60000", node = "xbl_dtlog_region@81a00000" }
+aop_image_region = { base = "0x81C00000", size = "0x60000", node = "aop_image_region@81c00000" }
+aop_cmd_db_region = { base = "0x81C60000", size = "0x20000", node = "aop_cmd_db_region@81c60000" }
+aop_tme_uefi_merged_region = { base = "0x81C80000", size = "0x74000", node = "aop_tme_uefi_merged_region@81c80000" }
+smem_region = { base = "0x81D00000", size = "0x200000", node = "smem_region@81d00000" }
+pdp_ns_shared_region = { base = "0x81F00000", size = "0x100000", node = "pdp_ns_shared_region@81f00000" }
+cpucp_scandump_region = { base = "0x82000000", size = "0x380000", node = "cpucp_scandump_region@82000000" }
+adsp_mhi_region = { base = "0x82380000", size = "0x20000", node = "adsp_mhi_region@82380000" }
+soccp_sdi_region = { base = "0x823A0000", size = "0x40000", node = "soccp_sdi_region@823a0000" }
+pmic_minii_dump_region = { base = "0x823E0000", size = "0x80000", node = "pmic_minii_dump_region@823e0000" }
+qup_fw_region = { base = "0x82460000", size = "0x18000", node = "qup_fw_region@82460000" }
+pvm_fw_region = { base = "0x824A0000", size = "0x100000", node = "pvm_fw_region@824a0000" }
+tz_stat_region = { base = "0x82700000", size = "0x100000", node = "tz_stat_region@82700000" }
+qdss_apps_region = { base = "0x82800000", size = "0x2000000", node = "qdss_apps_region@82800000" }
+dsm_partition_1_region = { base = "0x84A00000", size = "0x5500000", node = "dsm_partition_1_region@84a00000" }
+dsm_partition_2_region = { base = "0x89F00000", size = "0xA80000", node = "dsm_partition_2_region@89f00000" }
+mpss_region = { base = "0x8AA00000", size = "0xEB00000", node = "mpss_region@8aa00000" }
+q6_mpss_dtb_region = { base = "0x99500000", size = "0x80000", node = "q6_mpss_dtb_region@99500000" }
+ipa_fw_region = { base = "0x99580000", size = "0x10000", node = "ipa_fw_region@99580000" }
+ipa_gsi_region = { base = "0x99590000", size = "0xA000", node = "ipa_gsi_region@99590000" }
+gpu_microcode_region = { base = "0x9959A000", size = "0x2000", node = "gpu_microcode_region@9959a000" }
+camera_region = { base = "0x99600000", size = "0x800000", node = "camera_region@99600000" }
+camera_2_region = { base = "0x99E00000", size = "0x800000", node = "camera_2_region@99e00000" }
+video_region = { base = "0x9A600000", size = "0x800000", node = "video_region@9a600000" }
+cvp_region = { base = "0x9AE00000", size = "0x700000", node = "cvp_region@9ae00000" }
+cdsp_region = { base = "0x9B500000", size = "0x1900000", node = "cdsp_region@9b500000" }
+q6_cdsp_dtb_region = { base = "0x9CE00000", size = "0x80000", node = "q6_cdsp_dtb_region@9ce00000" }
+spu_secure_shared_memory_region = { base = "0x9FC80000", size = "0x40000", node = "spu_secure_shared_memory_region@9fc80000" }
+spu_secure_shared_memory_region_1 = { base = "0x9FCC0000", size = "0x40000", node = "spu_secure_shared_memory_region@9fcc0000" }
+spss_region_region = { base = "0x9FD00000", size = "0x2E0000", node = "spss_region_region@9fd00000" }
+dcp_dtb_region = { base = "0xA0050000", size = "0x80000", node = "dcp_dtb_region@a0050000" }
+dcp_region = { base = "0xA00D0000", size = "0x300000", node = "dcp_region@a00d0000" }
+soccp_region = { base = "0xA03D0000", size = "0x500000", node = "soccp_region@a03d0000" }
+soccp_dtb_region = { base = "0xA08D0000", size = "0x40000", node = "soccp_dtb_region@a08d0000" }
+q6_adsp_dtb_region = { base = "0xA1380000", size = "0x80000", node = "q6_adsp_dtb_region@a1380000" }
+adspslpi_region = { base = "0xA1400000", size = "0x4600000", node = "adspslpi_region@a1400000" }
+hwfence_shmem = { base = "0xD4E23000", size = "0x2DD000", node = "hwfence-shmem" }
+xbl_ramdump_region = { base = "0xD7800000", size = "0x1C0000", node = "xbl_ramdump_region@d7800000" }
+global_sync_region = { base = "0xD7A00000", size = "0x200000", node = "global_sync_region@d7a00000" }
+tz_merged_region = { base = "0xD8000000", size = "0x800000", node = "tz_merged_region@d8000000" }
+trust_ui_vm_region = { base = "0xF3800000", size = "0x4000000", node = "trust_ui_vm_region@f3800000" }
+oem_vm_region = { base = "0xF7C00000", size = "0x4C00000", node = "oem_vm_region@f7c00000" }
+llcc_lpi_region = { base = "0xFF800000", size = "0x800000", node = "llcc_lpi_region@ff800000" }
+lcp_dare_region = { base = "0x880000000", size = "0x6000000", node = "lcp_dare_region" }
+splash_region = { base = "0xFC800000", size = "0x2B00000", node = "splash_region" }
+demura_region_0 = { base = "0x0", size = "0x0", node = "demura_region_0" }
+demura_region_1 = { base = "0x0", size = "0x0", node = "demura_region_1" }
+
+[firmware]
+# 来源：备份镜像 ZTEToolBoxParBak_2026.10.24_22.38.43.421/images/ 的版本字符串
+
+boot_chain = "BOOT.MXF.2.5.3-00131-KAANAPALI-1.124266.24"          # xbl_a.img，XBL/ABL/SBL 共用此版本号
+aop = "AOP.HO.7.0-00223-KAANAPALI_E-1.124266.8"                     # aop_a.img
+modem = "MPSS.DE.9.0-01805.10-KAANAPALI_GEN_PACK-2.124266.53"       # modem_a.img
+meta_build = "Kaanapali.LA.1.0.r1-00850-STD.PROD-1.124266.59"
+apps_vendor = "LA.VENDOR.16.2.0.r1-07800-kaanapali.0-1.124266.9"
+audio = "AUDIO_HANDSET.LA.11.0.r1-04600-kaanapali.0-1.124266.1"
+video = "VIDEO_HANDSET.LA.1.0.r1-04700-kaanapali.0-1.124266.1"
+soccp = "SOCCP.FW.2.1-00165-KAANAPALI_SOCCP_PACK-1.124266.3"
+uefi_build = "KaanapaliLAA/Core/RELEASE_CLANG180LINUX/AARCH64（uefi_a.img 内编译路径）"
+abl_note = "abl_a.img 内未找到明文版本串（与 XBL 同属 BOOT.MXF.2.5.3 构建链，版本号见 boot_chain）"
+rom = "NebulaAIOS 2.0.15 MR3（NX741J_VG，Android 16）"
+rom_alt = "国际版 MYOS 16.0.16 EEA（另一份备份）"
+os_profile = "ios-16.7.16-20H392 / xnu 8796.142.1.703.8"
+device_build = "CP2A.260605.016（实机 ro.build.display.id）"
+device_fingerprint = "Xiaomi/nezha/nezha:17/CP2A.260605.016/OS4.0.0.10.XPACNXM（移植ROM指纹）"
+device_model = "NX741J（ro.product.model），ro.soc.model = SM8850（QTI）"
+baseband_prop = "EN_PACK-2.124266.53,EN_PACK-2.124266.53（gsm.version.baseband）"
+
+[driver_adaptation]
+# 完整表（接口 / 源码参考 / 构建接入）见 docs/DRIVER-CHECKLIST.md
+document = "docs/DRIVER-CHECKLIST.md"
+display = { uefi = "DisplayDxe + SimpleFbDxe(GOP 1216x2688)", xnu = "GopFramebuffer", status = "UEFI verified, XNU not started" }
+ufs = { uefi = "UFSDxe", xnu = "ShengUfs + ArmSmmu4K", status = "UEFI verified, XNU not started (needs SM8850 clocks)" }
+touch = { uefi = "none (only SPIDxe/GpiDxe)", xnu = "ShengHidInput + QcomGeniSpi", status = "no Synaptics TCM protocol driver; ShengNovatekTouch is NT36532" }
+wifi = { uefi = "none", xnu = "Ath12kWifi + QcaBluetooth", status = "not started; WCN7850 over PCIe" }
+power = { uefi = "RpmhDxe + SPMIDxe + PmicDxe + ClockDxe + ICBDxe", xnu = "Sm8550Platform (needs SM8850)", status = "blocked at RpmhDxe in layer 2" }
+buttons = { uefi = "ButtonsDxe", xnu = "none", status = "not verified" }
+gpu = { uefi = "none", xnu = "Adreno740 + AdrenoPM4 + AdrenoFirmware + AdrenoMetal", status = "needs Adreno 840 (0x44050a01) port" }
+usb = { uefi = "XhciDxe + 6x Usb*Dxe", xnu = "none", status = "not started" }
+
+[records]
+porting_record = "docs/PORTING-RECORD.md"      # 十八节全量技术归档
+driver_checklist = "docs/DRIVER-CHECKLIST.md"  # 子系统接口/源码参考/构建接入
+firmware_drivers = "docs/FIRMWARE-DRIVERS.md"  # SmemStubDxe / KernelStubDxe
+tasks = "docs/TASKS.md"
+start_here = "docs/START-HERE.md"
+
+[hardware.observed]
+# 实机观测（2026-11-06，adb 连接 NX741J）
+cmdline = "console=ttynull ... qcom_geni_serial.con_enabled=0 ... msm_drm.dsi_display0=qcom,mdss_dsi_bf375_rm692h5_6p8_dev0_dsc_cmd ... kmparam.secboot_status=1"
+serial_note = "Android 内核把串口关掉（console=ttynull + geni_serial.con_enabled=0），所以 UEFI 侧只能用 FrameBufferSerialPortLib 出日志"
+pcie_sm = "pci-msm-drv.pcie_sm_regs=0x1D07000,0x1040,0x1048,0x3000,0x1（PCIe SM 寄存器）"
+boot_state = "kmparam.debug_policy=0x00000000, secboot_status=1（已解锁/已签）"
+
+[sources]
+# 步骤 2：共享支持选择与版本固定（详见 docs/SHARED-SUPPORT.md）
+main_repo = "UniXNU @ 11f5b5d47a4072978ce2d6fc6f5751a1395e3ba8（本地快照，dirty）"
+arch_profile = "UniXNU/profiles/arch/arm64 @ 同上"
+os_profile_source = "UniXNU/profiles/os/ios-16.7.16-20H392 @ 同上"
+soc_repo = "UniXNU-sm8850-common（自建）tree_sha256=05ef8153c9af8d2785abf640e72f76a7c6e4c97cbf97fa313d71ae01f5c81b2e files=5"
+device_repo = "UniXNU-nx741j（本仓库）tree_sha256=69a9925d5711ab96217751e7a4ab5d1f7a91b35ae60d0de14185ceb0876e32a5"
+uefi_repo = "uefi-sheng-main @ b62f2a95019a7ff89e58b180412bdc5aec726cca（dirty，待发布为 uefi-nx741j）"
+component_ArmDTPlatform = "417ff95d6a6e8607ddea9309ec45c3bfd4a67c60"
+component_ArmCpu = "9066b53bbc82e92a98ec44a11dd50fd13eaf1a1b"
+component_XnuPrelink = "f876e3ee62e18fc06653dd75ed7dafcfb3950ac0"
+component_DarwinBoot = "3325e352d7df68a9f9ad74832ed94a6acbbd7390"
+pending_publish = "UniXNU-sm8850-common / UniXNU-nx741j / uefi-sheng-main 尚未建 git 仓库，暂以目录哈希固定"
+
+[missing_inputs]
+# 2026-11-06 实机读取后已全部补齐（cpu_midr / cpu_freq_table / wireless_exact_sku）

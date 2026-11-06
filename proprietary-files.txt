@@ -1,0 +1,11 @@
+# proprietary-files for NX741J (from stock dump)
+xbl_a.img         E:/Nubia_Flash_Brick/backup/ZTEToolBoxParBak_2026.10.24_22.38.43.421/images/xbl_a.img
+xbl_config_a.img  E:/Nubia_Flash_Brick/backup/ZTEToolBoxParBak_2026.10.24_22.38.43.421/images/xbl_config_a.img
+abl_a.img         E:/Nubia_Flash_Brick/backup/ZTEToolBoxParBak_2026.10.24_22.38.43.421/images/abl_a.img
+uefi_a.img        E:/Nubia_Flash_Brick/backup/ZTEToolBoxParBak_2026.10.24_22.38.43.421/images/uefi_a.img
+uefisecapp_a.img  E:/Nubia_Flash_Brick/backup/ZTEToolBoxParBak_2026.10.24_22.38.43.421/images/uefisecapp_a.img
+tz_a.img          E:/Nubia_Flash_Brick/backup/ZTEToolBoxParBak_2026.10.24_22.38.43.421/images/tz_a.img
+hyp_a.img         E:/Nubia_Flash_Brick/backup/ZTEToolBoxParBak_2026.10.24_22.38.43.421/images/hyp_a.img
+vendor_boot_a.img E:/Nubia_Flash_Brick/backup/ZTEToolBoxParBak_2026.10.24_22.38.43.421/images/vendor_boot_a.img
+boot_a.img        E:/Nubia_Flash_Brick/backup/ZTEToolBoxParBak_2026.10.24_22.38.43.421/images/boot_a.img
+dtbo_a.img        E:/Nubia_Flash_Brick/backup/ZTEToolBoxParBak_2026.10.24_22.38.43.421/images/dtbo_a.img

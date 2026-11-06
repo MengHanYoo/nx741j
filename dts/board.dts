@@ -1,0 +1,41 @@
+/dts-v1/;
+
+/*
+ * NX741J 板级设备树（对应 https://unixnu.com/zh/porting/device-tree#procedure）
+ *
+ * 结构：
+ *   - SoC 层：/include/ "sm8850.dtsi"（来自 feeds.toml 的 sm8850 源，include_dirs = soc:dts）
+ *   - 板级层：本文件只放本机差异项（model / compatible / memory / CPU 时基）
+ *
+ * 说明：此前本文件把 SoC 节点（psci/timer/gic）复制了一份，与 sm8850.dtsi 内容重复；
+ *       改为 include 后编译出的 DTB 与原文件一致（1660 字节），但维护时只有一处来源。
+ */
+
+/include/ "sm8850.dtsi"
+
+/ {
+    model = "Nubia Z80 Ultra (NX741J)";
+    compatible = "nubia,nx741j", "qcom,alor", "qcom,sm8850";
+    #address-cells = <2>;
+    #size-cells = <2>;
+    interrupt-parent = <&intc>;
+
+    memory@8c0000000 {
+        device_type = "memory";
+        reg = <0x8 0xc0000000 0x1 0x40000000>;
+    };
+
+    cpus {
+        timebase-frequency = <19200000>;
+        #address-cells = <1>;
+        #size-cells = <0>;
+        cpu@0 { device_type = "cpu"; compatible = "arm,armv8"; reg = <0x0>; enable-method = "psci"; };
+        cpu@100 { device_type = "cpu"; compatible = "arm,armv8"; reg = <0x100>; enable-method = "psci"; };
+        cpu@200 { device_type = "cpu"; compatible = "arm,armv8"; reg = <0x200>; enable-method = "psci"; };
+        cpu@300 { device_type = "cpu"; compatible = "arm,armv8"; reg = <0x300>; enable-method = "psci"; };
+        cpu@400 { device_type = "cpu"; compatible = "arm,armv8"; reg = <0x400>; enable-method = "psci"; };
+        cpu@500 { device_type = "cpu"; compatible = "arm,armv8"; reg = <0x500>; enable-method = "psci"; };
+        cpu@10000 { device_type = "cpu"; compatible = "arm,armv8"; reg = <0x10000>; enable-method = "psci"; };
+        cpu@10100 { device_type = "cpu"; compatible = "arm,armv8"; reg = <0x10100>; enable-method = "psci"; };
+    };
+};
