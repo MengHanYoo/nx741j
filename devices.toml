@@ -5,7 +5,3 @@ name = "sheng"
 repository = "UniXNU/UniXNU-sheng"
 revision = "516a780473a2ac59c8b438e132bb60204dda9e22"
 
-[[device]]
-name = "nx741j"
-repository = "MengHanYoo/UniXNU-nx741j"
-revision = "32b9855fb815cf2f33f845578a622ab0b6704b72"

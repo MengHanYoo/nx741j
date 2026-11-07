@@ -141,6 +141,7 @@ export default withMermaid(defineConfig({
               items: [
                 { text: '设备列表', link: '/zh/devices/' },
                 { text: '小米平板 6S Pro（sheng）', link: '/zh/devices/sheng' },
+                { text: '努比亚 Z80 Ultra（NX741J）', link: '/zh/devices/nx741j' },
                 { text: 'sheng 日志抓取示例', link: '/zh/devices/sheng-unattended-test' },
                 {
                   text: '社区移植',
@@ -282,6 +283,7 @@ export default withMermaid(defineConfig({
           items: [
             { text: 'Devices', link: '/devices/' },
             { text: 'Xiaomi Pad 6S Pro (sheng)', link: '/devices/sheng' },
+            { text: 'Nubia Z80 Ultra (NX741J)', link: '/devices/nx741j' },
             { text: 'sheng log capture example', link: '/devices/sheng-unattended-test' },
             {
               text: 'Community ports',

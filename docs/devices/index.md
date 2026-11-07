@@ -38,6 +38,7 @@ Community ports are maintained by the people listed below. Each page distinguish
 | [POCO X7 / Redmi Note 14 Pro 5G (malachite)](/devices/malachite) | MT6878 | UEFI works, UFS works, XNU rootfs loaded; USB, touch and the rest not implemented | ghidgdsr |
 | [Brave Ark tablet (braveark)](/devices/braveark) | SM8635 | XNU BSD init on 8 CPUs; iPadOS root in progress | tattwamashi |
 | [Xiaomi Pad 8 Pro (piano)](/devices/piano) | SM8750 | Kernel builds and prelinks in CI; not run on the tablet | code002-2 |
+| [Nubia Z80 Ultra (NX741J)](/devices/nx741j) | SM8850 | Kernel, firmware and EFI loader build; boots Mu-Silicium from efisp; XNU entry pending | MengHanYoo |
 | [Xiaomi 13 Pro (nuwa)](/devices/nuwa) | SM8550 | Hardware XNU output through IODTNVRAM; reboot under investigation | wh1stl3 |
 | [OnePlus 13T (oneplus13t)](/devices/oneplus13t) | SM8750 | Root and system UI on hardware; touch pending | IssacL04 |
 | [OnePlus Pad 2 Pro (erhai)](/devices/erhai) | SM8750 | XNU entry bring-up; root and userland not configured | wally001012-cyber |

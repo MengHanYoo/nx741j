@@ -135,3 +135,4 @@
 [sheng 页面](/zh/devices/sheng)记录小米平板 6S Pro 移植。它是一个设备条目。[Novatek 触控驱动](/zh/drivers/sheng-novatek-touch)把 sheng 的触控驱动作为内置 XNU 驱动的完整示例。
 
 官方设备页由设备仓库的 `porting.toml` 生成，更新流程见[适配记录](/zh/porting/records)。
+| [努比亚 Z80 Ultra（NX741J）](/zh/devices/nx741j) | SM8850 | 内核、固件与 EFI loader 已构建；从 efisp 启动 Mu-Silicium；XNU 入口待完成 | MengHanYoo |
