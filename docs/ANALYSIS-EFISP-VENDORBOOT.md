@@ -607,3 +607,33 @@ SmemStubDxe: connect all done (0 handles)
 若 V1 仍崩在同一处，说明崩溃不在 DALSYSDxe 本身，而在 **SEC/PEI 交给 DXE 的环境**
 （ABL 已跑过一轮 UEFI，内存/ACPI/SMEM 状态与 XBL 冷启动不同）。下一步应改用
 `efi-loader/p6.c`（跳回 stub）对比 SEC 前后的 `SCTLR_EL1`、MMU 表与内存描述符，而不是继续删驱动。
+
+### 19.6 二分结果（2026-11-07 21:47）
+
+| 变体 | 内容 | 结果 |
+|---|---|---|
+| V0 | 基线（含 DALSYSDxe） | 上次实机：`DAUS.efi`（= DALSYSDxe）后进入 `ZTE MemoryDump Mode` |
+| V1 | 去掉 DALSYSDxe | **仍然 `ZTE MemoryDump Mode`**，且启动后 30 s 内无任何 USB 枚举 |
+
+结论：**DALSYSDxe 不是崩溃点**（去掉它崩溃依旧）。可能原因：
+
+1. 崩溃发生在 DXE 之前的 SEC/PEI（ABL 已跑过一轮 UEFI，Mu SEC 假设的冷启动环境不成立）；
+2. 崩溃在另一个驱动，但屏幕日志在 MemoryDump 前被覆盖，看不到最后一行；
+3. DALSYSDxe 只是最后一行日志，真正崩溃在它之后的下一个驱动。
+
+### 19.7 恢复步骤（设备当前在 MemoryDump、无 USB）
+
+1. 长按电源键 15 s 强制断电；
+2. 关机状态下按住 **音量加 + 音量减**（或音量减），插入 USB → 9008（COM 端口重现）；
+3. 写回 stock `efisp.img`（`E:\default-workspace\z80u-collect\efisp.img`，sha `4df18359…`，LBA 748894/LUN4）
+   并复位，设备回到 Android；`rawdump` 里的 V1 FD 不影响 Android（只有 efisp loader 会读它）。
+
+### 19.8 下一步：把"最后一行日志"变成可离线读取
+
+Mu 的句柄枚举不可用（§18.4），屏幕日志又会被 MemoryDump 覆盖，因此需要**不依赖屏幕/BlockIo 的观测**：
+
+1. 在固件里加一个 Depex `TRUE` 的早期 DXE 驱动：每派发一个驱动就把序号/时间戳写到固定 RAM 地址（如 `0x8F000000` 的自定义页）；
+2. 改 loader（p7）：启动时先读该 RAM 页；若发现"上次崩溃标记"，先把该页写到 `rawdump` 的留空尾部，再继续正常引导；
+3. 设备崩溃→断电重启→loader 读出→9008 读回 `rawdump`，即可离线看到最后派发的驱动序号，无需屏幕。
+
+（MemoryDump 会触发复位，DRAM 内容通常保留到下次上电；loader 在 ABL 之后运行，可先读后写。）
