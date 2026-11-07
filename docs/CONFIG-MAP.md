@@ -211,15 +211,19 @@ $ ./unixnu release --no-deps   -D ../UniXNU-nx741j
 
 ## 8. 设备配置验证（`reference/configuration`，2026-11-07）
 
-按页面逐项核对 `unixnu.local.toml`、`board.toml`、`feeds.toml`、`local.toml`、`unixnu.lock` 与 defconfig 语法，
-发现 **2 处本地未实现**，已按官方 main `b6de3eb` 回移：
+按页面逐项核对 `unixnu.local.toml`、`board.toml`、`feeds.toml`、`local.toml`、`unixnu.lock` 与 defconfig 语法。
+第一轮（字段级）补了 2 项；第二轮（行为级）又发现 **1 个错项和 3 处行为缺口**，全部按官方 main `b6de3eb` 回移：
 
 | 文件 | 回移内容 |
 |---|---|
 | `scripts/unixnu/bootimg.py` | 官方版本：`[bootimg.image] kernel_compression`（`gzip`/`none`）与可处理 header v3/v4、未压缩内核的 `verify()` |
 | `scripts/unixnu/runtime.py` | 新增：`[payload.runtime]` 的运行时输入准备（无该表时只做 `check_data_input`，行为与之前一致） |
 | `scripts/unixnu/payload.py` | 补 `check_data_input`（`CONFIG_XNU_OWNER_DATA_MOUNT` 需要 Data 种子） |
-| `scripts/unixnu/cli.py` | 增加 `runtime` 别名，`cmd_build` 在 payload/runtime 步骤前调用 `runtime.prepare` |
+| `scripts/unixnu/cli.py` | `runtime` 别名、payload/runtime 前的 `runtime.prepare`；**新增 `--os VERSION` 选项**（页面选项表有、此前完全缺失） |
+| `scripts/unixnu/config.py` | 官方版：`--os` 参与 profile 加载、`[package.defconfig]` 按 OS 映射、`need_config` 重读（release 在 preflight 才写配置） |
+| `scripts/unixnu/profiles.py` | 官方版：`resolve_os`（`17`/`26`/`27` 或目录名）、`[os] arch` 选择 `arm64`/`arm64e`、`[os_overrides."<profile>"]` 合并与 `remove` |
+| `scripts/unixnu/devicetree.py` | 官方版：ADT `random-seed` 由 64 B 扩到 **256 B**（xnu-12377 需要 4×64；旧内核只读前 64，兼容）、`RootPolicies` 映射、`transport-*` 属性、可嵌套 ADT 节点 |
+| `scripts/unixnu/feeds.py` | 官方版：lock 与官方别名解析（格式 2 显式 commit 优先） |
 | `scripts/appsync/` | 官方 16 个文件（AppSync 适配层源码与 signer，页面「完整性」一节引用） |
 
 `kernel_compression` 的 A/B 实测（同一 payload 与 FD）：
@@ -228,6 +232,17 @@ $ ./unixnu release --no-deps   -D ../UniXNU-nx741j
 |---|---|
 | 默认（`gzip`） | 69,402,624 B |
 | `[bootimg.image] kernel_compression = "none"` | **72,224,768 B**（未压缩 shim+firmware，差 2,822,144 B） |
+
+行为级验证（回移后）：
+
+| 检查 | 结果 |
+|---|---|
+| `status` / `status --os ios-16.7.16-20H392` | ✅ 两条路径都解析到同一输出目录，`profiles` 四层齐全 |
+| `status --json` | ✅ `schema_version 2`、`configured true`、`build_config` 指向 `unixnu.local.toml` |
+| `build payload` | ✅ 64 MiB（ADT 用 256 B 种子重建） |
+| `bootimg` | ✅ 69,402,624 B |
+| `release --check --no-deps` | ✅ `check done: 63 patches` |
+| `release --no-deps` | ✅ 全流程（build → pack → verify → manifest） |
 
 其余字段全部就位：`[board]` 的 `soc_source`/`os_profile`、`[components] include`、`kernel.config_fragments`/
 `patch_series`、`device_tree.source`/`include_dirs`、`arch:/soc:/os:/device:` 前缀、`component:<ID>/path` series、
