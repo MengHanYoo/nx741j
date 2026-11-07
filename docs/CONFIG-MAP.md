@@ -369,3 +369,46 @@ elease --no-deps --os ios-16.7.16-20H392）：
 | 基准 `release --no-deps`（同步 package 后重建） | ✅ `kernel.macho` sha `8b42726a…`、`payload.img` sha `8f729ad8…`、`boot.img` 68,493,312 B sha `41845280…`、manifest 写出 |
 
 注：场景 5 在批量运行时偶发一次 QEMU 启动抖动（单跑该变体即通过），重跑整套后 6/6 通过。
+
+### 11.1 第二轮（行为级 + 生成侧）
+
+第一轮只做了字段 grep；这一轮用 QEMU 真正跑了一份**覆盖页面所有段落的 `unixnu.toml`**：
+
+| 覆盖项 | 结果 |
+|---|---|
+| `[boot]` timeout / rotate / fallback_timeout / connect_all / default | ✅ 解析并生效（日志 `rotate 1000 ms`） |
+| `[ui]` title / scale / logo / layout / portrait_below / console | ✅ |
+| `[[driver]]`（path/args/connect/enabled=false） | ✅ 1 driver 被跳过 |
+| `[[dt_patch]]` set + `[[entry.dt_patch]]` | ✅ 2 个补丁 |
+| `[acpi] add = []` | ✅ 0 tables |
+| `[[block_slice]]`（enabled=false） | ✅ 0 slices |
+| `[[kit]]` + `[kits] autoload/directory` | ✅ `kit SampleDriver 1.0.0: loaded` |
+| `[[entry]]` efi + dtb + initrd、`[entry.chosen]`、`[[entry.variable]]` | ✅ `UNIXNU-HELLO: RESULT PASS` |
+
+唯一发现的约束：`[[entry.kext]]` 只接受 `type = "xnu"` 的条目（页面示例正是 xnu 条目），挂在 efi 条目上会报
+`entry hello: [[entry.kext]] requires type xnu and an array of tables` —— 这是页面未写明的细节，已记入本节。
+
+生成侧缺项（已修复）：`payload.py` 之前只写 `[boot] timeout/default` 与 `[kits] autoload`，不写 `[ui]`，
+也没有 `rotate/fallback_timeout/connect_all`。现在：
+
+| 改动 | 内容 |
+|---|---|
+| `scripts/unixnu/payload.py` | 从 `board.toml [payload]` 透传 `rotate`/`fallback_timeout`/`connect_all`；从新增的 `[payload.ui]` 透传 `title/scale/logo/layout/portrait_below/console`；`timeout` 默认值由 3 改为页面默认的 **5** |
+| `board.toml` | 新增 `[payload.ui]`：`title = "NX741J"`、`logo = true`、`layout = "auto"` |
+
+重新打包后 `mtype -i payload.img ::/EFI/UniXNU/unixnu.toml`：
+
+```toml
+version = 1
+[boot]
+timeout = 5
+default = "xnu"
+[ui]
+title = "NX741J"
+logo = true
+layout = "auto"
+[kits]
+autoload = false
+```
+
+另外按上一轮的并行度实测，`unixnu.local.toml` 的 `jobs` 已由 32 改为 **16**（内核编译更快，见「并行度」）。
