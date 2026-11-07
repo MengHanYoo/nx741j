@@ -331,3 +331,41 @@ elease --no-deps --os ios-16.7.16-20H392）：
 | package.manifest.json | ✅ 已写出 |
 
 （payload.img/oot.img 含随机 ADT 种子，哈希每次构建不同；kernel.macho 的差异来自预链接与构建时间戳。）
+
+## 11. 启动配置验证（`reference/boot-configuration`，2026-11-07）
+
+这一页描述的是 UniXNU 启动管理器读取的 `EFI/UniXNU/unixnu.toml` 与 kit 的 `Kit.toml`。
+本机 `package/` 与官方只差 7 个文件（含 2 个实质修复），已整体同步为官方版本：
+
+| 文件 | 变化 |
+|---|---|
+| `package/UniXNUPkg/Driver/UniXNURamDiskDxe/UniXNURamDiskDxe.c` | initrd 结束地址不按扇区对齐时**向上取整**而不是拒绝（官方注释即 nubia NX769J 的 0x430 尾数；本机 ABL 同类行为需要它） |
+| `package/UniXNUPkg/Library/UniXNULib/Main.c` | 无论从 BDS 还是作为 DXE 驱动进入，都执行 `UniXNUConnectAll()`；efisp → Mu 的路径正属于后者，否则 initrd 卷拿不到 SimpleFileSystem、payload 会报不存在 |
+| `package/Scripts/{gen-logo,qemu-run,stage-esp}.py`、`build.sh` | 可执行位恢复 |
+| `package/Scripts/smoke.sh` | 官方仍期望内置菜单 **3** 项，实际为 **4** 项（`xnu/reset/shutdown/tools`，与页面「内置配置包含 exit、reset、shutdown 和 tools」一致）→ 保留本地修正为 4 |
+
+字段覆盖（`package/UniXNUPkg/Library/UniXNULib/Config.c` 逐键确认）：
+
+| 页面段落 | 键 | 本机 |
+|---|---|---|
+| `[boot]` | timeout / rotate / fallback_timeout / connect_all / default | ✅ 全部实现 |
+| `[ui]` | title / scale / logo / layout / portrait_below / console | ✅ |
+| `[[driver]]` | path / args / connect / enabled（kit 用 `file`） | ✅ |
+| `[[dt_patch]]` | op = set / delete-prop / add-node / delete-node / overlay；type 六种 | ✅ |
+| `[[block_slice]]` | partition / name / offset / length / writable / enabled | ✅ |
+| `[acpi]` | add 列表 | ✅ |
+| `[[kit]]` + `[kits]` | path / enabled、autoload / directory | ✅ |
+| `[[entry]]` | id / title / type / path / args / dtb / initrd / confirm / confirm_titles / confirm_args / action / enabled | ✅ |
+| `[entry.chosen]`、`[[entry.kext]]`、`[[entry.variable]]`、`[[entry.dt_patch]]` | 全部键 | ✅ |
+| `Kit.toml` | schema / [kit] / [match]（arch、fdt_compatible、firmware_vendor、requires_protocol）/ driver / overlay / dt_patch / acpi / kext | ✅（4 个 match 键均在 `Config.c`） |
+| 菜单行为 | 无输入用 fallback_timeout、负超时、启动失败返回菜单 | ✅（QEMU 场景覆盖） |
+
+验证：
+
+| 检查 | 结果 |
+|---|---|
+| `bash package/Scripts/smoke.sh`（EDK2 指向 Mu_Basecore） | ✅ **6 场景 + 14 个 kext 子用例全部 PASS** |
+| 页面给的检查：`mtype -i payload.img ::/EFI/UniXNU/unixnu.toml` | ✅ 卷标 `NX741J`；`version = 1`；`[boot] timeout=5 default=xnu`；4 个条目（`xnu` args `-v serial=3`、`reset`、`shutdown`、`tools`） |
+| 基准 `release --no-deps`（同步 package 后重建） | ✅ `kernel.macho` sha `8b42726a…`、`payload.img` sha `8f729ad8…`、`boot.img` 68,493,312 B sha `41845280…`、manifest 写出 |
+
+注：场景 5 在批量运行时偶发一次 QEMU 启动抖动（单跑该变体即通过），重跑整套后 6/6 通过。
