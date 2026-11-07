@@ -444,3 +444,20 @@ TLMM、PDC、IMEM、SMEM、DALSYS、XBL、9008 等），定义与用词规则见
 
 **结论**：术语表与官方完全一致，本地文档用词已对齐；后续新增文档按此表用词（例如统一写 `trust cache`、
 `预链接`、`固件卷`、`设备仓库`，不要造新缩写）。
+
+## 13. 启动链对照（`concepts/boot-chain`，2026-11-07）
+
+官方四次交接、五个阶段；本机第 2–5 阶段就是官方组件，第 1 阶段有官方 BootShim 与本机 efisp loader 两套产物。
+逐阶段对照、efisp 差异、每个阶段的 QEMU/实机验证状态与失败行为，见 **`docs/BOOT-CHAIN.md`**。
+
+要点：
+
+| 阶段 | 本机证据 |
+|---|---|
+| 1 BootShim | `boot.img` 解析：gzip 解出 4,194,496 B = shim **192 B** + FD **4,194,304 B**，尾部 DTB `d00dfeed`（1,660 B）；ABL 拒绝该镜像，故仅归档 |
+| 1' efisp loader | 实机已验证：从 `efisp` 启动 Mu-Silicium，屏幕出现完整 DXE 日志 |
+| 2 UEFI→UniXNU | `UniXNUDxe` 注册 `Boot####`（`unixnu:firmware`），`nx741j.fdf` 已包含；QEMU 场景 1–3 通过；实机尚未进入菜单 |
+| 3 UniXNU→DarwinBoot | `UNIXNU_LOADER_BOOT_REQUEST` 与 DT 六步准备；QEMU 场景 5 通过 |
+| 4 DarwinBoot→XNU | `ParseKernelHeader()` 常量校验（`0xfeedfacf`/`0x100000c`/`0x19`/`0x5`）、`SIZE_256MB` 窗口；QEMU 合成载荷通过 |
+| 5 XNU→用户态 | `ArmDTPlatform` 的 CHRP NVRAM proxy 要求与 `empty_nvram_proxy()` 生成逻辑已核对；实机未到该阶段 |
+
