@@ -1,0 +1,25 @@
+## @file
+#  Read-only TLMM register probe (NX741J key lines).
+##
+
+[Defines]
+  INF_VERSION                    = 0x00010005
+  BASE_NAME                      = TlmmProbeDxe
+  FILE_GUID                      = 5C4B7E10-9D2A-4F63-8A1B-2E7D9C3F4A55
+  MODULE_TYPE                    = DXE_DRIVER
+  VERSION_STRING                 = 1.0
+  ENTRY_POINT                    = TlmmProbeDxeEntry
+
+[Sources]
+  TlmmProbeDxe.c
+
+[Packages]
+  MdePkg/MdePkg.dec
+
+[LibraryClasses]
+  UefiDriverEntryPoint
+  UefiBootServicesTableLib
+  DebugLib
+
+[Depex]
+  TRUE

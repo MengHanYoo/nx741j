@@ -859,3 +859,36 @@ FD：`fv-bisect/fd-v10b.img`，sha `a42dd1fbc4097c93e44753ca92a720679ea5569b2ca1
 - **B**：构建时用 `fdtput` 把 `/chosen/linux,initrd-start|end` 写进 `FdtBlob`，或加一个 DXE 驱动在 `DtPlatformDxe` 之后把 loader 的 FDT 装成 `gFdtTableGuid`。
 
 完成后 UniXNU 菜单应出现 `xnu` 项，随后进入阶段 3（UniXNU → DarwinBoot → XNU）。
+
+## 23. 阶段 2 完整验证：payload 卷与 unixnu 条目（2026-11-07 23:20）
+
+V18（= V17 + TLMM 探针）实机确认：菜单中出现 **`unixnu` 条目**。
+
+这意味着官方阶段 2 的整条链路已跑通：
+
+| 官方步骤 | 状态 | 证据 |
+|---|---|---|
+| 固件卷含 UniXNU 与驱动 | ✅ | 32 驱动最小 FV |
+| `UniXNUDxe` 注册 `Boot####`（`unixnu:firmware`） | ✅（间接） | 菜单标题与 `unixnu` 条目来自该启动项 |
+| BDS 启动 UniXNU | ✅ | 菜单显示 |
+| `UniXNURamDiskDxe` 发布 payload 卷 | ✅ | 它从 **x0 入口参数 HOB** 取 DTB，读 `/chosen/linux,initrd-start|end`（loader 已写入） |
+| `Fat` 挂载 + UniXNU 扫描卷找到 `\EFI\UniXNU\unixnu.toml` | ✅ | 出现 `unixnu` 条目而非仅内置项 |
+| 构造菜单 | ✅ | 菜单绘制正常 |
+
+### 23.1 剩余问题：实体按键
+
+菜单无法用实体键操作，因为最小 FV 没有输入设备：
+
+- 厂商 `ButtonsDxe` 依赖 `PmicGpio/TLMM/PmicPON/DTBExtn`，这些链已裁剪且本平台缺 provider；
+- `KeypadDeviceLib` 没有 nx741j 实现，官方 `KeypadDxe` 无法编译进来；
+- `BootManagerLib.SetupKeypad` 的报错已改为无 keypad 时静默跳过（V17）。
+
+修复路线（按官方 "按 DTS 映射自己实现输入"）：stock DTS 给出
+VOL+ = TLMM GPIO 101、FOCUS = 179、SHOOT = 95（均 active-low），TLMM 基址 `0x0F000000`。
+先做只读探针（V18/V19）确认 TLMM 寄存器布局，再实现 `Nx741jKeysDxe`
+（轮询 + 去抖 + `EFI_SIMPLE_TEXT_INPUT_EX`，映射 上/下/回车）。
+
+### 23.2 关于 `Boot####` 的进一步确认（可选）
+
+`UniXNUDxe` 的注册不依赖进入方式（efisp 只是把 Mu 抬起来），`unixnu` 条目已说明注册生效；
+若需直接证据，可在 `UniXNUDxe` 注册处加一行 DEBUG 打印变量名与 `OptionalData`。
