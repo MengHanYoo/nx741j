@@ -57,7 +57,7 @@ DumpBootOption (
   }
 
   UnicodeSPrint (Name, sizeof (Name), L"Boot%04x", Order[0]);
-  DEBUG ((DEBUG_ERROR, "PROBE: BootOrder[0] = %s\n", Name));
+  DEBUG ((DEBUG_ERROR, "PROBE: BootOrder[0] = %S\n", Name));
 
   OptionSize = 0;
   Status     = gRT->GetVariable (Name, &gEfiGlobalVariableGuid, NULL, &OptionSize, NULL);
@@ -73,7 +73,7 @@ DumpBootOption (
 
         DEBUG ((
           DEBUG_ERROR,
-          "PROBE: %s option %u B, desc '%s', filepath %u B, optional %u B\n",
+          "PROBE: %S option %u B, desc '%S', filepath %u B, optional %u B\n",
           Name,
           (UINT32)OptionSize,
           Desc,

@@ -1,0 +1,37 @@
+## @file
+#  NX741J physical key driver (self-calibrating, DS-based TLMM lines).
+##
+
+[Defines]
+  INF_VERSION                    = 0x00010005
+  BASE_NAME                      = Nx741jKeysDxe
+  FILE_GUID                      = 7A9C31D5-5E42-4C8B-9F61-3B2D8E4A1C77
+  MODULE_TYPE                    = DXE_DRIVER
+  VERSION_STRING                 = 1.0
+  ENTRY_POINT                    = Nx741jKeysDxeEntry
+
+[Sources]
+  Nx741jKeysDxe.c
+
+[Packages]
+  MdePkg/MdePkg.dec
+
+[LibraryClasses]
+  UefiDriverEntryPoint
+  UefiBootServicesTableLib
+  UefiRuntimeServicesTableLib
+  MemoryAllocationLib
+  BaseMemoryLib
+  BaseLib
+  DebugLib
+  PrintLib
+
+[Guids]
+  gEfiGlobalVariableGuid
+
+[Protocols]
+  gEfiSimpleTextInputExProtocolGuid
+  gEfiDevicePathProtocolGuid
+
+[Depex]
+  TRUE

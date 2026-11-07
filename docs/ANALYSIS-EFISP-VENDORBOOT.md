@@ -892,3 +892,34 @@ VOL+ = TLMM GPIO 101、FOCUS = 179、SHOOT = 95（均 active-low），TLMM 基�
 
 `UniXNUDxe` 的注册不依赖进入方式（efisp 只是把 Mu 抬起来），`unixnu` 条目已说明注册生效；
 若需直接证据，可在 `UniXNUDxe` 注册处加一行 DEBUG 打印变量名与 `OptionalData`。
+
+## 24. 实体按键（UEFI 侧）尝试与实测结论（2026-11-08 00:10）
+
+目标：让 UniXNU 菜单可用实体键操作。DTB（`stock-kaanapali.dts`）给出的映射：
+
+| 键 | 控制器 | 引脚 | 极性 |
+|---|---|---|---|
+| VOL+ | `qcom,canoe-tlmm`（0x0F000000，reg size 0x202000） | gpio 101 | active-low，pull-up |
+| FOCUS | 同上 | gpio 179 | active-low |
+| SHOOT | 同上 | gpio 95 | active-low |
+| VOL− | PMIC `pmk8350-pon / resin` | 非 GPIO | PMIC 中断 |
+
+尝试与结果：
+
+| 方案 | 做法 | 结果 |
+|---|---|---|
+| 厂商 `ButtonsDxe` | 未改，直接依赖 PMIC/TLMM/DTBExtn | 不可用：字符串显示依赖 `PmicGpioProtocol`、`TLMMProtocol`、`PmicPON`、`DTBExtnProtocol`，这些链已裁剪且本平台无 provider |
+| 区域扫描（TLMM 0x0–0xF000） | 采样 16 tile × 3 slot × 32 bit，检测 1→0 | `NOT DETECTED (hits 0)`：说明按键寄存器不在该窗口（布局为每引脚 0x1000 块） |
+| 按引脚块扫描（0x5F000/0x65000/0xB3000） | 每块 6 个 dword × 32 bit | **MemoryDump**：这些页在 Mu 的地址空间**未映射**（Mu 只映射了 TLMM 前 64 KiB） |
+| ABL loader 读 `ConIn` | p9 loader 在跳 Mu 前用 ABL UEFI 的 ConIn 轮询 10 s | **黑屏 + MemoryDump**：ABL 的 UEFI 未提供可用 ConIn，或调用即异常 |
+
+结论：**目前没有低成本的 UEFI 侧按键方案**。剩余可行方向（按代价排序）：
+
+1. **在 Mu 中映射 TLMM 后续页**：AArch64 DXE 的页表由 `ArmMmuLib` 建立，需通过 `gDS->AddMemorySpace` + 自定义页表映射（或修改 SEC/PEI 的 MMIO 描述），工作量中等偏大；
+2. **PMIC resin（VOL−）**：需要 SPMI 控制器 + PMIC 驱动链（`PmicDxeLa` 依赖 DTBExtn，仍缺）；
+3. **USB 键盘**：需要 XHCI/USB 栈，同样依赖未映射 MMIO 与时钟链；
+4. **loader 交接"预选菜单项"**：loader 若能安全读键（当前失败），可把选择写入固定 RAM，由 Mu 驱动重放；需先解决 ABL ConIn 问题。
+
+**影响评估**：按键不是启动阻塞项。官方菜单行为规定"无输入设备 → `fallback_timeout` 后启动默认项"，
+`unixnu.toml` 的 `default = "xnu"` 会自动进入内核启动路径。因此建议先推进阶段 3，
+把按键作为可用性改进放到阶段 3/4 之后。
