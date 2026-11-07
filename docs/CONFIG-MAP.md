@@ -259,11 +259,11 @@ $ ./unixnu release --no-deps   -D ../UniXNU-nx741j
 
 | 页面条目 | 本机状态 |
 |---|---|
-| 字段表（id / kind / path / repository / revision / legacy_name / function / scope / hardware / os_abi / board_dependencies / verified_devices / dependencies / build_stage / build / outputs / runtime_identifiers） | ✅ 25 个条目全部具备（另带 `source_files`、`legacy_outputs`、`repository_id`） |
+| 字段表（id / kind / path / repository / revision / legacy_name / function / scope / hardware / os_abi / board_dependencies / verified_devices / dependencies / build_stage / build / outputs / runtime_identifiers） | ✅ 28 个条目（已同步官方目录），另带 `source_files`、`legacy_outputs`、`repository_id` |
 | `[components] include` 选择，解析器补全依赖并按依赖顺序构建 | ✅ `status --json` 显示 6 个组件（ArmDTPlatform、ArmCpu、SoftwareAES、XnuPrelink、DarwinBoot、GopFramebuffer），`kernel.py` 按 `ctx.component_specs` 顺序执行 |
 | 设备的 `include` 数组替换继承数组 | ✅ schema 2 的 profile 合并按"表按键合并、数组替换"（`profiles.merge`） |
 | `[kernel] archives` 中用 `component:<ID>` 定位组件 | ✅ `kernel.py` 支持（`explicit = any(entry.startswith('component:'))`） |
-| `--local-module driver:MyDriver=PATH` 选择**目录外**新组件并链接进装配树 | ❌ **修复**：旧 `components.resolve()` 只保留 refer/patch/package/script 的本地模块，目录外驱动被丢弃；已回移官方 4 行实现 |
+| `--local-module driver:MyDriver=PATH` 选择**目录外**新组件并链接进装配树 | ✅ **已修复**：旧 `components.resolve()` 只保留 refer/patch/package/script 的本地模块，目录外驱动被丢弃；已回移官方 4 行实现 |
 | 官方兼容名按仓库身份解析（official `UniXNU/NativeAdreno` → `Adreno740`） | ✅ `source_identity` / `official_alias` / `repository_identity` 均在位 |
 
 本地模块实测（回移后）：
@@ -276,7 +276,24 @@ ArmCpu -> …/drivers/ArmCpu
 MyDriver -> /tmp/localmods/MyDriver          # 目录外组件已链接
 ```
 
-回归：`build payload` 仍产 64 MiB、`release --check --no-deps` 仍为 `63 patches`。
+**目录内容已同步官方（补缺项 + 纠错项）**：
 
-目录内容差异（不影响本机选择）：官方 `components.toml` 为 28 个条目，本机快照 25 个——本机 `include`
-只选 6 个，其余条目随官方目录演进，未随本次回移同步（避免改动固定 revision 影响已验证内核）。
+| 类别 | 内容 |
+|---|---|
+| 缺项（3） | `QcaBluetooth`、`QcomDwc3`、`QcomBaseband`（另有 `ShengPreflight`、`AirNir` 等官方新条目一并纳入，总数 25 → **28**） |
+| 错项·revision（15） | ArmCpu、DarwinBoot、GopFramebuffer、Adreno740、AdrenoMetal、AppleKeyStoreState、ArmSmmu4K、Ath12kWifi、RamBlock、ShengUfs、ShengHidInput、ShengNovatekTouch、Sm8550Platform、VerifiedRoot、VirtioMmioBlock、XnuPrelink 全部更新为官方 commit |
+| 错项·os_abi（2） | `AppleKeyStoreState`、`GopFramebuffer` 的 `os_abi` 补 `ipados-27.0.1-24A446` |
+
+同步后发现：构建树里的驱动源码**本来就比目录新**（ArmCpu `93a5030`、DarwinBoot `3c75734`、GopFramebuffer `e47c1b8` 均已等于官方 revision），落后的只是目录数据；`XnuPrelink` 的官方 pin `c645d76b` 通过 ghfast 取得（本地原为 `2b39ff7`）。
+
+同步后完整 `release` 实测（deps 拉取新 pin + 重建全部步骤）：
+
+| 产物 | 结果 |
+|---|---|
+| `kernel.macho` | 51,691,520 B sha `3e632c446f5c58b6c5547bd3ac786b1499b2f1d8b9c34fb7ca3c9feec47112d0` |
+| `payload.img` | 67,108,864 B sha `19bb3dc342edd478c281bbb07696dc7f1fb74e740f0419872615fed7801b2d70` |
+| `boot.img` | 68,493,312 B sha `b4599b666867d80f8f919f7c71bc7d8f26fc898821db61c2bfe90af27581740c` |
+| `package.manifest.json` | ✅ 已写出 |
+
+注：官方 pin 的 `XnuPrelink` 为 `c645d76b`（本地原为 `2b39ff7`），通过 ghfast 取得后完整重建通过；若后续官方目录再变，
+`status --json` 会显示每个模块的实际 revision 与官方 pin 的差异。
