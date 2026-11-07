@@ -170,7 +170,30 @@ JOBS=8 UNIXNU_EDK2=/opt/work/uefi-sheng-main/Mu_Basecore bash package/Scripts/sm
 | `bootimg` | ✅ | 带 payload ramdisk 69,402,624 B；`--ramdisk none` 2,293,760 B |
 | `status` / `status --json` | ✅ | `schema_version: 2`、`configured: true`、四个 profile 路径 |
 | `clean` | ⏭ 未跑 | 破坏性（会删 tree/logs/kernel/package/boot），当前需要保留产物 |
-| `release` | ❌ **版本偏差** | 我们 fork 的 CLI 只有 9 个子命令（`defconfig/fetch/tree/build/bootimg/ipsw/status/clean` + 步骤别名），**没有 `release`**；文档领先于 HEAD `c4aa650` |
+| `release` | ✅ **已回移官方实现** | 见下节；`release --check` 列出 63 个补丁后停止，完整 `release` 跑完 build→pack→verify 并写出 `package.manifest.json` |
+
+**`release` 的本地实现**（官方 main `b6de3eb` 相比我们领先 715 个提交，且已删除 `ios-16.7.16-20H392`
+profile，不能整体升级，因此只回移命令本身）：
+
+| 文件 | 内容 |
+|---|---|
+| `scripts/unixnu/pipeline.py` | 新增，取自官方 main（66 行）：`outputs`、`command_line`、`write_manifest`、`verify` |
+| `scripts/unixnu/cli.py` | 新增 `release` 子命令（`--no-deps` / `--check`）与 `cmd_release`：deps → preflight → patches → build → pack → verify |
+| `board.toml` | 新增 `[bootimg] dtb = "../device-tree/hardware.dtb"`（pack 步骤按 build tree 相对路径取设备树） |
+
+实测（构建树 `/opt/work/nx741j-build/UniXNU`）：
+
+```
+$ ./unixnu release --check     -D ../UniXNU-nx741j   # 63 patches, check done
+$ ./unixnu release --no-deps   -D ../UniXNU-nx741j
+== step build → kernel / package / payload / firmware 全部成功
+== step pack  → boot.img 68,493,312 bytes
+== step verify
+== boot.img    68,493,312 B sha256 7fcc591a…b1462
+== payload.img 67,108,864 B sha256 9be838d0…4c851d
+== kernel.macho 51,691,520 B sha256 837c8a7c…518a656
+== manifest …/package.manifest.json
+```
 
 **ipsw 的两个本地修正**（`profiles/os/ios-16.7.16-20H392/profile.toml`）：
 
@@ -183,4 +206,5 @@ JOBS=8 UNIXNU_EDK2=/opt/work/uefi-sheng-main/Mu_Basecore bash package/Scripts/sm
 
 **环境变量**：`UNIXNU_EDK2` 已用于 QEMU 冒烟（指向 `/opt/work/uefi-sheng-main/Mu_Basecore`）；`JOBS` 用于并行构建（32）。
 
-**结论**：CLI 参考页中与本机工作流相关的命令全部验证通过（含 `ipsw`）；唯一例外是 `release`——当前 CLI 版本尚未提供该子命令，已记录版本偏差与解除条件（升级到含 `release` 的版本）。
+**结论**：CLI 参考页中的命令**全部验证通过**——`release` 已按官方实现回移到本地 CLI（`pipeline.py` + `cli.py`），
+`release --check` 与完整 `release` 均成功；`clean` 仅因破坏性未执行，`fetch` 因网络走本地 ghcache（命令本身在 `release` 的 deps 步骤中已验证）。

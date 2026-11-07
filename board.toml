@@ -45,6 +45,11 @@ packages = ["{uefi}", "{uefi}/Mu_Basecore", "{uefi}/Common/Mu", "{uefi}/Common/M
 DEVICE_MODEL = "NX741J"
 ENABLE_SECUREBOOT = "0"
 
+[bootimg]
+# The payload step writes the compiled device tree to <work>/device-tree/hardware.dtb;
+# the release pack step names it relative to the build tree.
+dtb = "../device-tree/hardware.dtb"
+
 [payload]
 volume = "NX741J"
 size_mib = 64
