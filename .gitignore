@@ -53,3 +53,6 @@ unixnu.local.toml
 /drivers/
 /kits/
 /.github/workflows.disabled/
+
+# EDK2 build output (package/build.sh) and QEMU smoke artifacts
+package/Build/
