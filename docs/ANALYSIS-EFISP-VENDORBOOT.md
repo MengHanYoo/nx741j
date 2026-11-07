@@ -637,3 +637,45 @@ Mu 的句柄枚举不可用（§18.4），屏幕日志又会被 MemoryDump 覆�
 3. 设备崩溃→断电重启→loader 读出→9008 读回 `rawdump`，即可离线看到最后派发的驱动序号，无需屏幕。
 
 （MemoryDump 会触发复位，DRAM 内容通常保留到下次上电；loader 在 ABL 之后运行，可先读后写。）
+
+### 19.9 第三轮：内存窗口预留（p7）也无效
+
+假设：ABL 的 memmap 仍把 `0xFF300000` 报成 `EfiConventionalMemory`，Mu 的 DXE 堆可能把它
+重新分配、覆盖正在运行的固件镜像。
+
+做法：loader `p7.c` 在拷贝 FD 前调用
+`AllocatePages(AllocateAddress, EfiReservedMemoryType, 8 MiB / 4 KiB, &0xFF300000)` 锁定窗口
+（`efisp-p7.img` sha `82963542…`），配合 V0 基线 FD 刷入。
+
+结果：**仍然 `ZTE MemoryDump Mode`** → 窗口冲突假设也被否证。
+
+### 19.10 副作用与恢复
+
+二分脚本末尾的 `git checkout -- DXE.inc APRIORI.inc` 把 §18 的固件改动（TzDxeLA、AndroidDxe）
+一并还原了。已重新加回：
+
+| 文件 | 行 |
+|---|---|
+| `DXE.inc` | `15: INF …/TzDxeLA.inf`、`30: INF …/AndroidDxe.inf` |
+| `APRIORI.inc` | `22: INF …/AndroidDxe.inf`（HALIOMMU 前）、`32: INF …/TzDxeLA.inf` |
+
+LogDumpDxe/SmemStubDxe 的文件与 DSC/FDF 接线仍在（`git status` 可见），补丁其余部分未丢。
+
+### 19.11 已否证的假设与剩余可能
+
+| 假设 | 结果 |
+|---|---|
+| DALSYSDxe 自身崩溃 | ❌ V1 去掉后仍 MemoryDump |
+| DXE 堆覆盖固件窗口 | ❌ p7 预留 8 MiB 后仍 MemoryDump |
+| DAL 配置 blob 缺失 | ❌ stock 与我们的 DALPROP/DALSys 字符串一致 |
+| DTBExtn/DBProtocol 缺失 | ❌ stock 同样报错 |
+
+剩余可能（按概率）：
+
+1. **SEC/PEI 环境**：ABL 的 UEFI 已经初始化了 GIC/MMU/UFS/时钟，Mu SEC 在"二次进入"时状态不一致；
+2. 某个 **Qualcomm 驱动**在特定硬件状态下崩溃（与具体驱动无关的表象是因为崩溃发生在同一驱动，看似固定）；
+3. 我们的 **loader 跳转约定**（MMU/cache off、DAIF 屏蔽、自有栈）与 Mu SEC 的期望仍有细微差异。
+
+下一步必须先拿到"最后一行日志"。屏幕日志在 MemoryDump 前会被覆盖，因此计划：
+用一个 Depex `TRUE` 的早期驱动 + 定时器，把心跳写到 **SMEM**（不依赖屏幕/BlockIo），
+崩溃后由 loader 在下次启动时读出并显示；若 DRAM 不保留，则改为写 UEFI 变量（`uefivarstore` 持久化）。
