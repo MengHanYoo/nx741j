@@ -1,13 +1,16 @@
 /** @file
-  Read-only TLMM probe for the NX741J key lines.
-
-  The device tree maps volume-up to TLMM GPIO 101 (active low), focus to 179
-  and shoot to 95.  This driver only reads the TLMM window so the register
-  layout can be confirmed on hardware before a key driver writes anything.
+  NX741J bring-up probe: dumps the TLMM register window and the registered
+  Boot#### load option. Runs after the console drivers so the output is visible.
 **/
 
 #include <Uefi.h>
 #include <Library/UefiBootServicesTableLib.h>
+#include <Library/UefiRuntimeServicesTableLib.h>
+#include <Library/BaseMemoryLib.h>
+#include <Library/MemoryAllocationLib.h>
+#include <Library/PrintLib.h>
+#include <Library/BaseLib.h>
+#include <Guid/GlobalVariable.h>
 #include <Library/DebugLib.h>
 
 #define TLMM_BASE  0x0F000000ULL
@@ -21,10 +24,76 @@ MmioRead32 (
   return *(volatile UINT32 *)(UINTN)Address;
 }
 
+STATIC
+VOID
+DumpBootOption (
+  VOID
+  )
+{
+  UINT16      *Order;
+  UINTN        OrderSize;
+  CHAR16       Name[16];
+  UINT8       *Option;
+  UINTN        OptionSize;
+  EFI_STATUS   Status;
+
+  OrderSize = 0;
+  Status    = gRT->GetVariable (L"BootOrder", &gEfiGlobalVariableGuid, NULL, &OrderSize, NULL);
+  if (Status != EFI_BUFFER_TOO_SMALL) {
+    DEBUG ((DEBUG_ERROR, "PROBE: no BootOrder (%r)\n", Status));
+    return;
+  }
+
+  Order = AllocatePool (OrderSize);
+  if (Order == NULL) {
+    return;
+  }
+
+  Status = gRT->GetVariable (L"BootOrder", &gEfiGlobalVariableGuid, NULL, &OrderSize, Order);
+  if (EFI_ERROR (Status) || (OrderSize < sizeof (UINT16))) {
+    DEBUG ((DEBUG_ERROR, "PROBE: BootOrder read failed (%r)\n", Status));
+    FreePool (Order);
+    return;
+  }
+
+  UnicodeSPrint (Name, sizeof (Name), L"Boot%04x", Order[0]);
+  DEBUG ((DEBUG_ERROR, "PROBE: BootOrder[0] = %s\n", Name));
+
+  OptionSize = 0;
+  Status     = gRT->GetVariable (Name, &gEfiGlobalVariableGuid, NULL, &OptionSize, NULL);
+  if (Status == EFI_BUFFER_TOO_SMALL) {
+    Option = AllocatePool (OptionSize);
+    if (Option != NULL) {
+      Status = gRT->GetVariable (Name, &gEfiGlobalVariableGuid, NULL, &OptionSize, Option);
+      if (!EFI_ERROR (Status) && (OptionSize > 6)) {
+        UINT16  PathLen = *(UINT16 *)(Option + 4);
+        CHAR16  *Desc   = (CHAR16 *)(Option + 6);
+        UINTN   DescLen = StrLen (Desc) + 1;
+        UINTN   OptLen  = OptionSize - 6 - DescLen * sizeof (CHAR16) - PathLen;
+
+        DEBUG ((
+          DEBUG_ERROR,
+          "PROBE: %s option %u B, desc '%s', filepath %u B, optional %u B\n",
+          Name,
+          (UINT32)OptionSize,
+          Desc,
+          PathLen,
+          (UINT32)OptLen
+          ));
+      }
+
+      FreePool (Option);
+    }
+  }
+
+  FreePool (Order);
+}
+
 EFI_STATUS
 EFIAPI
 TlmmProbeDxeEntry (
-  VOID
+  IN EFI_HANDLE        ImageHandle,
+  IN EFI_SYSTEM_TABLE  *SystemTable
   )
 {
   UINT64  Offsets[] = { 0x0, 0x4, 0x8, 0x1000, 0x1004, 0x2000, 0x2004,
@@ -40,6 +109,11 @@ TlmmProbeDxeEntry (
       MmioRead32 (TLMM_BASE + Offsets[Index])
       ));
   }
+
+  DumpBootOption ();
+
+  DEBUG ((DEBUG_ERROR, "TLMMPROBE: holding 15s for capture\n"));
+  gBS->Stall (15 * 1000 * 1000);
 
   return EFI_SUCCESS;
 }

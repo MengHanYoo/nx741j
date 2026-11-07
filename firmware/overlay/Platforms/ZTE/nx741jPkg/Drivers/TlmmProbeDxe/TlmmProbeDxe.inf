@@ -19,7 +19,13 @@
 [LibraryClasses]
   UefiDriverEntryPoint
   UefiBootServicesTableLib
+  UefiRuntimeServicesTableLib
+  MemoryAllocationLib
+  BaseLib
   DebugLib
+
+[Guids]
+  gEfiGlobalVariableGuid
 
 [Depex]
   TRUE

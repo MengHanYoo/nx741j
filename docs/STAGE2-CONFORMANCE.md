@@ -29,3 +29,36 @@
    `Nx741jKeysDxe`（VOL+=GPIO101、FOCUS=179、SHOOT=95，active-low，TLMM `0x0F000000`）；
 2. 若要启用 ACPI 表：先在最小 FV 补回 `AcpiTableDxe`，再在 payload 配置加 `[acpi]`；
 3. 若要验证 `[[block_slice]]`/`[[driver]]`/kit：需要可用的块设备或对应文件，当前不作为阻塞项。
+
+## V22 实机证据（2026-11-07 23:35）
+
+照片确认（最小 FV + `TlmmProbeDxe` + `UniXNURamDiskDxe` 同时入卷）：
+
+```
+UNIXNURAMDISK: device tree at 0xDE072000, 256 bytes
+UNIXNURAMDISK: initrd block device 0xDFF7000 size 0x4000000 Success
+Installed Fat filesystem on ...
+```
+
+- 这是 payload 卷**真正成立**的直接证据：驱动从 x0 交接的 DTB 里读到
+  `/chosen/linux,initrd-start|end`，发布块设备并由 Fat 挂载；
+- 随后 `TLMMPROBE` 读到 `+0x02004` 后触发 MemoryDump：探针访问了未映射的
+  TLMM 窗口（读越界），与 payload 卷无关。
+
+### 关键构建陷阱（已修正）
+
+`APRIORI DXE { INF ... }` 里的条目**只设置派发优先级，不会把模块加入 FV**；
+FV 成员必须出现在 `DXE.inc` 这类普通 `INF` 列表中（GenFv 的 `FVMAIN.inf`
+清单才会包含它）。此前 `TlmmProbeDxe` 与 `UniXNURamDiskDxe` 只写在 APRIORI，
+所以从未进卷——这也是"payload 卷看似存在"的误判来源。
+
+修正：两个 INF 同时写入 `DXE.inc` 后，FV 内出现 `TLMMPROBE` 与 `UNIXNURAMDISK` 字符串，
+实机日志如上。
+
+### 状态修正
+
+| 官方步骤 | 新状态 | 证据 |
+|---|---|---|
+| 扫描卷 + 读取 `unixnu.toml` | ✅ | `UNIXNURAMDISK` 发布 initrd 块设备、Fat 挂载成功；菜单项仍需 V23 照片确认 |
+| `Boot####` 注册 | ✅（源码） | `UniXNUDxe.c` 写入 `Boot####`+`BootOrder`；直接日志待探针恢复（探针已因越界移除） |
+| 实体按键 | ❌ 待实现 | TLMM 读越界说明窗口映射受限，下一步改用按引脚寄存器或 TLMMDxe 协议 |
