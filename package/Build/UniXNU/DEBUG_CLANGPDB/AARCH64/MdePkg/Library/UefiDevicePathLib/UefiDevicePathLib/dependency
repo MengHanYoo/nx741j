@@ -1,0 +1,13 @@
+
+
+-include /mnt/e/default-workspace/z80u-collect/repos/UniXNU/package/Build/UniXNU/DEBUG_CLANGPDB/AARCH64/MdePkg/Library/UefiDevicePathLib/UefiDevicePathLib/OUTPUT/DevicePathFromText.obj.deps
+
+-include /mnt/e/default-workspace/z80u-collect/repos/UniXNU/package/Build/UniXNU/DEBUG_CLANGPDB/AARCH64/MdePkg/Library/UefiDevicePathLib/UefiDevicePathLib/OUTPUT/DevicePathToText.obj.deps
+
+-include /mnt/e/default-workspace/z80u-collect/repos/UniXNU/package/Build/UniXNU/DEBUG_CLANGPDB/AARCH64/MdePkg/Library/UefiDevicePathLib/UefiDevicePathLib/OUTPUT/DevicePathUtilities.obj.deps
+
+-include /mnt/e/default-workspace/z80u-collect/repos/UniXNU/package/Build/UniXNU/DEBUG_CLANGPDB/AARCH64/MdePkg/Library/UefiDevicePathLib/UefiDevicePathLib/OUTPUT/DevicePathUtilitiesDxeSmm.obj.deps
+
+-include /mnt/e/default-workspace/z80u-collect/repos/UniXNU/package/Build/UniXNU/DEBUG_CLANGPDB/AARCH64/MdePkg/Library/UefiDevicePathLib/UefiDevicePathLib/OUTPUT/UefiDevicePathLib.obj.deps
+
+               

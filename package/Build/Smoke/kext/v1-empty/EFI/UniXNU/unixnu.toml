@@ -1,0 +1,13 @@
+version = 1
+[boot]
+timeout = 0
+[[driver]]
+path = "XnuTest.efi"
+args = "v1"
+connect = false
+[[entry]]
+id = "xnu"
+type = "xnu"
+title = "Synthetic XNU request"
+path = "synthetic-kernel"
+args = "test handoff"

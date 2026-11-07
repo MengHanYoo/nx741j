@@ -1,0 +1,9 @@
+-I/opt/work/uefi-sheng-main/Mu_Basecore/MdePkg/Library/CompilerIntrinsicsLib/AArch64
+-I/opt/work/uefi-sheng-main/Mu_Basecore/MdePkg/Library/CompilerIntrinsicsLib
+-I/mnt/e/default-workspace/z80u-collect/repos/UniXNU/package/Build/UniXNU/DEBUG_CLANGPDB/AARCH64/MdePkg/Library/CompilerIntrinsicsLib/CompilerIntrinsicsLib/DEBUG
+-I/opt/work/uefi-sheng-main/Mu_Basecore/MdePkg
+-I/opt/work/uefi-sheng-main/Mu_Basecore/MdePkg/Include
+-I/opt/work/uefi-sheng-main/Mu_Basecore/MdePkg/Test/UnitTest/Include
+-I/opt/work/uefi-sheng-main/Mu_Basecore/MdePkg/Test/Mock/Include
+-I/opt/work/uefi-sheng-main/Mu_Basecore/MdePkg/Library/MipiSysTLib/mipisyst/library/include
+-I/opt/work/uefi-sheng-main/Mu_Basecore/MdePkg/Include/AArch64

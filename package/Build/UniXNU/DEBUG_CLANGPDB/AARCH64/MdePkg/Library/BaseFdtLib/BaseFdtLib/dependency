@@ -1,0 +1,27 @@
+
+
+-include /mnt/e/default-workspace/z80u-collect/repos/UniXNU/package/Build/UniXNU/DEBUG_CLANGPDB/AARCH64/MdePkg/Library/BaseFdtLib/BaseFdtLib/OUTPUT/libfdt/libfdt/fdt.obj.deps
+
+-include /mnt/e/default-workspace/z80u-collect/repos/UniXNU/package/Build/UniXNU/DEBUG_CLANGPDB/AARCH64/MdePkg/Library/BaseFdtLib/BaseFdtLib/OUTPUT/libfdt/libfdt/fdt_addresses.obj.deps
+
+-include /mnt/e/default-workspace/z80u-collect/repos/UniXNU/package/Build/UniXNU/DEBUG_CLANGPDB/AARCH64/MdePkg/Library/BaseFdtLib/BaseFdtLib/OUTPUT/libfdt/libfdt/fdt_check.obj.deps
+
+-include /mnt/e/default-workspace/z80u-collect/repos/UniXNU/package/Build/UniXNU/DEBUG_CLANGPDB/AARCH64/MdePkg/Library/BaseFdtLib/BaseFdtLib/OUTPUT/libfdt/libfdt/fdt_empty_tree.obj.deps
+
+-include /mnt/e/default-workspace/z80u-collect/repos/UniXNU/package/Build/UniXNU/DEBUG_CLANGPDB/AARCH64/MdePkg/Library/BaseFdtLib/BaseFdtLib/OUTPUT/libfdt/libfdt/fdt_overlay.obj.deps
+
+-include /mnt/e/default-workspace/z80u-collect/repos/UniXNU/package/Build/UniXNU/DEBUG_CLANGPDB/AARCH64/MdePkg/Library/BaseFdtLib/BaseFdtLib/OUTPUT/libfdt/libfdt/fdt_ro.obj.deps
+
+-include /mnt/e/default-workspace/z80u-collect/repos/UniXNU/package/Build/UniXNU/DEBUG_CLANGPDB/AARCH64/MdePkg/Library/BaseFdtLib/BaseFdtLib/OUTPUT/libfdt/libfdt/fdt_rw.obj.deps
+
+-include /mnt/e/default-workspace/z80u-collect/repos/UniXNU/package/Build/UniXNU/DEBUG_CLANGPDB/AARCH64/MdePkg/Library/BaseFdtLib/BaseFdtLib/OUTPUT/libfdt/libfdt/fdt_strerror.obj.deps
+
+-include /mnt/e/default-workspace/z80u-collect/repos/UniXNU/package/Build/UniXNU/DEBUG_CLANGPDB/AARCH64/MdePkg/Library/BaseFdtLib/BaseFdtLib/OUTPUT/libfdt/libfdt/fdt_sw.obj.deps
+
+-include /mnt/e/default-workspace/z80u-collect/repos/UniXNU/package/Build/UniXNU/DEBUG_CLANGPDB/AARCH64/MdePkg/Library/BaseFdtLib/BaseFdtLib/OUTPUT/libfdt/libfdt/fdt_wip.obj.deps
+
+-include /mnt/e/default-workspace/z80u-collect/repos/UniXNU/package/Build/UniXNU/DEBUG_CLANGPDB/AARCH64/MdePkg/Library/BaseFdtLib/BaseFdtLib/OUTPUT/FdtLib.obj.deps
+
+-include /mnt/e/default-workspace/z80u-collect/repos/UniXNU/package/Build/UniXNU/DEBUG_CLANGPDB/AARCH64/MdePkg/Library/BaseFdtLib/BaseFdtLib/OUTPUT/LibFdtWrapper.obj.deps
+
+               

@@ -1,0 +1,3 @@
+/opt/work/uefi-sheng-main/Mu_Basecore/MdePkg/Library/UefiDriverEntryPoint/UefiDriverEntryPoint.inf
+/opt/work/uefi-sheng-main/Mu_Basecore/MdePkg/Library/UefiDriverEntryPoint/DriverEntryPoint.c
+/mnt/e/default-workspace/z80u-collect/repos/UniXNU/package/Build/UniXNU/DEBUG_CLANGPDB/AARCH64/MdePkg/Library/UefiDriverEntryPoint/UefiDriverEntryPoint/DEBUG/AutoGen.h

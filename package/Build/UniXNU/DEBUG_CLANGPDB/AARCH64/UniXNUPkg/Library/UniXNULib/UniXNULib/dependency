@@ -1,0 +1,27 @@
+
+
+-include /mnt/e/default-workspace/z80u-collect/repos/UniXNU/package/Build/UniXNU/DEBUG_CLANGPDB/AARCH64/UniXNUPkg/Library/UniXNULib/UniXNULib/OUTPUT/Boot.obj.deps
+
+-include /mnt/e/default-workspace/z80u-collect/repos/UniXNU/package/Build/UniXNU/DEBUG_CLANGPDB/AARCH64/UniXNUPkg/Library/UniXNULib/UniXNULib/OUTPUT/Config.obj.deps
+
+-include /mnt/e/default-workspace/z80u-collect/repos/UniXNU/package/Build/UniXNU/DEBUG_CLANGPDB/AARCH64/UniXNUPkg/Library/UniXNULib/UniXNULib/OUTPUT/Font.obj.deps
+
+-include /mnt/e/default-workspace/z80u-collect/repos/UniXNU/package/Build/UniXNU/DEBUG_CLANGPDB/AARCH64/UniXNUPkg/Library/UniXNULib/UniXNULib/OUTPUT/Inject.obj.deps
+
+-include /mnt/e/default-workspace/z80u-collect/repos/UniXNU/package/Build/UniXNU/DEBUG_CLANGPDB/AARCH64/UniXNUPkg/Library/UniXNULib/UniXNULib/OUTPUT/Kext.obj.deps
+
+-include /mnt/e/default-workspace/z80u-collect/repos/UniXNU/package/Build/UniXNU/DEBUG_CLANGPDB/AARCH64/UniXNUPkg/Library/UniXNULib/UniXNULib/OUTPUT/Logo.obj.deps
+
+-include /mnt/e/default-workspace/z80u-collect/repos/UniXNU/package/Build/UniXNU/DEBUG_CLANGPDB/AARCH64/UniXNUPkg/Library/UniXNULib/UniXNULib/OUTPUT/Main.obj.deps
+
+-include /mnt/e/default-workspace/z80u-collect/repos/UniXNU/package/Build/UniXNU/DEBUG_CLANGPDB/AARCH64/UniXNUPkg/Library/UniXNULib/UniXNULib/OUTPUT/Menu.obj.deps
+
+-include /mnt/e/default-workspace/z80u-collect/repos/UniXNU/package/Build/UniXNU/DEBUG_CLANGPDB/AARCH64/UniXNUPkg/Library/UniXNULib/UniXNULib/OUTPUT/Slice.obj.deps
+
+-include /mnt/e/default-workspace/z80u-collect/repos/UniXNU/package/Build/UniXNU/DEBUG_CLANGPDB/AARCH64/UniXNUPkg/Library/UniXNULib/UniXNULib/OUTPUT/Toml.obj.deps
+
+-include /mnt/e/default-workspace/z80u-collect/repos/UniXNU/package/Build/UniXNU/DEBUG_CLANGPDB/AARCH64/UniXNUPkg/Library/UniXNULib/UniXNULib/OUTPUT/Ui.obj.deps
+
+-include /mnt/e/default-workspace/z80u-collect/repos/UniXNU/package/Build/UniXNU/DEBUG_CLANGPDB/AARCH64/UniXNUPkg/Library/UniXNULib/UniXNULib/OUTPUT/Volume.obj.deps
+
+               

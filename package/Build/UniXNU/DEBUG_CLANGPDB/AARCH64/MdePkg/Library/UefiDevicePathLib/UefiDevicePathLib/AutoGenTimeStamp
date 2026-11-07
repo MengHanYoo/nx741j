@@ -1,0 +1,8 @@
+/opt/work/uefi-sheng-main/Mu_Basecore/MdePkg/Library/UefiDevicePathLib/UefiDevicePathLib.c
+/opt/work/uefi-sheng-main/Mu_Basecore/MdePkg/Library/UefiDevicePathLib/DevicePathUtilitiesDxeSmm.c
+/opt/work/uefi-sheng-main/Mu_Basecore/MdePkg/Library/UefiDevicePathLib/DevicePathFromText.c
+/mnt/e/default-workspace/z80u-collect/repos/UniXNU/package/Build/UniXNU/DEBUG_CLANGPDB/AARCH64/MdePkg/Library/UefiDevicePathLib/UefiDevicePathLib/DEBUG/AutoGen.h
+/opt/work/uefi-sheng-main/Mu_Basecore/MdePkg/Library/UefiDevicePathLib/DevicePathToText.c
+/opt/work/uefi-sheng-main/Mu_Basecore/MdePkg/Library/UefiDevicePathLib/UefiDevicePathLib.inf
+/opt/work/uefi-sheng-main/Mu_Basecore/MdePkg/Library/UefiDevicePathLib/UefiDevicePathLib.h
+/opt/work/uefi-sheng-main/Mu_Basecore/MdePkg/Library/UefiDevicePathLib/DevicePathUtilities.c
