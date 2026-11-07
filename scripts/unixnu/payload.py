@@ -193,9 +193,32 @@ def build(ctx, kernel=None):
         run(command, cwd=ctx.tree, env=dict(os.environ, UNIXNU_UEFI=str(ctx.uefi or '')), log_file=ctx.logs / 'payload-adt.log')
     initrd = 'initrd = "Payloads/scratch-data.img"\n' if data else ''
     loader = '' if spec.get('loader', 'firmware') == 'firmware' else '[[driver]]\npath = "Payloads/DarwinBoot.efi"\n'
-    config = (f'version = 1\n[boot]\ntimeout = {spec.get("timeout", 3)}\ndefault = "xnu"\n[kits]\nautoload = false\n{loader}'
-              f'[[entry]]\nid = "xnu"\ntitle = "{spec.get("title", "UniXNU")}"\ntype = "xnu"\npath = "Payloads/kernel.macho"\n{initrd}'
-              f'args = "{line}"\n')
+    # [boot] and [ui] are documented in reference/boot-configuration; a board sets the optional
+    # keys under [payload] (timeout/rotate/fallback_timeout/connect_all) and [payload.ui].
+    boot_lines = [f'timeout = {spec.get("timeout", 5)}']
+    for key in ('rotate', 'fallback_timeout', 'connect_all'):
+        if key in spec:
+            value = spec[key]
+            boot_lines.append(f'{key} = {str(value).lower() if isinstance(value, bool) else value}')
+    boot_lines.append('default = "xnu"')
+    ui = spec.get('ui') or {}
+    ui_lines = [f'title = {json.dumps(ui.get("title", spec.get("title", "UniXNU")))}']
+    for key in ('scale', 'logo', 'layout', 'portrait_below', 'console'):
+        if key in ui:
+            value = ui[key]
+            if isinstance(value, bool):
+                value = str(value).lower()
+            elif isinstance(value, str):
+                value = json.dumps(value)
+            ui_lines.append(f'{key} = {value}')
+    kits = spec.get('kits') or {}
+    kit_lines = [f'autoload = {str(kits.get("autoload", False)).lower()}']
+    if kits.get('directory'):
+        kit_lines.append(f'directory = {json.dumps(kits["directory"])}')
+    config = ('version = 1\n[boot]\n' + '\n'.join(boot_lines) + '\n[ui]\n' + '\n'.join(ui_lines) +
+              '\n[kits]\n' + '\n'.join(kit_lines) + '\n' + loader +
+              f'[[entry]]\nid = "xnu"\ntitle = {json.dumps(spec.get("title", "UniXNU"))}\ntype = "xnu"\n'
+              f'path = "Payloads/kernel.macho"\n{initrd}args = "{line}"\n')
     install = spec.get('install')
     if install:
         if not data:
