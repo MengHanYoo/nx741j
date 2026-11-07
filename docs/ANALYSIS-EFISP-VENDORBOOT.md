@@ -826,3 +826,36 @@ FD：`fv-bisect/fd-v10b.img`，sha `a42dd1fbc4097c93e44753ca92a720679ea5569b2ca1
 - 用户提出的两项（解决 DTBExtn/HALIOMMU 报错、按官方文档修 SmemStubDxe）**已完成并实机验证**；
 - 阶段 2 的唯一剩余阻塞是 **厂商预编译断言的 halt**（TzDxeLA 家族），需要 FFS 级二进制处理；
 - payload 卷问题（§20 缺陷 A/B）在断言解除后再处理，顺序不变：断言 → RamDiskDxe/DT initrd。
+
+## 22. 里程碑：UniXNU 菜单在实机出现（2026-11-07 22:53）
+
+**官方启动链阶段 2（UEFI → UniXNU）首次在实机达成。**
+
+- FD：`fv-bisect/fd-v15-min.img`，sha `bd5cd929d9619d0bab6734ee9e51ad351f492a2c6532891516f526de24d7fd53`
+- 做法：按官方文档对"固件卷 = 启动管理器 + 它的驱动"的定义，把 FV 裁剪到 **32 个驱动**：
+  核心 DXE/PCD/Runtime/StatusCode/Cpu/ArmGic/Metronome/ArmTimer、变量与重置、
+  `SimpleFbDxe`（GOP）+ ConPlatform/ConSplitter/GraphicsConsole/SimpleTextInOutSerial、
+  `DiskIo`/`Partition`/`Fat`、`KernelStubDxe`、`SmemStubDxe`、`UniXNU`、`UniXNUDxe`、
+  `UniXNURamDiskDxe`、`DarwinBoot`；其余 98 个厂商驱动（SCMI/Mailbox/Clock/Vcs/PMIC/DALSys/
+  HALIOMMU/UFS/USB…）全部从 FV 移除。
+- 结果：实机屏幕出现 **UniXNU 菜单**（用户确认），不再有断言或 MemoryDump。
+
+### 22.1 为什么之前的路线走不通
+
+官方阶段 2 只要求固件提供：控制台/GOP、块设备（payload 卷）、变量服务、启动管理器及其加载器。
+厂商的 UFS/时钟/电源栈依赖本平台缺失的 `DTBExtnProtocol`/SCM/RPMH，并会在 DEBUG 构建里断言；
+把它们全部剪掉后，固件不再需要这些私有协议，UniXNU 以官方方式启动。
+
+### 22.2 下一步（阶段 2 → 3）
+
+菜单目前应只有内置项（`Return to firmware`/`Restart`/`Power off`/`Tools`），因为：
+
+1. `payload.img` 在 `rawdump` 里，但固件的 DT 没有 `/chosen/linux,initrd-start|end`，`UniXNURamDiskDxe` 无法发布 payload 卷；
+2. 因此 UniXNU 找不到 `EFI/UniXNU/unixnu.toml`，回退内置配置。
+
+按官方文档补齐 payload 卷的两步（§20.2）：
+
+- **A**：loader 把 payload 拷到固定地址（如 `0x8C000000`），并用 `AllocatePages(AllocateAddress, EfiReservedMemoryType)` 预留；
+- **B**：构建时用 `fdtput` 把 `/chosen/linux,initrd-start|end` 写进 `FdtBlob`，或加一个 DXE 驱动在 `DtPlatformDxe` 之后把 loader 的 FDT 装成 `gFdtTableGuid`。
+
+完成后 UniXNU 菜单应出现 `xnu` 项，随后进入阶段 3（UniXNU → DarwinBoot → XNU）。
