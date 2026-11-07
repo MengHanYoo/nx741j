@@ -804,3 +804,25 @@ not found
 - 卡点不在 UFS/DTBExtn，而在 **FDF 漏装 `UniXNURamDiskDxe`** 和 **DT 缺 initrd 范围**；
 - 厂商断言是独立障碍，需二进制级处理；
 - 按 20.2 的 1→2→3 顺序改，理论上可以直接进 UniXNU 菜单并继续阶段 3/4。
+
+## 21. V10b 实机验证：DTBExtn 与 SmemStub 修复生效（2026-11-07 22:37）
+
+FD：`fv-bisect/fd-v10b.img`，sha `a42dd1fbc4097c93e44753ca92a720679ea5569b2ca1d5fd7dac89ec8dd7c8b6`。
+
+| 检查点 | 结果 |
+|---|---|
+| `HALIOMMU.efi` 加载行 | ✅ **消失**（不再有 `Locate DTBExtnProtocol failed` 与 `image … start failed`） |
+| `SmemStubDxe` 地址探针 / FDT 扫描刷屏 | ✅ **消失**（只剩 `entry` 与 `item 404 -> …` 两行必要输出） |
+| SmemStubDxe 头注释 | ✅ 改为"按设备树 `/soc/smem_region@81d00000` 发布 `EFI_SMEM_PROTOCOL`" |
+| 后续驱动派发 | ✅ 继续到 `TzDxeLA.efi`（ULog/IPCC/CmdDb/Qup/ShlBridge 均加载） |
+| 最终阻塞 | ❌ `ASSERT_EFI_ERROR (Status = Not Found)` → `ASSERT TzLoaderDxe.c:1150` → MemoryDump |
+
+遗留观察：屏幕上仍有一行 `EFI_SHELL_PROTOCOL Install -> Success`（前缀疑似 SmemStubDxe），
+但在平台与 package 源码里都搜不到 `EFI_SHELL_PROTOCOL`/`gEfiShellProtocolGuid`，说明它来自
+预编译组件或另一驱动；与 SMEM 无关，暂不处理（会与厂商断言一起在 FFS 级修复时复测）。
+
+### 21.1 结论
+
+- 用户提出的两项（解决 DTBExtn/HALIOMMU 报错、按官方文档修 SmemStubDxe）**已完成并实机验证**；
+- 阶段 2 的唯一剩余阻塞是 **厂商预编译断言的 halt**（TzDxeLA 家族），需要 FFS 级二进制处理；
+- payload 卷问题（§20 缺陷 A/B）在断言解除后再处理，顺序不变：断言 → RamDiskDxe/DT initrd。
