@@ -726,3 +726,34 @@ not found
 2. `AndroidDxe`（stock 提取）启动失败可能留下半初始化状态；
 3. APRIORI 之后的某个 DXE.inc 驱动；
 4. SEC/PEI 环境（仍未被排除，但优先级降低）。
+
+### 19.15 V5–V9 二分链与厂商断言（2026-11-07 22:25）
+
+| 变体 | 改动 | 结果 |
+|---|---|---|
+| V0 | 基线 | MemoryDump |
+| V1 | 去掉 DALSYSDxe | MemoryDump（**排除** DALSYSDxe） |
+| p7 | loader 预留 `0xFF300000` 8 MiB | MemoryDump（**排除** DXE 堆覆盖窗口） |
+| V5 | 重新跳过 TzDxeLA + 探针移到 APRIORI 末尾 | **首次到达 BDS**（屏幕出现 `BdsDxe.c`、`EFI_KERNEL_PROTOCOL Install`、`PciBus` 等），随后仍 MemoryDump |
+| V6 | 关闭 SmemStubDxe 抓屏定时器 + 去掉探针 | 仍 MemoryDump；日志显示最后是 `TzDxeLA.efi` → `ASSERT_EFI_ERROR (Status = Not Found)` → `ASSERT TzLoaderDxe.c:1150: !EFI_ERROR (Status)` |
+| V7 | `PcdDebugPropertyMask=0x02`（关断言）+ 关 WatchdogTimerDxe | 断言**仍然触发**（见下） |
+| V8 | RELEASE 构建 | 构建失败：`undefined symbol: BaseDebugLibSerialPortConstructor`（Sec 模块），RELEASE 路线暂不可用 |
+| V9 | 把 `Binaries/…/TzDxe/TzDxeLA.efi` 换成 1 KB stub（原文件备份 `.orig`） | 屏幕仍显示 TzDxeLA 加载并断言 |
+
+### 19.16 为什么 PCD 和 stub 都没用
+
+1. **断言来自预编译二进制**：`ScmDxeCompat.efi` 与 `TzDxeLA.efi.orig` 的字符串里都有 `!EFI_ERROR (Status)`，`ASSERT` 使用的是厂商编译时**烧进二进制**的 `PcdDebugPropertyMask`（0x2F），平台 DSC 事后改 PCD 不影响这些模块的固定 PCD。
+2. **stub 没进 FV**：V9 重建后 `FVMAIN.Fv` 里仍有 `TzDxeLA.dll` 字符串，而 `Platforms/ZTE/nx741jPkg/Include/{DXE,APRIORI}.inc` 里该 INF 已是 `# SKIPPED`；全树搜索只有其它平台引用它。说明 FV 生成使用了 **`FV/Ffs/` 缓存**或其它未定位的引用链，替换 `.efi` 没有反映到 FV。
+3. 断言行的 GUID `EE25757-50A4-44BD-B16E-9FFA231847C` 指向某个缺失的 protocol/服务，是 `Status = Not Found` 的来源。
+
+### 19.17 下一步（按可行性排序）
+
+1. **FFS 级补丁**：解析 `FVMAIN.Fv` 中 TzDxeLA 的 FFS（GUID `f2f8ccd2-6329-44f9-99c5-1dd1fdf42926`），把其 PE32 section 内容换成 stub 并重算 FFS/section 校验和，再用 BaseTools 的 `LzmaCompress` 重新压缩 `FVMAIN_COMPACT` 得到 FD；或直接从 FV 中删掉该 FFS 并修正 FV 头。
+2. **补齐依赖**：找出 GUID `EE25757-…` 对应的 protocol/服务，让 `Status` 变成功，断言自然不触发。
+3. **移出 TzDxe 家族**：把 `ScmDxeCompat` + `TzDxeLA` 两个 INF 从 DSC/FDF 彻底移除（需要先解决 2 中"FV 引用链不明"的问题）。
+4. RELEASE 构建：修 `BaseDebugLibSerialPortConstructor` 链接错误（Sec 的 DebugLib 选择），得到无断言固件。
+
+### 19.18 当前设备状态
+
+- 设备在 `ZTE MemoryDump Mode`（V9 运行后），需要长按电源 15 s + 音量键进 9008 才能回滚；
+- 本地回滚件齐全：`efisp.img`（stock，sha `4df18359…`）、`fv-bisect/fd-v0-baseline.img`（V0）。
