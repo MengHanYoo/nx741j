@@ -62,3 +62,25 @@ FV 成员必须出现在 `DXE.inc` 这类普通 `INF` 列表中（GenFv 的 `FVM
 | 扫描卷 + 读取 `unixnu.toml` | ✅ | `UNIXNURAMDISK` 发布 initrd 块设备、Fat 挂载成功；菜单项仍需 V23 照片确认 |
 | `Boot####` 注册 | ✅（源码） | `UniXNUDxe.c` 写入 `Boot####`+`BootOrder`；直接日志待探针恢复（探针已因越界移除） |
 | 实体按键 | ❌ 待实现 | TLMM 读越界说明窗口映射受限，下一步改用按引脚寄存器或 TLMMDxe 协议 |
+
+## V23 实机：阶段 2 闭环（2026-11-07 23:40）
+
+- 菜单显示并出现 **`NX741J`（xnu）条目** → 卷发布、`unixnu.toml` 解析、菜单构造全部实机验证；
+- 菜单超时自动启动 `xnu` 后设备进入 **MemoryDump Mode**，这是**阶段 3（UniXNU → DarwinBoot → XNU）**的问题，不再是阶段 2；
+- BDS 期间有一条非致命告警 `[Bds] Connect ConIn failed - Not Found`：无输入设备，按官方
+  `fallback_timeout` 语义继续，不影响阶段 2 判定；
+- payload 内容确认：`Payloads/kernel.macho`（51,691,520 B）、`kernel.macho.adt`（12,012 B）、
+  `kernel.macho.trustcache`（1,511 B），`unixnu.toml` 452 B。
+
+### 阶段 2 最终状态
+
+| 官方步骤 | 状态 |
+|---|---|
+| 固件卷含 UniXNU 与驱动 | ✅ |
+| `Boot####` 注册（`unixnu:firmware`） | ✅（源码；直接打印未再启用） |
+| BDS 启动应用 | ✅ |
+| 扫描卷 + 解析 `unixnu.toml` | ✅ |
+| `[[block_slice]]` / `[[driver]]` / `[acpi]` / kit | N/A（配置未声明；ACPI 需先加 `AcpiTableDxe`） |
+| 构造菜单（含 `NX741J`） | ✅ |
+
+**阶段 2 完成。** 剩余：实体按键（非阻塞）、阶段 3 的启动崩溃定位。
