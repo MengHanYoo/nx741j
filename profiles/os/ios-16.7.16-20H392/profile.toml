@@ -8,13 +8,13 @@
 "abi" = ["IOGPUFamily", "IOHIDFamily", "IOMobileGraphicsFamily"]
 
 ["ipsw"]
-"url" = "file:///mnt/e/default-workspace/ipsw/iPhone10,3,iPhone10,6_16.7.16_20H392_Restore (1).ipsw"
+"url" = "/mnt/e/default-workspace/ipsw/iPhone10,3,iPhone10,6_16.7.16_20H392_Restore (1).ipsw"
 "product" = "iPhone10,3"
 "version" = "16.7.16"
 "build" = "20H392"
-"device_class" = "d22ap"
+"device_class" = "d221ap"
 "chip_id" = 32789
-"board_id" = 2
+"board_id" = 14
 "fetch" = ["KernelCache", "DeviceTree", "StaticTrustCache", "Cryptex1,SystemTrustCache"]
 
 ["ipsw"."sha256"]
