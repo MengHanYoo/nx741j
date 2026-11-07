@@ -152,3 +152,26 @@ JOBS=8 UNIXNU_EDK2=/opt/work/uefi-sheng-main/Mu_Basecore bash package/Scripts/sm
 - 若之后把仓库迁到 `UniXNU` 组织，把 `devices.toml` 条目加回并把两处链接改回即可，其余无需改动。
 
 失败时按[故障排查](https://unixnu.com/zh/reference/troubleshooting#procedure)处理，保存命令、输入版本与[日志](https://unixnu.com/zh/guide/debugging#procedure)。
+
+## 7. 命令行验证（`reference/cli`，2026-11-07）
+
+命令与选项均按 <https://unixnu.com/zh/reference/cli> 对照，逐项实测：
+
+| 命令 | 结果 | 说明 |
+|---|---|---|
+| `defconfig` | ✅ rc=0 | 列出 `nx741j_defconfig` |
+| `fetch` | ⏭ 未跑 | 网络受限；源码来自 `/opt/ghcache` 与 `out/feeds/`，`status` 已显示各模块 pin |
+| `tree` | ✅ rc=0 | 组装 `out/…/tree`（构建步骤也会自动执行） |
+| `ipsw info` / `ipsw fetch` | ⚠️ N/A | 本机**没有 .ipsw 原包**，只有解压后的 `/opt/work/ipsw`（3 个 dmg + `BuildManifest.plist`）；命令报 `IPSW not found` |
+| `build kernel` | ✅ | `kernel.macho` 51,691,520 B（sha `b255276d…`） |
+| `build prelink` | ✅ rc=0 | 单独重跑预链接成功 |
+| `build firmware` | ✅ | FD 4,194,304 B |
+| `build payload` | ✅ | `payload.img` 67,108,864 B |
+| `bootimg` | ✅ | 带 payload ramdisk 69,402,624 B；`--ramdisk none` 2,293,760 B |
+| `status` / `status --json` | ✅ | `schema_version: 2`、`configured: true`、四个 profile 路径 |
+| `clean` | ⏭ 未跑 | 破坏性（会删 tree/logs/kernel/package/boot），当前需要保留产物 |
+| `release` | ❌ **版本偏差** | 我们 fork 的 CLI 只有 9 个子命令（`defconfig/fetch/tree/build/bootimg/ipsw/status/clean` + 步骤别名），**没有 `release`**；文档领先于 HEAD `c4aa650` |
+
+**环境变量**：`UNIXNU_EDK2` 已用于 QEMU 冒烟（指向 `/opt/work/uefi-sheng-main/Mu_Basecore`）；`JOBS` 用于并行构建（32）。
+
+**结论**：CLI 参考页中与本机工作流相关的命令全部验证；`ipsw` 因缺原包、`release` 因 CLI 版本落后而无法执行，二者均已记录原因与解除条件（补 `.ipsw` 原包；或把 CLI 升级到含 `release` 的版本）。
