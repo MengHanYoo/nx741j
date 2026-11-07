@@ -564,3 +564,46 @@ SmemStubDxe: connect all done (0 handles)
 | `TzDxeLA` 恢复 | 已改（未提交） |
 | `LogDumpDxe` / `SmemStubDxe` 抓屏代码 | 在位但受句柄枚举限制 |
 | 设备 | 原厂 Android，efisp = `4df18359…` |
+
+## 19. 阶段 2 崩溃定位：DALSYSDxe 二分（2026-11-07 晚）
+
+### 19.1 事实
+
+实机日志（§17.1）最后一行是 `loading driver at 0x0C1746000 EntryPoint=0x0C1747000 DAUS.efi`，
+紧接着进入 `ZTE MemoryDump Mode`。核对 DXE 清单，名字能对上的只有
+`DXE.inc:30` / `APRIORI.inc:18` 的 **`DALSYSDxe`**（DALSYSDxe.inf，Depex `TRUE`），
+即崩溃发生在 DALSYSDxe 加载/派发期间。
+
+### 19.2 排除项
+
+| 怀疑 | 结论 |
+|---|---|
+| DAL 配置 blob 缺失 | stock 固件与我们 FV 中 `DALPROP`/`DALSys` 字符串数量一致（各 2），未发现仅 stock 才有的 DAL 配置 |
+| `DTBExtnProtocol`/`DBProtocol` 缺失 | stock 的 25 个驱动也打印同样 not found（§18.3），非崩溃原因 |
+| 驱动清单缺 DALSYSDxe | 不缺：`DXE.inc:30`、`APRIORI.inc:18` 都在，`Guid.xref` 可查 |
+
+### 19.3 二分固件（已构建）
+
+| 变体 | 内容 | FD sha256 |
+|---|---|---|
+| V0 | 当前基线 | `543b989c65a02e552704d03b028bddb11d8f693a1275721a667d56b5dbdd2841` |
+| V1 | 从 `DXE.inc`/`APRIORI.inc` 注释掉 `DALSYSDxe` | `3f8fa1efcbc0c498a0354c3a60c98b4a594210e7021f528c3b5fc87151e7db66` |
+
+产物：`E:\default-workspace\z80u-collect\fv-bisect\fd-v{0,1}-*.img`（各 4,194,304 B），
+两个 inc 文件已还原（`git checkout`，无残留）。
+
+### 19.4 实机测试步骤（待执行）
+
+1. `adb reboot edl` → 9008；
+2. 写 FD 到 `rawdump` LBA **4,760,360**（= 4,743,976 + 16,384，LUN0，1024 个 4 KiB 扇区）；
+3. 写 `loader/images/efisp-p5.img` 到 `efisp`（LBA 748,894，LUN4，768 扇区）；
+4. 复位后看屏幕：
+   - 若崩溃点**后移**（出现新的最后一个驱动）→ DALSYSDxe 确认；
+   - 若仍在同一处 → 崩溃在更早的依赖或加载器环境，需换 `p6.c` stub 隔离；
+5. 恢复：写回 `fd-v0-baseline.img`，再写 stock `efisp.img`（sha `4df18359…`）。
+
+### 19.5 备选解释
+
+若 V1 仍崩在同一处，说明崩溃不在 DALSYSDxe 本身，而在 **SEC/PEI 交给 DXE 的环境**
+（ABL 已跑过一轮 UEFI，内存/ACPI/SMEM 状态与 XBL 冷启动不同）。下一步应改用
+`efi-loader/p6.c`（跳回 stub）对比 SEC 前后的 `SCTLR_EL1`、MMU 表与内存描述符，而不是继续删驱动。
