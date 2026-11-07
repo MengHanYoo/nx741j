@@ -162,7 +162,7 @@ JOBS=8 UNIXNU_EDK2=/opt/work/uefi-sheng-main/Mu_Basecore bash package/Scripts/sm
 | `defconfig` | ✅ rc=0 | 列出 `nx741j_defconfig` |
 | `fetch` | ⏭ 未跑 | 网络受限；源码来自 `/opt/ghcache` 与 `out/feeds/`，`status` 已显示各模块 pin |
 | `tree` | ✅ rc=0 | 组装 `out/…/tree`（构建步骤也会自动执行） |
-| `ipsw info` / `ipsw fetch` | ✅ 已跑通 | 原包放在 `E:\default-workspace\ipsw\iPhone10,3,iPhone10,6_16.7.16_20H392_Restore (1).ipsw`（6,171,035,648 B）。`info` 打印 `16.7.16 (20H392) d221ap local` 与组件表；`fetch` 提取 `kernelcache.decompressed`（50,937,856 B）、`DeviceTree.d221ap.im4p`、两个 trustcache，缓存到 `out/ipsw/20H392/` |
+| `ipsw info` / `ipsw fetch` | ✅ 已跑通 | 原包放在 `E:\default-workspace\ipsw\iPhone10,3,iPhone10,6_16.7.16_20H392_Restore (1).ipsw`（6,171,035,648 B）。`info` 打印 `16.7.16 (20H392) d221ap local` 与组件表；`fetch` 提取 `kernelcache.decompressed`（50,937,856 B）、`DeviceTree.d221ap.im4p`、两个 trust cache 文件，缓存到 `out/ipsw/20H392/` |
 | `build kernel` | ✅ | `kernel.macho` 51,691,520 B（sha `b255276d…`） |
 | `build prelink` | ✅ rc=0 | 单独重跑预链接成功 |
 | `build firmware` | ✅ | FD 4,194,304 B |
@@ -412,3 +412,32 @@ autoload = false
 ```
 
 另外按上一轮的并行度实测，`unixnu.local.toml` 的 `jobs` 已由 32 改为 **16**（内核编译更快，见「并行度」）。
+
+## 12. 术语表验证（`reference/glossary`，2026-11-07）
+
+术语表在框架仓库的 `docs/reference/glossary.md` 与 `docs/zh/reference/glossary.md`，逐条与官方 main 对比：
+
+| 检查 | 结果 |
+|---|---|
+| 中文词条 | 本地 34 / 官方 34，**缺失 0、多余 0** |
+| 英文词条 | 本地 34 / 官方 34，**缺失 0、多余 0** |
+| 释义文本 | 中英各 **0 处差异**（逐词条比对） |
+| 站点渲染 | `vitepress build` 80.77 s，生成 `dist/reference/glossary.html` 与 `dist/zh/reference/glossary.html` |
+
+**本地文档用词审计**（设备仓库 15 个文档，185,404 字符）：32 个规范术语中 30 个在用，发现 2 处散文漂移并修正：
+
+| 位置 | 改前 | 改后 |
+|---|---|---|
+| `CONFIG-MAP.md` | 两个 trustcache | 两个 trust cache 文件 |
+| `HANDOFF-2026-11-06.md` | trustcache `8796.101.5` | trust cache `8796.101.5` |
+
+保持不动的标识符（不是术语）：CLI 选项 `--trust-cache`、补丁名 `native-trust-cache-runtime`、
+文件后缀 `087-*.dmg.trustcache`、`[payload] trust_cache_sha256`。
+
+**未使用的规范术语**：
+
+- `ADT sidecar`：正文原先只说 `kernel.macho.adt`；本节按术语表写法补一次（即 `kernel.macho.adt`）。
+- `CHRP`：Apple 设备树的 NVRAM bank 格式，本机尚未做 NVRAM 相关工作，暂不涉及。
+
+**结论**：术语表与官方完全一致，本地文档用词已对齐；后续新增文档按此表用词（例如统一写 `trust cache`、
+`预链接`、`固件卷`、`设备仓库`，不要造新缩写）。
