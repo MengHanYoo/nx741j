@@ -132,6 +132,25 @@ E:\default-workspace\z80u-collect\wsl\flash-boota-9008.ps1 -Img <boot.img> [-NoR
 ./unixnu tree
 ./unixnu build firmware -D ../UniXNU-nx741j --uefi /opt/work/uefi-sheng-main
 
+## 并行度（2026-11-07 实测）
+
+- 主机：**AMD Ryzen 9 5950X（16C/32T）**，Windows 物理内存 31.9 GiB；WSL `.wslconfig` 为
+  `processors=32`、`memory=28GB`、`swap=8GB`，WSL 内 `nproc = 32`。
+- 传递链：`unixnu.local.toml` 的 `jobs` → `ctx.jobs`，再传给内核（`JOBS`）、package（EDK2 `-n`）、
+  firmware（EDK2 `-n`）、BaseTools（`make -j`）；`--jobs N` / `-j N` 可逐次覆盖。当前 `jobs = 32`。
+- 干净内核编译（删除 `tree/build/xnu/ios-obj` 后计时）：
+
+  | 并发 | 耗时 |
+  |---|---|
+  | 32 jobs（冷缓存） | 202.9 s |
+  | 32 jobs（暖缓存） | 209.0 s |
+  | 16 jobs（暖缓存） | **148.0 s** |
+  | 增量重建（32 jobs） | 28.4 s |
+
+- 结论：**内核编译用 16 jobs 反而比 32 快**（16C/32T 的 SMT 超订拖慢编译）。`jobs = 16` 适合内核；
+  EDK2 固件/package 与 QEMU 冒烟可单独传 `-j 32` / `JOBS=32`。QEMU 本身单线程，冒烟耗时由 6 个启动
+  场景决定（32 jobs 下 225.7 s，6 场景 + 14 个 kext 子用例全部 PASS）。
+
 ## 执行与网络约束（硬性）
 
 - **一切构建、编译、刷机、测试都在本机执行**（Windows + WSL `Ubuntu`，32 vCPU / 27 GB）。
