@@ -208,3 +208,32 @@ $ ./unixnu release --no-deps   -D ../UniXNU-nx741j
 
 **结论**：CLI 参考页中的命令**全部验证通过**——`release` 已按官方实现回移到本地 CLI（`pipeline.py` + `cli.py`），
 `release --check` 与完整 `release` 均成功；`clean` 仅因破坏性未执行，`fetch` 因网络走本地 ghcache（命令本身在 `release` 的 deps 步骤中已验证）。
+
+## 8. 设备配置验证（`reference/configuration`，2026-11-07）
+
+按页面逐项核对 `unixnu.local.toml`、`board.toml`、`feeds.toml`、`local.toml`、`unixnu.lock` 与 defconfig 语法，
+发现 **2 处本地未实现**，已按官方 main `b6de3eb` 回移：
+
+| 文件 | 回移内容 |
+|---|---|
+| `scripts/unixnu/bootimg.py` | 官方版本：`[bootimg.image] kernel_compression`（`gzip`/`none`）与可处理 header v3/v4、未压缩内核的 `verify()` |
+| `scripts/unixnu/runtime.py` | 新增：`[payload.runtime]` 的运行时输入准备（无该表时只做 `check_data_input`，行为与之前一致） |
+| `scripts/unixnu/payload.py` | 补 `check_data_input`（`CONFIG_XNU_OWNER_DATA_MOUNT` 需要 Data 种子） |
+| `scripts/unixnu/cli.py` | 增加 `runtime` 别名，`cmd_build` 在 payload/runtime 步骤前调用 `runtime.prepare` |
+| `scripts/appsync/` | 官方 16 个文件（AppSync 适配层源码与 signer，页面「完整性」一节引用） |
+
+`kernel_compression` 的 A/B 实测（同一 payload 与 FD）：
+
+| 设置 | `boot.img` |
+|---|---|
+| 默认（`gzip`） | 69,402,624 B |
+| `[bootimg.image] kernel_compression = "none"` | **72,224,768 B**（未压缩 shim+firmware，差 2,822,144 B） |
+
+其余字段全部就位：`[board]` 的 `soc_source`/`os_profile`、`[components] include`、`kernel.config_fragments`/
+`patch_series`、`device_tree.source`/`include_dirs`、`arch:/soc:/os:/device:` 前缀、`component:<ID>/path` series、
+`CONFIG_XNU_*` 与 `{tree}` 替换、`[ipsw.sha256]`、`[userdata] first_lba`、`[kernel.prelink] extra_args`、
+`[firmware] defines/preflight/submodules`、`[[bootimg.dtb_node]]`、`[payload.adt]`、`[payload] tools`、
+`unixnu.lock`、`local.toml [local]` 与 7 级模块解析顺序。
+
+`[payload.runtime] appsync` 字段已可用，但官方限制仍在：`appsync = true` 要求 `target = "ios27"` 且
+`build = "24A446"`（本机为 iOS 16.7.16 / 20H392，不适用）；本机未开启该字段，构建行为不变。
