@@ -439,5 +439,8 @@ autoload = false
 - `ADT sidecar`：正文原先只说 `kernel.macho.adt`；本节按术语表写法补一次（即 `kernel.macho.adt`）。
 - `CHRP`：Apple 设备树的 NVRAM bank 格式，本机尚未做 NVRAM 相关工作，暂不涉及。
 
+**本地术语补充**：官方术语表未覆盖本机引导链与高通平台词（efisp、rawdump、Mu-Silicium、LUN、UFS、
+TLMM、PDC、IMEM、SMEM、DALSYS、XBL、9008 等），定义与用词规则见 `docs/GLOSSARY-LOCAL.md`。
+
 **结论**：术语表与官方完全一致，本地文档用词已对齐；后续新增文档按此表用词（例如统一写 `trust cache`、
 `预链接`、`固件卷`、`设备仓库`，不要造新缩写）。

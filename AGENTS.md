@@ -35,7 +35,7 @@
 | `loader/` | efisp EFI loader 源码（`p5.c` 为可用版）与 `images/efisp-p5.img`（3 MiB） |
 | `firmware/overlay/` | 固件树新增的 `AndroidDxe`（`Binaries/` 是子模块且被忽略，无法进补丁） |
 | `patches/firmware/` | 固件平台改动补丁（`TzDxeLA` 恢复、`LogDumpDxe`、`SmemStubDxe` 抓屏、DSC/FDF） |
-| `docs/` | 分析、交接、硬件清单、共享支持选择、配置地图 |
+| `docs/` | 分析、交接、硬件清单、共享支持选择、配置地图、本地术语补充（`GLOSSARY-LOCAL.md`） |
 
 应用方法见 `firmware/overlay/README.md`。
 
