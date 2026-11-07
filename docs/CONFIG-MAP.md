@@ -252,3 +252,31 @@ $ ./unixnu release --no-deps   -D ../UniXNU-nx741j
 
 `[payload.runtime] appsync` 字段已可用，但官方限制仍在：`appsync = true` 要求 `target = "ios27"` 且
 `build = "24A446"`（本机为 iOS 16.7.16 / 20H392，不适用）；本机未开启该字段，构建行为不变。
+
+## 9. 组件目录验证（`reference/components`，2026-11-07）
+
+页面把 `components.toml` 的字段、选择规则、源码身份和本地模块流程写成了契约。逐项核对结果：
+
+| 页面条目 | 本机状态 |
+|---|---|
+| 字段表（id / kind / path / repository / revision / legacy_name / function / scope / hardware / os_abi / board_dependencies / verified_devices / dependencies / build_stage / build / outputs / runtime_identifiers） | ✅ 25 个条目全部具备（另带 `source_files`、`legacy_outputs`、`repository_id`） |
+| `[components] include` 选择，解析器补全依赖并按依赖顺序构建 | ✅ `status --json` 显示 6 个组件（ArmDTPlatform、ArmCpu、SoftwareAES、XnuPrelink、DarwinBoot、GopFramebuffer），`kernel.py` 按 `ctx.component_specs` 顺序执行 |
+| 设备的 `include` 数组替换继承数组 | ✅ schema 2 的 profile 合并按"表按键合并、数组替换"（`profiles.merge`） |
+| `[kernel] archives` 中用 `component:<ID>` 定位组件 | ✅ `kernel.py` 支持（`explicit = any(entry.startswith('component:'))`） |
+| `--local-module driver:MyDriver=PATH` 选择**目录外**新组件并链接进装配树 | ❌ **修复**：旧 `components.resolve()` 只保留 refer/patch/package/script 的本地模块，目录外驱动被丢弃；已回移官方 4 行实现 |
+| 官方兼容名按仓库身份解析（official `UniXNU/NativeAdreno` → `Adreno740`） | ✅ `source_identity` / `official_alias` / `repository_identity` 均在位 |
+
+本地模块实测（回移后）：
+
+```
+$ ./unixnu tree -D ../UniXNU-nx741j --local-module driver:MyDriver=/tmp/localmods/MyDriver
+$ ls -l out/…/tree/drivers/
+ArmCpu -> …/drivers/ArmCpu
+…
+MyDriver -> /tmp/localmods/MyDriver          # 目录外组件已链接
+```
+
+回归：`build payload` 仍产 64 MiB、`release --check --no-deps` 仍为 `63 patches`。
+
+目录内容差异（不影响本机选择）：官方 `components.toml` 为 28 个条目，本机快照 25 个——本机 `include`
+只选 6 个，其余条目随官方目录演进，未随本次回移同步（避免改动固定 revision 影响已验证内核）。
