@@ -1,319 +1,564 @@
-# NX741J (Nubia Z80 Ultra) porting record
-# 生成日期：2026-11-05；所有数值来自本机 DT / 固件 / 实机日志
+schema_version = 1
 
 [device]
-name = "NX741J"
-codename = "nx741j"
-vendor = "Nubia"
-model = "Z80 Ultra"
-soc = "sm8850"
-soc_codename = "canoe"
-soc_family = "Kaanapali"
-arch = "arm64"
-page_size = 4096
+name = "nx741j"
+soc = "SM8850"
+os_profile = "ios-16.7.16-20H392"
+summary = "Nubia Z80 Ultra (NX741J), Qualcomm SM8850 / Kaanapali (canoe), 8 cores (6+2), Adreno 840, UFS KLUGG8NHKB, panel bf375/rm692h5. Target is iOS 16.7.16 (20H392) with XNU 8796.141.3, arm64, 4 KiB pages."
 
-[support]
-os_profile = "ios-16.7.16-20H392 / xnu 8796.141.3（arm64, Darwin 22.6.0）"
-xnu = "8796.141.3"
-xnu_revision = "1b191cb58250d0705d8a51287127505aa4bc0789"
-status = "bringup-layer2-dxe-chain"
-
-[hardware.cpu]
-cores = 8
-active_cores = 8
-clusters = "6 + 2"
-topology = "cluster0 = cpu@0,100,200,300,400,500（6 核）；cluster1 = cpu@10000,10100（2 核）"
-# 以下数值来自原厂 stock DT：FdtBlob/kaanapali-zte-nx741j.dtb 的 /cpus 与 /cpus/cpu-map
-capacity_dmips_mhz = { cluster0 = 1792, cluster1 = 1894 }        # 0x700 / 0x766
-dynamic_power_coefficient = { cluster0 = 238, cluster1 = 588 }   # 0xEE / 0x24C
-mpidr_reg = { cluster0 = ["0x0", "0x100", "0x200", "0x300", "0x400", "0x500"], cluster1 = ["0x10000", "0x10100"] }
-l2_cache = { cluster0 = "每核一个 l2-cache 节点（cache-level=2）", cluster1 = "共享节点 phandle 0x0e" }
-# DT 不含 CPU 频率与 MIDR，必须实机读取（见 [missing_inputs]）
-midr = { implementer = "0x51 (Qualcomm)", part = "0x002 (Oryon)", all_cores = true }   # 实机 /proc/cpuinfo，8 核同 MIDR
-max_freq_khz = { policy0 = 3628800, policy6 = 4608000 }   # 3.63 GHz（6 核）/ 4.61 GHz（2 核），实机 cpufreq
-
-[hardware.memory]
-ram_base = "0x80000000"
-smem = { base = "0x81D00000", size = "0x200000", init_by = "XBL (xbl_config_a.img)" }
-dxe_heap = { base = "0xB00F0000", size = "0x131A0000" }
-fd = { base = "0xFF300000", size = "0x400000" }
-
-[hardware.display]
-panel = "bf375_rm692h5_6p8_dev0_dsc_cmd"
-native_resolution = "1440x3200"
-uefi_gop = "1216x2688"
-color_depth = 32
-framebuffer_region = "0xFC800000/0x2B00000"
-dsi_mode = "1216x2688@120fps 与 @60fps 双模式（实机 dmesg msm-dsi-info）"
-panel_cmdline = "msm_drm.dsi_display0=qcom,mdss_dsi_bf375_rm692h5_6p8_dev0_dsc_cmd"
-zte_specific = "zte,mdss-dsi-dim-on-commands（ZTE 私有调光命令）"
-
-[hardware.storage]
-type = "UFS"
-boot_lun = 4
-partitions = { boot_a = 119078, uefi_a = 6, efisp = 748894, vbmeta_a = 143706, vendor_boot_a = 302310 }
-ufs_model = "KLUGG8NHKB-F0H1（实机 /sys/block/sda/device/model）"
-ufs_rev = "0500"
-ufs_vendor = "Samsung（KLU 前缀）"
-
-[hardware.gpu]
-name = "Adreno 840"
-firmware = "gpu-fw/gen80200_{aqe.fw,sqe.fw,gmu.bin,zap.mbn}"
-kernel_status = "verified (vktest PASS x35)"
-remaining = "wallpaper black, tearing, 13-30 fps"
-
-[driver_status]
-platform_memory = "OK (after FD/CPU_Vectors/aux remap)"
-ufs = "OK (UFSDxe dispatches)"
-display = "OK (1216x2688)"
-touch = "未验证"
-buttons = "未验证"
-gpu = "内核侧已验证；UEFI 侧未到"
-wifi = "未验证"
-modem = "未验证"
-audio = "未验证"
-power = "未验证"
-
-[layer_status]
-layer1_boot_image = "DONE (gzip shim+FV, FD_BASE=0xFF300000, no DT/ramdisk)"
-layer2_uefi = "BLOCKED at SmemDxe (SMEM page mapping missing in MemoryPeim)"
-layer3_unixnu = "built, not run"
-layer4_darwinboot = "built, not run"
-layer5_kernel = "DONE(compile): 自编 8796 内核编译+链接+prelink 成功（2026-11-07）；kernel.macho 51,691,520 B sha256 9bbfad05…；prelink 报告 abi_qualified=false / runtime_qualified=false"
-layer6_userland = "iosroot-RAW-BUILD.img ready, not run"
-
-[dt_policy]
-notes = [
-  "ABL rejects DT appended after the gzip stream; the device tree is carried inside the FV (FdtBlob via DtPlatformDxe).",
-  "Active FDT: live_fdt.dtb (911 KB) from the running device; 14 SKU DTBs available in vendor_boot.",
+# ---------------------------------------------------------------------------
+# configuration
+# ---------------------------------------------------------------------------
+[[area]]
+id = "configuration"
+status = "implemented"
+components = ["ArmDTPlatform"]
+paths = ["board.toml", "feeds.toml", "unixnu.lock", "configs/nx741j_defconfig", ".github/workflows/**"]
+inputs = [
+  "SoC SM8850 (Kaanapali, codename canoe): 8 cores in a 6+2 layout, GICv3, 4 KiB pages",
+  "iOS 16.7.16 (20H392) is the only IPSW available for this device, so the target is fixed at xnu 8796.141.3",
+  "UniXNU profile pair: profiles/arch/arm64 with profiles/os/ios-16.7.16-20H392",
+  "Shared SoC support in UniXNU-sm8850-common (soc.toml, dtsi, configs, XNU series)",
+]
+configuration = [
+  "board.toml: soc = \"SM8850\", soc_source = \"sm8850\", os_profile = \"ios-16.7.16-20H392\", kit = \"nx741j\"",
+  "board.toml [components]: ArmDTPlatform, ArmCpu, SoftwareAES, XnuPrelink, DarwinBoot, GopFramebuffer (the resolver adds no further dependencies for this set)",
+  "configs/nx741j_defconfig: CONFIG_XNU_SOURCE_CORECRYPTO14/PTHREAD, ARM_DT_PLATFORM, ARMCPU, CRYPTO_BOOTSTRAP=prelinked; native UFS and Adreno disabled",
+  "unixnu.lock pins xnu 1b191cb5, libpthread cf9e1c7e (486.100.11), sm8850 825a5304 and the Apple reference sources",
+]
+procedure = [
+  "cd UniXNU && ./unixnu defconfig nx741j_defconfig -D ../UniXNU-nx741j",
+  "./unixnu fetch -D ../UniXNU-nx741j",
+  "./unixnu status --json -D ../UniXNU-nx741j",
+  "./unixnu tree -D ../UniXNU-nx741j",
+]
+findings = [
+  "The arch profile's [kernel].archives lists component:SoftwareAES, so the board has to select that component or the archive plan aborts with 'component SoftwareAES is not selected'.",
+  "A local sm8850 override in local.toml keeps the source unpinned and makes status report 'not reproducible'; the repository is mirrored into the host source cache and fetched through feeds.toml instead.",
+  "The libpthread reference must match the 8796 kernel generation: 519.120.4 calls proc_get_jit_entitled, which 8796's pthread_callbacks_s does not define.",
+]
+completion = [
+  "status --json resolves device, OS profile, configuration, module sources and output directory",
+  "unixnu.lock pins every source, including the SoC repository",
+  "status reports no 'not reproducible' source",
+]
+limits = [
+  "Only the ios-16.7.16-20H392 profile is qualified; no second OS profile is maintained",
+  "porting.toml follows the record format; board.toml keeps the schema 2 device configuration",
+]
+next_action = [
+  "Re-run status --json after every board.toml or feed edit and commit unixnu.lock with the change",
+]
+evidence = [
+  { kind = "source", reference = "board.toml", result = "Board, component, kernel, firmware, payload and boot image inputs" },
+  { kind = "source", reference = "unixnu.lock", result = "Resolved source commits including sm8850 825a5304 and libpthread cf9e1c7e" },
+  { kind = "source", reference = "configs/nx741j_defconfig", result = "Kernel CONFIG_XNU_* values consumed by the kernel build script" },
 ]
 
-[partition_strategy]
-# 双系统 payload/config 落点
-primary = "efisp (3 MB, LUN4 @748894)"
-fallback = "userdata FAT image"
-self_contained = "FAT volume inside FV"
-
-[inputs]
-dts = "dts/board.dts"   # 板级 DTS，/include/ "sm8850.dtsi"
-stock_dump = "E:/Nubia_Flash_Brick/backup/ZTEToolBoxParBak_2026.10.24_22.38.43.421"
-uefi_tree = "/opt/work/uefi-sheng-main"
-
-[next_steps]
-items = [
-  "Fix SMEM mapping: gDS->AddMemorySpace + SetMemorySpaceAttributes (image boot-uefi-gds.img built, flash pending).",
-  "After layer2: place EFI/UniXNU/unixnu.toml + payload into efisp.",
-  "Then validate UniXNU -> DarwinBoot -> kernel -> userland.",
+# ---------------------------------------------------------------------------
+# firmware
+# ---------------------------------------------------------------------------
+[[area]]
+id = "firmware"
+status = "implemented"
+components = ["DarwinBoot"]
+paths = ["board.toml", "proprietary-files.txt", "docs/FIRMWARE-DRIVERS.md", "docs/PORTING-RECORD.md"]
+inputs = [
+  "Stock backup ZTEToolBoxParBak_2026.10.24: XBL/ABL, tz, aop, modem, uefi_a and device build strings",
+  "Firmware volume window 0xFF300000 / 0x400000 and DXE heap 0xB00F0000 / 0x131A0000",
+  "Board device tree carried inside the FV as FdtBlob (ABL rejects a tree appended to the boot kernel)",
+  "Vendor UEFI tree uefi-nx741j with Mu-Silicium DXE chain and the board drivers",
+]
+configuration = [
+  "board.toml [firmware]: dsc = Platforms/ZTE/nx741jPkg/nx741j.dsc, fd = Build/nx741jPkg/{target}_CLANGPDB/FV/SILICIUM_UEFI.fd",
+  "DSC [Components] lists UniXNUPkg/Application/UniXNU, UniXNUPkg/Driver/UniXNUDxe and UniXNUPkg/Driver/UniXNURamDiskDxe",
+  "FDF [FV.FvMain] now packs UniXNURamDiskDxe directly after UniXNUDxe (Depex TRUE, produces BlockIo and DevicePath)",
+  "APRIORI.inc and DXE.inc already provide DiskIoDxe and FatPkg EnhancedFat for the payload filesystem",
+]
+procedure = [
+  "./unixnu build firmware -D ../UniXNU-nx741j   (UEFI tree from unixnu.local.toml [build] uefi)",
+  "flash the resulting FD through a boot image or the EDL path",
+  "inspect the FV with the firmware build log and the FFS directory under Build/nx741jPkg",
+]
+findings = [
+  "UniXNURamDiskDxe was listed in the DSC but missing from the FDF, so the payload volume never got a block device; the FDF entry was added and the firmware rebuilds with it.",
+  "AdvancedLogDxe is packed: the DSC maps AssertLib, AdvancedLoggerAccessLib, AdvancedLoggerHdwPortLib and QrEncoderLib plus DebugLib=BaseDebugLibAdvancedLogger, and the FDF carries the driver, so Tools -> Advanced Logger pages the firmware log as QR frames.",
+  "The SEC phase keeps BaseDebugLibSerialPort because SiliciumPkg/Sec/Sec.c calls BaseDebugLibSerialPortConstructor() directly; PEI and DXE use the Advanced Logger, which mirrors to the same SerialPortLib so the panel still shows the log.",
+  "The layer 1 boot image that reached the panel carried firmware volume 2f8bc430; the later build db122c8a did not come up, so the FD version is a variable that has to be bisected. The current build is 7d820bcb.",
+]
+completion = [
+  "SILICIUM_UEFI.fd builds and contains UniXNU, DarwinBoot, the ramdisk block driver and the log exporter",
+  "firmware reaches the UniXNU menu, the payload volume is visible as a block device, and Tools -> Advanced Logger exports the log as QR frames",
+]
+limits = [
+  "Layer 2 stops at RpmhDxe FAR=0x58 and a TzDxeLA assertion: SMEM contents, the DTB extension and tzapps are missing ABL environment inputs",
+  "SMEM reads back as zeros, so the DXE chain cannot be validated past the RPMh stage",
+]
+next_action = [
+  "Rebuild the FD with UniXNURamDiskDxe, flash the layer 1 image and capture the menu log; then bisect the FD build between 2f8bc430 and db122c8a",
+]
+evidence = [
+  { kind = "source", reference = "proprietary-files.txt", result = "Firmware files and their stock backup sources" },
+  { kind = "source", reference = "docs/FIRMWARE-DRIVERS.md", result = "SmemStubDxe and KernelStubDxe responsibilities in the DXE chain" },
+  { kind = "source", reference = "docs/PORTING-RECORD.md", result = "Section 18 DXE bring-up notes and memory map" },
 ]
 
-# ---- 2026-11-05 补充：来自本机 live_fdt.dtb 的硬件清单 ----
-[hardware.touch]
-chip = "synaptics_tcm"
-bus = "SPI"
-reset_gpio = "<0x33 0x42 0x00>"
-input_device = "synaptics_tcm_touch（实机 /proc/bus/input/devices）"
-fingerprint = "goodix_fp（独立 input device）"
-
-[hardware.wireless]
-# 来源：FdtBlob/kaanapali-zte-nx741j.dtb 的 qcom,cnss-peach@b0000000 与 pcie@1c00000
-wifi_chip = "Qualcomm WCN7850/WCN7851 系列（DT 平台代号 peach，节点 compatible = qcom,cnss-peach）"
-cnss_node = "qcom,cnss-peach@b0000000"
-cnss_compatible = "qcom,cnss-peach"
-bus = "PCIe；控制器 pcie@1c00000（compatible = qcom,pci-msm），linux,pci-domain = 0，BAR 窗口 0x40200000"
-dma_region = "cnss_wlan_region：32 MB shared-dma-pool，reusable，4 MB 对齐"
-iommu = "SMMU stream 0x23/0x100f（cnss-direct-link）"
-pmu_rails = "S1J1=bb, S2J1=rf, S7F0=rf, S8F0=rf（qcom,vreg_pdc_map）"
-bt = "qcom,wcn-bt = <1>（BT 复用同一 WCN 芯片；audio 节点 qcom,canoe-asoc-snd 声明）"
-gpio = "wlan_en=gpio16, sw_ctrl=gpio18, sw_ctrl_wl_cx=gpio19, pcie0_perst=gpio102, pcie0_clkreq=gpio103, pcie0_wake=gpio104"
-exact_sku = "WCN7850（PCI 17cb:110e，驱动前缀 peach_v2，ath12k 支持）"
-status = "未验证（UEFI 侧无 WLAN/BT 驱动；当前不阻塞启动链）"
-
-
-[hardware.modem]
-mpss_region = "0x8AA00000"
-q6_mpss_dtb = "0x99500000"
-smp2p = "qcom,smp2p-modem"
-
-[hardware.interrupt_controller]
-compatible = "arm,gic-v3"
-distributor = { base = "0x17000000", size = "0x10000" }
-redistributor = { base = "0x17080000", size = "0x200000", stride = "0x40000", regions = 1 }
-its = { base = "0x17040000", size = "0x20000", compatible = "arm,gic-v3-its", msi_cells = 1 }
-interrupt_cells = 3
-maintenance_irq = "PPI 9（0x01 0x09 0x04，level high）"
-timer = { compatible = "arm,armv8-timer", clock_hz = 19200000, ppi = "hyp=10(0x0a), virt=11(0x0b), secure_phys=13(0x0d), non_secure_phys=14(0x0e)", flags = "0xFF08 (level, all cores)", always_on = true }
-timer_mem = { node = "timer@17810000", compatible = "arm,armv7-timer-mem", base = "0x17810000", size = "0x1000", clock_hz = 19200000, frame0_ppi = "sec=8(0x08), ns=6(0x06)" }
-dt_interrupt_consumers = 235   # DT 中 interrupts = <...> 出现次数
-# 来源：FdtBlob/kaanapali-zte-nx741j.dtb 的 interrupt-controller@17000000 与 timer 节点
-
-
-[hardware.psci]
-compatible = "arm,psci-1.0"
-method = "smc"
-power_domains = "cpu-pd0..cpu-pd7（8 个 per-core 域，父域 phandle 0x1a）"
-
-[hardware.idle_states]
-cpu_ret = { name = "ret", entry_latency_us = 93, exit_latency_us = 129, min_residency_us = 560 }
-cluster1_ret = { name = "ret", entry_latency_us = 172, exit_latency_us = 130, min_residency_us = 686 }
-domain_idle = "cluster 级 domain-idle-state（见 /cpus/idle-states）"
-
-[hardware.reserved]
-count = 51
-# 来源：FdtBlob/kaanapali-zte-nx741j.dtb 的 /reserved-memory（原厂 stock DT）
-# 格式：name = { base, size, node }，node 为原 DT 节点名
-
-ramoops = { base = "0xE2000000", size = "0x200000", node = "ramoops@E2000000" }
-gunyah_hyp_region = { base = "0x80000000", size = "0xE00000", node = "gunyah_hyp_region@80000000" }
-hypervisor_extended_heap_region = { base = "0x80E00000", size = "0x400000", node = "hypervisor_extended_heap_region@80e00000" }
-cpucp_pdp_region = { base = "0x81200000", size = "0x200000", node = "cpucp_pdp_region@81200000" }
-xbl_dtlog_region = { base = "0x81A00000", size = "0x60000", node = "xbl_dtlog_region@81a00000" }
-aop_image_region = { base = "0x81C00000", size = "0x60000", node = "aop_image_region@81c00000" }
-aop_cmd_db_region = { base = "0x81C60000", size = "0x20000", node = "aop_cmd_db_region@81c60000" }
-aop_tme_uefi_merged_region = { base = "0x81C80000", size = "0x74000", node = "aop_tme_uefi_merged_region@81c80000" }
-smem_region = { base = "0x81D00000", size = "0x200000", node = "smem_region@81d00000" }
-pdp_ns_shared_region = { base = "0x81F00000", size = "0x100000", node = "pdp_ns_shared_region@81f00000" }
-cpucp_scandump_region = { base = "0x82000000", size = "0x380000", node = "cpucp_scandump_region@82000000" }
-adsp_mhi_region = { base = "0x82380000", size = "0x20000", node = "adsp_mhi_region@82380000" }
-soccp_sdi_region = { base = "0x823A0000", size = "0x40000", node = "soccp_sdi_region@823a0000" }
-pmic_minii_dump_region = { base = "0x823E0000", size = "0x80000", node = "pmic_minii_dump_region@823e0000" }
-qup_fw_region = { base = "0x82460000", size = "0x18000", node = "qup_fw_region@82460000" }
-pvm_fw_region = { base = "0x824A0000", size = "0x100000", node = "pvm_fw_region@824a0000" }
-tz_stat_region = { base = "0x82700000", size = "0x100000", node = "tz_stat_region@82700000" }
-qdss_apps_region = { base = "0x82800000", size = "0x2000000", node = "qdss_apps_region@82800000" }
-dsm_partition_1_region = { base = "0x84A00000", size = "0x5500000", node = "dsm_partition_1_region@84a00000" }
-dsm_partition_2_region = { base = "0x89F00000", size = "0xA80000", node = "dsm_partition_2_region@89f00000" }
-mpss_region = { base = "0x8AA00000", size = "0xEB00000", node = "mpss_region@8aa00000" }
-q6_mpss_dtb_region = { base = "0x99500000", size = "0x80000", node = "q6_mpss_dtb_region@99500000" }
-ipa_fw_region = { base = "0x99580000", size = "0x10000", node = "ipa_fw_region@99580000" }
-ipa_gsi_region = { base = "0x99590000", size = "0xA000", node = "ipa_gsi_region@99590000" }
-gpu_microcode_region = { base = "0x9959A000", size = "0x2000", node = "gpu_microcode_region@9959a000" }
-camera_region = { base = "0x99600000", size = "0x800000", node = "camera_region@99600000" }
-camera_2_region = { base = "0x99E00000", size = "0x800000", node = "camera_2_region@99e00000" }
-video_region = { base = "0x9A600000", size = "0x800000", node = "video_region@9a600000" }
-cvp_region = { base = "0x9AE00000", size = "0x700000", node = "cvp_region@9ae00000" }
-cdsp_region = { base = "0x9B500000", size = "0x1900000", node = "cdsp_region@9b500000" }
-q6_cdsp_dtb_region = { base = "0x9CE00000", size = "0x80000", node = "q6_cdsp_dtb_region@9ce00000" }
-spu_secure_shared_memory_region = { base = "0x9FC80000", size = "0x40000", node = "spu_secure_shared_memory_region@9fc80000" }
-spu_secure_shared_memory_region_1 = { base = "0x9FCC0000", size = "0x40000", node = "spu_secure_shared_memory_region@9fcc0000" }
-spss_region_region = { base = "0x9FD00000", size = "0x2E0000", node = "spss_region_region@9fd00000" }
-dcp_dtb_region = { base = "0xA0050000", size = "0x80000", node = "dcp_dtb_region@a0050000" }
-dcp_region = { base = "0xA00D0000", size = "0x300000", node = "dcp_region@a00d0000" }
-soccp_region = { base = "0xA03D0000", size = "0x500000", node = "soccp_region@a03d0000" }
-soccp_dtb_region = { base = "0xA08D0000", size = "0x40000", node = "soccp_dtb_region@a08d0000" }
-q6_adsp_dtb_region = { base = "0xA1380000", size = "0x80000", node = "q6_adsp_dtb_region@a1380000" }
-adspslpi_region = { base = "0xA1400000", size = "0x4600000", node = "adspslpi_region@a1400000" }
-hwfence_shmem = { base = "0xD4E23000", size = "0x2DD000", node = "hwfence-shmem" }
-xbl_ramdump_region = { base = "0xD7800000", size = "0x1C0000", node = "xbl_ramdump_region@d7800000" }
-global_sync_region = { base = "0xD7A00000", size = "0x200000", node = "global_sync_region@d7a00000" }
-tz_merged_region = { base = "0xD8000000", size = "0x800000", node = "tz_merged_region@d8000000" }
-trust_ui_vm_region = { base = "0xF3800000", size = "0x4000000", node = "trust_ui_vm_region@f3800000" }
-oem_vm_region = { base = "0xF7C00000", size = "0x4C00000", node = "oem_vm_region@f7c00000" }
-llcc_lpi_region = { base = "0xFF800000", size = "0x800000", node = "llcc_lpi_region@ff800000" }
-lcp_dare_region = { base = "0x880000000", size = "0x6000000", node = "lcp_dare_region" }
-splash_region = { base = "0xFC800000", size = "0x2B00000", node = "splash_region" }
-demura_region_0 = { base = "0x0", size = "0x0", node = "demura_region_0" }
-demura_region_1 = { base = "0x0", size = "0x0", node = "demura_region_1" }
-
-[firmware]
-# 来源：备份镜像 ZTEToolBoxParBak_2026.10.24_22.38.43.421/images/ 的版本字符串
-
-boot_chain = "BOOT.MXF.2.5.3-00131-KAANAPALI-1.124266.24"          # xbl_a.img，XBL/ABL/SBL 共用此版本号
-aop = "AOP.HO.7.0-00223-KAANAPALI_E-1.124266.8"                     # aop_a.img
-modem = "MPSS.DE.9.0-01805.10-KAANAPALI_GEN_PACK-2.124266.53"       # modem_a.img
-meta_build = "Kaanapali.LA.1.0.r1-00850-STD.PROD-1.124266.59"
-apps_vendor = "LA.VENDOR.16.2.0.r1-07800-kaanapali.0-1.124266.9"
-audio = "AUDIO_HANDSET.LA.11.0.r1-04600-kaanapali.0-1.124266.1"
-video = "VIDEO_HANDSET.LA.1.0.r1-04700-kaanapali.0-1.124266.1"
-soccp = "SOCCP.FW.2.1-00165-KAANAPALI_SOCCP_PACK-1.124266.3"
-uefi_build = "KaanapaliLAA/Core/RELEASE_CLANG180LINUX/AARCH64（uefi_a.img 内编译路径）"
-abl_note = "abl_a.img 内未找到明文版本串（与 XBL 同属 BOOT.MXF.2.5.3 构建链，版本号见 boot_chain）"
-rom = "NebulaAIOS 2.0.15 MR3（NX741J_VG，Android 16）"
-rom_alt = "国际版 MYOS 16.0.16 EEA（另一份备份）"
-os_profile = "ios-16.7.16-20H392 / xnu 8796.141.3（arm64, Darwin 22.6.0）"
-device_build = "CP2A.260605.016（实机 ro.build.display.id）"
-device_fingerprint = "Xiaomi/nezha/nezha:17/CP2A.260605.016/OS4.0.0.10.XPACNXM（移植ROM指纹）"
-device_model = "NX741J（ro.product.model），ro.soc.model = SM8850（QTI）"
-baseband_prop = "EN_PACK-2.124266.53,EN_PACK-2.124266.53（gsm.version.baseband）"
-
-[driver_adaptation]
-# 完整表（接口 / 源码参考 / 构建接入）见 docs/DRIVER-CHECKLIST.md
-document = "docs/DRIVER-CHECKLIST.md"
-display = { uefi = "DisplayDxe + SimpleFbDxe(GOP 1216x2688)", xnu = "GopFramebuffer", status = "UEFI verified, XNU not started" }
-ufs = { uefi = "UFSDxe", xnu = "ShengUfs + ArmSmmu4K", status = "UEFI verified, XNU not started (needs SM8850 clocks)" }
-touch = { uefi = "none (only SPIDxe/GpiDxe)", xnu = "ShengHidInput + QcomGeniSpi", status = "no Synaptics TCM protocol driver; ShengNovatekTouch is NT36532" }
-wifi = { uefi = "none", xnu = "Ath12kWifi + QcaBluetooth", status = "not started; WCN7850 over PCIe" }
-power = { uefi = "RpmhDxe + SPMIDxe + PmicDxe + ClockDxe + ICBDxe", xnu = "Sm8550Platform (needs SM8850)", status = "blocked at RpmhDxe in layer 2" }
-buttons = { uefi = "ButtonsDxe", xnu = "none", status = "not verified" }
-gpu = { uefi = "none", xnu = "Adreno740 + AdrenoPM4 + AdrenoFirmware + AdrenoMetal", status = "needs Adreno 840 (0x44050a01) port" }
-usb = { uefi = "XhciDxe + 6x Usb*Dxe", xnu = "none", status = "not started" }
-
-[prelink]
-# 2026-11-07：`unixnu build kernel` 首次跑绿（exit 0），内核链路全通。
-document = "https://unixnu.com/zh/concepts/prelink"
-kernel = "build/xnu/ios-obj/DEVELOPMENT_ARM64_BCM2837/mach.development.bcm2837"
-kernelcache = "/opt/work/ipsw/kernelcache.arm64（sha256 2ec297ba…，与 profile 的 kernelcache_sha256 一致）"
-roots = ["com.apple.driver.AppleARMPlatform", "com.apple.filesystems.apfs"]
-components_prelinked = 11
-bindings = 23833
-early_security_init = "未定：本 kernelcache 里 AppleMobileFileIntegrity 早期初始化器的原始 VA 仍需查明（当前显式置空）"
-qualification = "abi_qualified=false、instruction_relocation_complete=false、runtime_qualified=false（工具自评：experimental candidate）"
-notes = [
-  "8 个失败点全部是 8796 与快照工具链的错配，不是硬件问题：uio 过度对齐数组、IORPC.kernelContent、kalloc void* 解引用、缺 osfmk/arm64/kpc.c、缺 .o.json 编译记录、libpthread 519 过新、kernelcache 路径、缺 vfs_getvfs_with_vfsops、缺 sparse-prelink index。",
-  "libpthread 从 519.120.4 下调到 486.100.11（iOS 16.7 同代）；explicit-kernel-address.patch 已按 486 重生成。",
-  "kits/XnuPrelink/patches/ 的两条补丁在 format 2 下不会被自动应用，已用 component: 前缀登记进 arch series。",
+# ---------------------------------------------------------------------------
+# cpu
+# ---------------------------------------------------------------------------
+[[area]]
+id = "cpu"
+status = "implemented"
+components = ["ArmCpu"]
+paths = ["dts/board.dts", "board.toml", "configs/nx741j_defconfig"]
+inputs = [
+  "8 cores in two clusters: cluster0 cpu@0..500 (6 cores), cluster1 cpu@10000,10100 (2 cores)",
+  "MIDR 0x51 / 0x002 (Qualcomm Oryon) on all cores, read from the running device",
+  "Max frequencies 3.63 GHz (policy0) and 4.61 GHz (policy6) from cpufreq",
+  "GICv3 distributor and redistributors, ARM generic timer",
+]
+configuration = [
+  "dts/board.dts carries the cpu nodes, cpu-map and the mpidr values from the stock DT",
+  "capacity-dmips-mhz 1792/1894 and dynamic-power-coefficient 238/588 from the stock DT",
+  "configs/nx741j_defconfig enables CONFIG_XNU_ARMCPU",
+]
+procedure = [
+  "compile the board DTS through ./unixnu build payload (ADT generation)",
+  "build the kernel with ./unixnu build kernel and check the arch timer patch in the series",
+]
+findings = [
+  "The stock DT has no CPU frequency table and no MIDR; both had to be read from the running Android system.",
+  "L2 cache is per-core on cluster0 and shared through phandle 0x0e on cluster1.",
+]
+completion = [
+  "Every enabled CPU reaches its entry checkpoint and local timer interrupts fire on each CPU",
+  "IPI delivery works between the two clusters",
+]
+limits = [
+  "No on-device checkpoint has been reached yet; the kernel has only been built and linked",
+]
+next_action = [
+  "Boot the kernel and record the per-CPU entry checkpoints in the diagnostics log",
+]
+evidence = [
+  { kind = "source", reference = "dts/board.dts", result = "CPU topology, mpidr and capacity values for both clusters" },
+  { kind = "source", reference = "board.toml", result = "hardware.cpu section with MIDR, frequencies and cache layout" },
 ]
 
-[packaging]
-# 步骤 4 收尾（2026-11-07）：一条命令从干净检出产出 boot.img + payload.img。
-# 脚本按文档六步（deps/preflight/patches/build/pack/verify）实现；本快照没有 unixnu release
-# 与 templates/package.sh，因此直接驱动 unixnu defconfig/tree/fetch/build/bootimg。
-script = "scripts/package.sh"
-contract = "https://unixnu.com/zh/porting/packaging"
-check = "scripts/package.sh --check --os ios-16.7.16-20H392"
-ci = ".github/workflows/package.yml"
-status = "check 可跑通（deps/preflight/patches）；build 已能产出 kernel.macho，pack/verify 待 payload 与 bootimg 打通"
-blocked_by = "payload 需要 trust cache 与 unique_chip_id；bootimg 需要固件卷（--uefi）与编译后的 DTB"
+# ---------------------------------------------------------------------------
+# memory
+# ---------------------------------------------------------------------------
+[[area]]
+id = "memory"
+status = "implemented"
+components = []
+paths = ["dts/board.dts", "board.toml", "docs/PORTING-RECORD.md"]
+inputs = [
+  "DRAM base 0x80000000, SMEM 0x81D00000 / 0x200000 initialized by XBL (xbl_config_a)",
+  "DXE heap 0xB00F0000 / 0x131A0000 and the FD window 0xFF300000 / 0x400000",
+  "51 reserved regions from the live device tree (splash, oem_vm_region, llcc_lpi_region, lcp_dare_region, ...)",
+  "Splash region 0xFC800000 / 0x2B00000 used by the panel framebuffer",
+]
+configuration = [
+  "board.toml [hardware.memory] and [hardware.reserved] list the regions and their owners",
+  "dts/board.dts carries the reserved-memory nodes consumed by the ADT generator",
+]
+procedure = [
+  "read the live FDT on the device and reconcile every reserved-memory node",
+  "build the payload so the ADT carries the memory map, then inspect payload.json",
+]
+findings = [
+  "SMEM is set up by XBL before ABL runs, so a firmware path that runs before XBL initialization reads zeros; this is the open layer 2 input.",
+  "The FD is mapped at 0xFF300000 and the framebuffer region at 0xFC800000; both must not overlap the DXE heap.",
+]
+completion = [
+  "All handoff regions are accounted for and the kernel memory map matches the reserved set",
+  "DMA engines use their allocated ranges with the documented cache policy",
+]
+limits = [
+  "SMEM contents and the DTB extension are still missing, which blocks the RPMh driver in layer 2",
+]
+next_action = [
+  "Recover the SMEM image from a stock boot or construct it, then re-test the DXE chain",
+]
+evidence = [
+  { kind = "source", reference = "docs/PORTING-RECORD.md", result = "Reserved region inventory and the layer 2 memory map notes" },
+  { kind = "source", reference = "board.toml", result = "hardware.memory and hardware.reserved entries" },
+]
 
-[records]
-porting_record = "docs/PORTING-RECORD.md"      # 十八节全量技术归档
-driver_checklist = "docs/DRIVER-CHECKLIST.md"  # 子系统接口/源码参考/构建接入
-firmware_drivers = "docs/FIRMWARE-DRIVERS.md"  # SmemStubDxe / KernelStubDxe
-tasks = "docs/TASKS.md"
-start_here = "docs/START-HERE.md"
+# ---------------------------------------------------------------------------
+# storage
+# ---------------------------------------------------------------------------
+[[area]]
+id = "storage"
+status = "implemented"
+components = []
+paths = ["board.toml", "docs/PORTING-RECORD.md"]
+inputs = [
+  "UFS model KLUGG8NHKB-F0H1, vendor Samsung, revision 0500, boot LUN 4",
+  "GPT entries: boot_a 119078, uefi_a 6, efisp 748894, vbmeta_a 143706, vendor_boot_a 302310",
+  "boot_a is 96 MiB (100663296 bytes)",
+  "Payload volume 64 MiB and the efisp / userdata fallbacks",
+]
+configuration = [
+  "board.toml [hardware.storage] records the UFS identity and the partition LBAs",
+  "board.toml [payload] size_mib = 64 and [partition_strategy] primary = efisp, fallback = userdata FAT",
+]
+procedure = [
+  "read the GPT from the running device and confirm each LBA",
+  "write and read back a boot image through the Android root path (dd to /dev/block/by-name/boot_a) and compare SHA-256",
+]
+findings = [
+  "The 9008 firehose of the current XBL rejects the generic programmer with 'Tool doesn't come from ZTE', so the working write path is Android root dd; the official 9008 rescue package carries its own programmer for full recovery.",
+  "boot_a accepts a 1.37 MB boot image (335 x 4096) and reads back bit-identical.",
+]
+completion = [
+  "SCSI capacity, GPT and known blocks read correctly",
+  "The configured volume mounts and launchd starts; writes survive reboot",
+]
+limits = [
+  "No XNU UFS driver yet: ShengUfs targets SM8550 and needs an SM8850 clock table plus ArmSmmu4K",
+]
+next_action = [
+  "Port the UFS driver to the SM8850 clock and reset set once layer 2 produces a menu",
+]
+evidence = [
+  { kind = "source", reference = "board.toml", result = "hardware.storage LBAs, UFS model and payload size" },
+  { kind = "source", reference = "docs/PORTING-RECORD.md", result = "GPT inventory and partition strategy" },
+]
 
-[hardware.observed]
-# 实机观测（2026-11-06，adb 连接 NX741J）
-cmdline = "console=ttynull ... qcom_geni_serial.con_enabled=0 ... msm_drm.dsi_display0=qcom,mdss_dsi_bf375_rm692h5_6p8_dev0_dsc_cmd ... kmparam.secboot_status=1"
-serial_note = "Android 内核把串口关掉（console=ttynull + geni_serial.con_enabled=0），所以 UEFI 侧只能用 FrameBufferSerialPortLib 出日志"
-pcie_sm = "pci-msm-drv.pcie_sm_regs=0x1D07000,0x1040,0x1048,0x3000,0x1（PCIe SM 寄存器）"
-boot_state = "kmparam.debug_policy=0x00000000, secboot_status=1（已解锁/已签）"
+# ---------------------------------------------------------------------------
+# display
+# ---------------------------------------------------------------------------
+[[area]]
+id = "display"
+status = "implemented"
+components = ["GopFramebuffer"]
+paths = ["board.toml", "dts/board.dts"]
+inputs = [
+  "Panel bf375 / rm692h5 6.8 inch, native 1440x3200, DSI command mode with dual 1216x2688 modes (120/60 fps)",
+  "UEFI GOP must be 1216x2688; the framebuffer region is 0xFC800000 / 0x2B00000",
+  "ZTE private dimming commands (zte,mdss-dsi-dim-on-commands)",
+]
+configuration = [
+  "board.toml [hardware.display] pins panel name, resolution and GOP geometry",
+  "board.toml [components] selects GopFramebuffer so the kernel consumes the GOP the firmware publishes",
+]
+procedure = [
+  "confirm the GOP mode in the firmware menu (1216x2688)",
+  "build the kernel and check that GopFramebuffer is linked from the selected component",
+]
+findings = [
+  "The 10-26 CI line carried a panel geometry fix (1216x2688); that geometry must not regress to 1220x2656.",
+  "UEFI side output is confirmed; the XNU side has not been started.",
+]
+completion = [
+  "The panel shows the menu at 1216x2688 and the kernel keeps the same geometry",
+]
+limits = [
+  "XNU display and brightness are not started",
+]
+next_action = [
+  "Bring up GopFramebuffer after the kernel boots and record the first paint",
+]
+evidence = [
+  { kind = "source", reference = "board.toml", result = "Panel, GOP geometry and framebuffer region" },
+]
 
-[sources]
-# 步骤 2：共享支持选择与版本固定（详见 docs/SHARED-SUPPORT.md）
-main_repo = "https://github.com/MengHanYoo/UniXNU-main-nx741j @ 257af5bd8b591d817414085051fb277f796f9acf（tag nx741j-bringup-2026-11-06）"
-arch_profile = "UniXNU-main-nx741j/profiles/arch/arm64 @ 257af5bd8b591d817414085051fb277f796f9acf"
-os_profile_source = "UniXNU/profiles/os/ios-16.7.16-20H392 @ 同上"
-soc_repo = "UniXNU-sm8850-common @ 927698d5feca6d391e18ba9f7f2165d9d149735b（https://github.com/MengHanYoo/UniXNU-sm8850-common）"
-device_repo = "UniXNU-nx741j（本仓库）@ 8eee59444c381f946b7e2856a3864d86c5284db6"
-uefi_repo = "uefi-sheng-main @ 586670bcc53c7a05b7dcb9ecac494b209fd9525f（待发布为 uefi-nx741j）"
-component_ArmDTPlatform = "417ff95d6a6e8607ddea9309ec45c3bfd4a67c60"
-component_ArmCpu = "9066b53bbc82e92a98ec44a11dd50fd13eaf1a1b"
-component_XnuPrelink = "f876e3ee62e18fc06653dd75ed7dafcfb3950ac0"
-component_DarwinBoot = "3325e352d7df68a9f9ad74832ed94a6acbbd7390"
-pending_publish = "三个仓库已推送 GitHub（private）；unixnu.lock 已可记录 soc 源"
+# ---------------------------------------------------------------------------
+# input (planned)
+# ---------------------------------------------------------------------------
+[[area]]
+id = "input"
+status = "planned"
+components = []
+paths = ["board.toml", "docs/DRIVER-CHECKLIST.md"]
+inputs = [
+  "Synaptics TCM touch on SPI, reset GPIO <0x33 0x42 0x00>, input device synaptics_tcm_touch",
+  "Goodix fingerprint as a separate input device",
+  "Buttons through ButtonsDxe in the firmware tree",
+]
+configuration = [
+  "board.toml [hardware.touch] records the bus, GPIO and device name",
+  "component_plan defers ShengHidInput and QcomGeniSpi until a TCM protocol layer exists",
+]
+procedure = [
+  "add a Synaptics TCM protocol driver on top of QcomGeniSpi and register it with ShengHidInput",
+  "verify pointer events in the menu and in the kernel",
+]
+findings = [
+  "ShengNovatekTouch implements Novatek NT36532, not the Synaptics TCM protocol this panel uses.",
+]
+completion = [
+  "Touch coordinates map to the 1216x2688 menu and to the kernel input device",
+]
+limits = [
+  "No touch protocol driver exists for this panel yet",
+]
+next_action = [
+  "Write the TCM protocol layer and wire it into ShengHidInput",
+]
+evidence = []
 
-[component_plan]
-# 步骤 2 组件选型决策（2026-11-06）。active = 已加入 board.toml include 并钉 revision；
-# deferred = 明确推迟，附前置条件。revision 均取自 UniXNU/components.toml。
-active_display = { component = "GopFramebuffer", revision = "cf3b42979a9c", why = "硬件通用：EFI GOP 1216x2688 已由 SimpleFbDxe 提供" }
-active_core = { components = ["ArmDTPlatform 417ff95d", "ArmCpu 9066b53b", "XnuPrelink f876e3ee", "DarwinBoot 3325e352"], why = "ARM64 通用，ABI 与 8796 profile 匹配" }
+# ---------------------------------------------------------------------------
+# gpu (planned)
+# ---------------------------------------------------------------------------
+[[area]]
+id = "gpu"
+status = "planned"
+components = []
+paths = ["board.toml", "docs/DRIVER-CHECKLIST.md"]
+inputs = [
+  "Adreno 840, firmware gen80200 (aqe.fw, sqe.fw, gmu.bin, zap.mbn), GMEM 18 MiB",
+  "Chip id 0x44050a01 expected by the driver",
+]
+configuration = [
+  "board.toml [hardware.gpu] records the model and firmware; native Adreno is disabled in the defconfig",
+  "component_plan defers Adreno740, AdrenoPM4, AdrenoFirmware and AdrenoMetal until the 840 port exists",
+]
+procedure = [
+  "port the Adreno 740 interfaces to the 840 generation and keep the Metal front end on metal2vulkan plus Turnip",
+]
+findings = [
+  "The kernel side was verified on the earlier CI lineage, but only with wallpaper black and 13-30 fps; that is not a device-qualified state.",
+]
+completion = [
+  "GPU firmware loads, submissions complete and fences retire, then Metal presents a frame",
+]
+limits = [
+  "No Adreno 840 port; the deferred components target A740",
+]
+next_action = [
+  "Start from the Adreno740 interface and add the gen80200 firmware and GMEM layout",
+]
+evidence = []
 
-deferred_storage = { component = "ShengUfs", revision = "e2b32cc429e8", why = "SM8550 UFS 控制器口径，本机为 SM8850（KLUGG8NHKB）", needs = "SM8850 时钟表 + ArmSmmu4K" }
-deferred_smmu = { component = "ArmSmmu4K", revision = "8bb168ad058c", why = "通用 MMU-500，需与 UFS/GPU 一起验证", needs = "平台操作" }
-deferred_gpu = { components = ["Adreno740 4e0314df", "AdrenoPM4 282606b5", "AdrenoFirmware 20ad3d7a", "AdrenoMetal 454ff2ce"], why = "Adreno 740 / A6xx-A7xx HFI，本机为 Adreno 840（gen80200 / 8xx）", needs = "Adreno 840 移植（chip id 0x44050a01、GMEM 18 MiB）" }
-deferred_wifi = { component = "Ath12kWifi", revision = "f6bf561f92cc", why = "硬件匹配：ath12k 支持 wcn7850，本机 PCI 17cb:110e 即 WCN7850", needs = "PCIe host（pcie@1c00000）+ 平台操作" }
-deferred_touch = { components = ["ShengHidInput 5f3a37ce", "ShengNovatekTouch a1a6f2b1", "QcomGeniSpi eac47bae"], why = "ShengNovatekTouch 是 Novatek NT36532，本机为 Synaptics TCM", needs = "新建 Synaptics TCM 协议层，复用 ShengHidInput + QcomGeniSpi" }
-deferred_baseline = { component = "Sm8550Platform", revision = "23b2049fcd9e", why = "SM8550 平台操作", needs = "改写成 SM8850 版（soc 仓库 kits/Sm8850Platform）" }
+# ---------------------------------------------------------------------------
+# network (planned)
+# ---------------------------------------------------------------------------
+[[area]]
+id = "network"
+status = "planned"
+components = []
+paths = ["board.toml", "docs/DRIVER-CHECKLIST.md"]
+inputs = [
+  "WCN7850 over PCIe (17cb:110e), PCIe SM registers at 0x1D07000",
+  "No WLAN or BT driver exists in the firmware tree",
+]
+configuration = [
+  "board.toml [hardware.wireless] records the chip and the PCIe identity",
+  "component_plan defers Ath12kWifi and QcaBluetooth until the PCIe host and platform operations exist",
+]
+procedure = [
+  "add the PCIe host node and platform operations, then bring up Ath12kWifi and QcaBluetooth",
+]
+findings = [
+  "ath12k supports wcn7850, so the driver choice is correct; the missing part is the PCIe host on this board.",
+]
+completion = [
+  "Firmware download succeeds, the interface associates and packets move",
+]
+limits = [
+  "Blocked behind the platform and PCIe host work; does not block the boot chain",
+]
+next_action = [
+  "Add the PCIe host node and platform clocks after layer 2 produces a menu",
+]
+evidence = []
 
-[missing_inputs]
-# 2026-11-06 实机读取后已全部补齐（cpu_midr / cpu_freq_table / wireless_exact_sku）
+# ---------------------------------------------------------------------------
+# audio (planned)
+# ---------------------------------------------------------------------------
+[[area]]
+id = "audio"
+status = "planned"
+components = []
+paths = ["board.toml", "docs/DRIVER-CHECKLIST.md"]
+inputs = [
+  "SM8850 ADSP with firmware version from the stock backup",
+  "Onboard codec and the DSP audio routes used by Android",
+]
+configuration = [
+  "No audio component is selected; the DSP, codec and routing still have to be chosen",
+]
+procedure = [
+  "select an audio component, add the DSP firmware and the codec routes, then verify playback and capture",
+]
+findings = [
+  "Audio depends on the DSP and power framework, which both come after the RPMh and platform work.",
+]
+completion = [
+  "Playback and capture work through the selected codec and DSP routes",
+]
+limits = [
+  "Not started; blocked by the same platform and power inputs as the rest of the SoC bring-up",
+]
+next_action = [
+  "Read the ADSP firmware version from the stock image and pick the component",
+]
+evidence = []
+
+# ---------------------------------------------------------------------------
+# power (planned)
+# ---------------------------------------------------------------------------
+[[area]]
+id = "power"
+status = "planned"
+components = []
+paths = ["board.toml", "docs/DRIVER-CHECKLIST.md", "docs/FIRMWARE-DRIVERS.md"]
+inputs = [
+  "RPMh, SPMI, PMIC, clock and interconnect controllers under SM8850",
+  "PMIC rails and the regulator set from the stock device tree",
+]
+configuration = [
+  "board.toml [hardware.firmware] records the firmware versions; the power framework is not selected yet",
+  "component_plan defers Sm8550Platform until it is rewritten for SM8850 (soc repository kits/Sm8850Platform)",
+]
+procedure = [
+  "complete RpmhDxe in the firmware export, then port the platform operations to SM8850",
+]
+findings = [
+  "Layer 2 currently fails at RpmhDxe (FAR=0x58) because the RPMh register set needs the SMEM contents that XBL normally provides.",
+]
+completion = [
+  "Regulators, clocks and power domains come up and the SoC leaves the boot state",
+]
+limits = [
+  "Blocked at RpmhDxe in layer 2; no SM8850 platform operations exist",
+]
+next_action = [
+  "Provide the SMEM contents and finish the RPMh driver, then start the SM8850 platform port",
+]
+evidence = []
+
+# ---------------------------------------------------------------------------
+# packaging
+# ---------------------------------------------------------------------------
+[[area]]
+id = "packaging"
+status = "host-verified"
+components = ["XnuPrelink"]
+paths = ["scripts/package.sh", "board.toml", "docs/HANDOFF-2026-11-07.md"]
+inputs = [
+  "Self-built XNU kernel (8796.141.3) and the original kernelcache matching the profile pin (2ec297ba)",
+  "Trust cache bundle from the IPSW, chip id 207 and a non-zero unique chip id",
+  "Boot image inputs: FD, compiled board DTB, payload volume 64 MiB, kernel args -v serial=3",
+  "xnu 1b191cb5 with the 63-patch series, including the two XnuPrelink kit patches",
+]
+configuration = [
+  "board.toml [kernel.prelink]: kernel = build/xnu/ios-obj/DEVELOPMENT_ARM64_BCM2837/mach.development.bcm2837, roots AppleARMPlatform + apfs, early_security_init empty",
+  "board.toml [payload]: volume NX741J, 64 MiB, loader firmware, kernel_args [\"-v\", \"serial=3\"], two accepted trust cache hashes",
+  "board.toml [bootimg.image]: base 0x80000000, kernel_offset 0x8000, tags_offset 0x1e00000, pagesize 4096, header_version 4 (TOML integers)",
+  "scripts/package.sh runs deps, preflight, patches, build, pack and verify and writes package.manifest.json",
+]
+procedure = [
+  "./unixnu build kernel -D ../UniXNU-nx741j",
+  "./unixnu build payload -D ../UniXNU-nx741j",
+  "./unixnu bootimg -D ../UniXNU-nx741j --ramdisk <payload.img>",
+  "./scripts/package.sh --no-deps",
+]
+findings = [
+  "unixnu build kernel exits 0 from a freshly cloned tree with all 63 patches applied: 856 compile records, eight archive builders, link and prelink.",
+  "kernel.macho is 51,691,520 bytes and the prelink report lists 11 components with 23,833 bindings, but abi_qualified and runtime_qualified are both false, so it is an experimental candidate.",
+  'The bootimg values must be TOML integers; quoted hex strings fail in verify with a TypeError, and local.toml ramdisk="none" silently drops the payload.',
+  "The 1.37 MB boot image written to boot_a reads back bit-identical, but the firmware volume it carries (db122c8a) did not reach the menu, while the earlier 2f8bc430 image did.",
+]
+completion = [
+  "package.sh produces kernel.macho, payload.img, boot.img and package.manifest.json with matching hashes",
+  "The image boots the firmware menu on the device",
+]
+limits = [
+  "early_security_init is empty, so AMFI does not run its early initializer",
+  "runtime_qualified is false; the prelink has not been validated on hardware",
+  "mockfs is disabled because this snapshot cannot produce the compile records its fixture builder reads",
+]
+next_action = [
+  "Rebuild the boot image with the known-good firmware volume and bisect the FD regression",
+]
+evidence = [
+  { kind = "host", reference = "docs/HANDOFF-2026-11-07.md", command = "EXTRA_MAKE_ARGS=-O ./unixnu build kernel -D ../UniXNU-nx741j", result = "Build exits 0 from a fresh clone with 63 patches, 856 compile records and a 51,691,520-byte kernel.macho", revision = "32b9855fb815cf2f33f845578a622ab0b6704b72" },
+  { kind = "host", reference = "scripts/package.sh", command = "./scripts/package.sh --no-deps", result = "Steps preflight, patches, build, pack and verify pass and package.manifest.json is written", revision = "32b9855fb815cf2f33f845578a622ab0b6704b72" },
+  { kind = "source", reference = "board.toml", result = "Prelink, payload and boot image inputs" },
+]
+
+# ---------------------------------------------------------------------------
+# diagnostics
+# ---------------------------------------------------------------------------
+[[area]]
+id = "diagnostics"
+status = "implemented"
+components = []
+paths = ["docs/HANDOFF-2026-11-07.md", "docs/HANDOFF-2026-11-06.md", "docs/TASKS.md"]
+inputs = [
+  "Firmware output goes to the panel through FrameBufferSerialPortLib because the Android kernel disables the serial console (console=ttynull, geni_serial.con_enabled=0)",
+  "Build logs under out/nx741j/ios-16.7.16-20H392/nx741j/logs and the XNU compile records",
+  "Stock boot backups and the Android root dd path as the recovery route",
+]
+configuration = [
+  "kernel_args -v serial=3 in the payload; firmware menu holds the log pages",
+  "AdvancedLogDxe packed with the Advanced Logger buffer (256 pages), PcdUniXNUDeviceModel = NX741J for the export filename, and payload [payload] tools = true so the Tools menu exists",
+]
+procedure = [
+  "build with EXTRA_MAKE_ARGS=-O so parallel make output stays grouped per target",
+  "on failure grep the log for ': error:' with the target name, then reproduce single-threaded",
+  "recover the device by flashing the stock boot image through Android root dd and comparing SHA-256",
+]
+findings = [
+  "Without -O the parallel log interleaves and hides error lines; that is what made the bsd failure look silent.",
+  "Old objects and work trees survive pin changes: .cache/libpthread-work and build/xnu/ios-obj must be removed when a source pin changes.",
+  "The 9008 path needs a ZTE-signed programmer for program commands; the official rescue package carries it, and power commands work with the generic one.",
+]
+completion = [
+  "Every failed stage leaves a log with the failing target and a reproducible command",
+  "Recovery from a bad boot image restores a booting device",
+]
+limits = [
+  "The QR exporter has not been exercised on hardware yet; the first capture still has to be scanned with OneSend",
+]
+next_action = [
+  "Flash the rebuilt image, open Tools -> Advanced Logger and scan the frames with OneSend before the kernel handoff",
+]
+evidence = [
+  { kind = "source", reference = "docs/HANDOFF-2026-11-07.md", result = "Eight failure classes with root causes and the recovery procedure" },
+]
+
+# ---------------------------------------------------------------------------
+# security
+# ---------------------------------------------------------------------------
+[[area]]
+id = "security"
+status = "implemented"
+components = ["SoftwareAES"]
+paths = ["board.toml", "docs/HANDOFF-2026-11-07.md"]
+inputs = [
+  "Static trust cache 087-86593-047.dmg.trustcache with SHA-256 9cc478fe accepted by the payload",
+  "Chip id 207 and a non-zero unique chip id for the ADT platform identity",
+  "AMFI runs in platform code policy through /chosen/amfi-only-platform-code",
+]
+configuration = [
+  "board.toml [payload] trust_cache_sha256 lists the two accepted hashes; the local input points at the extracted trust cache",
+  "board.toml [payload.adt] chip_id 207 and unique_chip_id required",
+  "SoftwareAES selected so the arch archive list resolves and the AES bindings come from source",
+]
+procedure = [
+  "compare payload.json trust_cache_sha256 with the board list after every build",
+  "keep a non-zero unique chip id in the local build inputs for payload packaging",
+]
+findings = [
+  "The trust cache and the ADT identity are already enforced by the payload build; a mismatch fails the build rather than the device.",
+  "early_security_init stays empty because the original AMFI initializer address in this kernelcache has not been identified, so the early initializer does not run.",
+]
+completion = [
+  "Trust cache and ADT identity match the device and the kernel reaches the early security stage",
+]
+limits = [
+  "AMFI early initialization is not configured yet",
+  "The unique chip id in the local inputs is a placeholder used to exercise the packaging path",
+]
+next_action = [
+  "Find the AppleMobileFileIntegrity initializer address in kernelcache 2ec297ba and set early_security_init",
+]
+evidence = [
+  { kind = "source", reference = "board.toml", result = "Trust cache hashes, chip id and unique chip id inputs" },
+  { kind = "source", reference = "docs/HANDOFF-2026-11-07.md", result = "Prelink security notes and the early initializer gap" },
+]
