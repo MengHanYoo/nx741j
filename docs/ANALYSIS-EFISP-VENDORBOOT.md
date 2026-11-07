@@ -757,3 +757,50 @@ not found
 
 - 设备在 `ZTE MemoryDump Mode`（V9 运行后），需要长按电源 15 s + 音量键进 9008 才能回滚；
 - 本地回滚件齐全：`efisp.img`（stock，sha `4df18359…`）、`fv-bisect/fd-v0-baseline.img`（V0）。
+
+## 20. 按官方启动链文档分析当前阻塞（2026-11-07 22:30）
+
+官方 `concepts/boot-chain` 的五阶段与我们的实测逐项对照：
+
+| 官方阶段 | 官方要求 | 我们的实测 | 差距 |
+|---|---|---|---|
+| 1 bootloader → BootShim | `boot.img` kernel = gzip(BootShim+FD)，尾部 DTB；BootShim 拷 FD 到 `FD_BASE` 后 `br`，**不碰 x0**（ABL 的 DTB 指针原样保留） | 我们用 efisp loader 替代（同样把 FDT 放进 x0、拷 FD 到 `0xFF300000`、关 MMU 后跳入 SEC） | ✅ 等价（结构已核对：shim 192 B + FD 4 MiB + DTB） |
+| 2 UEFI → UniXNU | FV 含 `UniXNU.efi`、`UniXNUDxe`、**`UniXNURamDiskDxe`**；`UniXNUDxe` 注册 `Boot####`（`unixnu:firmware`）；BDS 启动 UniXNU；**payload 卷由固件发布**（`/chosen/linux,initrd-start/end` → BlockIo） | FV 含前两者并已注册 `Boot####`（日志可见）；BDS 到达；但日志反复 `no blockio handles`，UniXNU 找不到 payload | **缺 `UniXNURamDiskDxe`**（它在 DSC 里、但 **FDF 没包含**），所以 payload 卷根本不存在 |
+| 3 UniXNU → DarwinBoot | 请求结构体 + DT 六步准备 | QEMU 已验证；实机未到（被阶段 2 阻塞） | 依赖阶段 2 |
+| 4 DarwinBoot → XNU | Mach-O 常量校验、256 MiB 窗口、`DARWIN_BOOT_ARGS` | 源码核对 + QEMU 合成载荷 | 依赖阶段 3 |
+| 5 XNU → 用户态 | `ArmDTPlatform` + CHRP NVRAM proxy | 源码核对 | 未到 |
+
+### 20.1 两个独立缺陷（不要把 DTBExtn 当主线）
+
+**缺陷 A：payload 卷缺失（阶段 2）**
+
+- Mu 的 payload 卷不是 UFS，而是 **BootShim/ABL 提供的 initrd**（也就是 `boot.img` 的 ramdisk 字段，即 `payload.img`）；
+- 官方固件里负责把它发布成 BlockIo 的驱动是 `UniXNUPkg/Driver/UniXNURamDiskDxe`：它读 `/chosen/linux,initrd-start|end`，再 `InstallMultipleProtocolInterfaces`；
+- 我们的 `nx741j.dsc:95` 有该 INF，但 `nx741j.fdf` 只包含 `UniXNU.inf` 与 `UniXNUDxe.inf` → **该驱动不在 FV 里**，因此无论 DT 怎么写都不会有 BlockIo。日志里的 `no blockio handles` 是必然结果，不是故障。
+
+**缺陷 B：固件用的 DT 里没有 initrd 范围**
+
+- 固件通过 `DtPlatformDxe` 把 **FDF 内嵌的 `FdtBlob`**（`SECTION RAW`，UI `DeviceTreeBlob`）安装成 `gFdtTableGuid`；
+- 我们 loader 在 x0 传的 FDT 里有 `linux,initrd-start/end`，但固件用的是内嵌 blob，**不含**这两个属性；
+- 因此即使补上 `UniXNURamDiskDxe`，它也只会打印 `no initrd in /chosen`。
+
+**不是原因的项：`HALIOMMU` / `DTBExtnProtocol`**
+
+- `DTBExtnProtocol` 的提供者在 `Binaries/nx741j` 的 180 个驱动里**不存在**（只有 10+ 个使用方，stock 固件同样如此）；
+- 它只影响 `HALIOMMU`→UFS 这条 **厂商存储栈**，而官方启动链的 payload 走 **RAM initrd**，根本不依赖 UFS BlockIo；
+- 所以花时间补 DTBExtn 对"进 UniXNU 菜单"没有帮助。
+
+### 20.2 按官方设计的最小修复清单
+
+1. **把 `UniXNURamDiskDxe` 加进 FV**：`nx741j.fdf` 增加 `INF UniXNUPkg/Driver/UniXNURamDiskDxe/UniXNURamDiskDxe.inf`，并放进 `Include/APRIORI.inc`（在 `UniXNUDxe` 之后、BDS 之前），让它先发布 payload BlockIo；
+2. **让固件的 DT 带 initrd 范围**（二选一）：
+   - B1（推荐）：把 loader 的 payload 放到**固定地址**（如 `0x8C000000`，并用 `AllocatePages(AllocateAddress, EfiReservedMemoryType)` 预留），构建时用 `fdtput` 把 `linux,initrd-start/end` 写进 `FdtBlob`；
+   - B2：新增一个小 DXE 驱动，在 `DtPlatformDxe` 之后用 loader 的 FDT 覆盖 `gFdtTableGuid`（loader 通过固定 RAM 交接记录传指针/长度）；
+3. **移除厂商断言**（否则到不了菜单）：`TzDxeLA`/`ScmDxeCompat` 是预编译二进制，`PcdDebugPropertyMask` 改不动；可行做法是对 FV 里的 FFS 做**二进制替换**（把 PE 段换成 stub 并重算 FFS/section 校验和，再重新 LZMA 压回 FD），或找到让 `TzLoad` 成功的依赖。
+
+### 20.3 结论
+
+- 我们的阶段 1（efisp）与官方等价，阶段 2 只差"固件发布 payload 卷"这一环；
+- 卡点不在 UFS/DTBExtn，而在 **FDF 漏装 `UniXNURamDiskDxe`** 和 **DT 缺 initrd 范围**；
+- 厂商断言是独立障碍，需二进制级处理；
+- 按 20.2 的 1→2→3 顺序改，理论上可以直接进 UniXNU 菜单并继续阶段 3/4。
