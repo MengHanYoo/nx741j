@@ -1,0 +1,12 @@
+[Defines]
+  INF_VERSION = 0x00010005
+  BASE_NAME = AndroidDxe
+  FILE_GUID = 8e3ff05d-38a5-4c2e-98c9-0ecf4b3f8777
+  MODULE_TYPE = DXE_DRIVER
+  VERSION_STRING = 1.0
+
+[Binaries]
+  PE32|AndroidDxe.efi
+
+[Depex]
+  TRUE

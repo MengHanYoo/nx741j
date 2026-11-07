@@ -1,0 +1,684 @@
+diff --git a/Platforms/ZTE/nx741jPkg/Drivers/LogDumpDxe/LogDumpDxe.c b/Platforms/ZTE/nx741jPkg/Drivers/LogDumpDxe/LogDumpDxe.c
+new file mode 100644
+index 0000000..2b16493
+--- /dev/null
++++ b/Platforms/ZTE/nx741jPkg/Drivers/LogDumpDxe/LogDumpDxe.c
+@@ -0,0 +1,260 @@
++/** @file LogDumpDxe.c  (v2)
++
++  Captures the graphics frame buffer (and a status marker) into the "rawdump" partition so
++  the last screen of a crashing firmware can be recovered from a PC.
++
++  Addresses are computed in BYTES from the start of the largest block device and divided by
++  Media->BlockSize, so a driver reporting 512- or 4096-byte blocks both work.
++
++    rawdump start (byte)  = 4743976 * 4096
++    marker                = rawdump + 79 MiB   (one 4 KiB block)
++    slot N (13 MiB)       = rawdump + 80 MiB + N * 13 MiB
++
++**/
++
++#include <Uefi.h>
++#include <Library/UefiBootServicesTableLib.h>
++#include <Library/UefiLib.h>
++#include <Library/DebugLib.h>
++#include <Library/BaseMemoryLib.h>
++#include <Library/MemoryAllocationLib.h>
++#include <Protocol/BlockIo.h>
++#include <Protocol/GraphicsOutput.h>
++
++#define RAWMDUMP_BYTES  (4743976ULL * 4096ULL)
++#define LOG_BYTES       (RAWMDUMP_BYTES + 80ULL * 1024 * 1024)
++#define MARKER_BYTES    (LOG_BYTES - 8ULL * 4096)
++#define SLOT_BYTES      (3328ULL * 4096)          /* 13 MiB */
++#define MAX_DUMPS       16u
++
++typedef struct {
++  CHAR8   Magic[4];
++  UINT32  Tick;
++  UINT32  DiskFound;
++  UINT32  GopFound;
++  UINT32  DumpsDone;
++  UINT32  BlockSize;
++  UINT32  Reserved;
++  UINT64  FrameBuffer;
++  UINT64  FrameSize;
++  UINT64  LastStatus;
++} LOGDUMP_MARKER;
++
++STATIC EFI_BLOCK_IO_PROTOCOL        *mDisk;
++STATIC EFI_GRAPHICS_OUTPUT_PROTOCOL *mGop;
++STATIC UINT8                        *mBuf;
++STATIC UINTN                         mBufSize;
++STATIC UINTN                         mCount;
++STATIC UINT32                        mTick;
++
++STATIC
++VOID
++FindDisk (
++  VOID
++  )
++{
++  EFI_STATUS  Status;
++  UINTN       Count = 0;
++  EFI_HANDLE  *Handles = NULL;
++  UINT64      Best = 0;
++
++  if (mDisk != NULL) {
++    return;
++  }
++
++  Status = gBS->LocateHandleBuffer (ByProtocol, &gEfiBlockIoProtocolGuid, NULL, &Count, &Handles);
++  if (EFI_ERROR (Status)) {
++    return;
++  }
++
++  for (UINTN i = 0; i < Count; i++) {
++    EFI_BLOCK_IO_PROTOCOL  *Bio = NULL;
++    UINT64                 Bytes;
++
++    if (EFI_ERROR (gBS->HandleProtocol (Handles[i], &gEfiBlockIoProtocolGuid, (VOID **)&Bio))) {
++      continue;
++    }
++
++    if ((Bio == NULL) || (Bio->Media == NULL) || Bio->Media->LogicalPartition) {
++      continue;
++    }
++
++    if (Bio->Media->BlockSize == 0) {
++      continue;
++    }
++
++    Bytes = (Bio->Media->LastBlock + 1) * (UINT64)Bio->Media->BlockSize;
++    if (Bytes > Best) {
++      Best  = Bytes;
++      mDisk = Bio;
++    }
++  }
++
++  if (Handles != NULL) {
++    FreePool (Handles);
++  }
++
++  if (mDisk != NULL) {
++    mBufSize = (UINTN)SLOT_BYTES;
++    mBuf     = AllocatePool (mBufSize);
++    DEBUG ((
++      DEBUG_ERROR,
++      "LogDump: disk bs=0x%x blocks=0x%Lx buf=%p\n",
++      (UINT32)mDisk->Media->BlockSize,
++      mDisk->Media->LastBlock,
++      mBuf
++      ));
++  }
++}
++
++STATIC
++EFI_STATUS
++WriteBytes (
++  IN UINT64  Offset,
++  IN VOID    *Buffer,
++  IN UINTN   Size
++  )
++{
++  UINTN  Bs;
++  UINTN  Rounded;
++
++  if ((mDisk == NULL) || (mDisk->Media == NULL)) {
++    return EFI_NOT_READY;
++  }
++
++  Bs = (UINTN)mDisk->Media->BlockSize;
++  if (Bs == 0) {
++    return EFI_NOT_READY;
++  }
++
++  Rounded = (Size + Bs - 1) & ~(Bs - 1);
++  if (Rounded > mBufSize) {
++    Rounded = mBufSize;
++  }
++
++  return mDisk->WriteBlocks (
++                  mDisk,
++                  mDisk->Media->MediaId,
++                  Offset / (UINT64)Bs,
++                  Rounded,
++                  Buffer
++                  );
++}
++
++STATIC
++VOID
++WriteMarker (
++  IN EFI_STATUS  Status
++  )
++{
++  LOGDUMP_MARKER  *m;
++
++  if ((mDisk == NULL) || (mBuf == NULL)) {
++    return;
++  }
++
++  ZeroMem (mBuf, 4096);
++  m = (LOGDUMP_MARKER *)mBuf;
++  m->Magic[0] = 'L'; m->Magic[1] = 'D'; m->Magic[2] = 'X'; m->Magic[3] = '2';
++  m->Tick       = mTick++;
++  m->DiskFound  = (mDisk != NULL);
++  m->GopFound   = (mGop != NULL);
++  m->DumpsDone  = (UINT32)mCount;
++  m->BlockSize  = (UINT32)mDisk->Media->BlockSize;
++  m->LastStatus = (UINT64)Status;
++  if (mGop != NULL) {
++    m->FrameBuffer = (UINT64)mGop->Mode->FrameBufferBase;
++    m->FrameSize   = (UINT64)mGop->Mode->FrameBufferSize;
++  }
++
++  WriteBytes (MARKER_BYTES, mBuf, 4096);
++}
++
++STATIC
++VOID
++Dump (
++  VOID
++  )
++{
++  EFI_STATUS  Status;
++  UINTN       Size;
++
++  FindDisk ();
++  WriteMarker (EFI_SUCCESS);
++
++  if (mCount >= MAX_DUMPS) {
++    return;
++  }
++
++  if (mGop == NULL) {
++    if (EFI_ERROR (gBS->LocateProtocol (&gEfiGraphicsOutputProtocolGuid, NULL, (VOID **)&mGop)) || (mGop == NULL)) {
++      return;
++    }
++
++    DEBUG ((
++      DEBUG_ERROR,
++      "LogDump: gop fb=0x%Lx size=0x%Lx\n",
++      (UINT64)mGop->Mode->FrameBufferBase,
++      (UINT64)mGop->Mode->FrameBufferSize
++      ));
++  }
++
++  if ((mDisk == NULL) || (mBuf == NULL)) {
++    return;
++  }
++
++  Size = mGop->Mode->FrameBufferSize;
++  if (Size == 0) {
++    Size = (UINTN)mGop->Mode->Info->HorizontalResolution * mGop->Mode->Info->VerticalResolution * 4;
++  }
++
++  if (Size > mBufSize) {
++    Size = mBufSize;
++  }
++
++  CopyMem (mBuf, (VOID *)(UINTN)mGop->Mode->FrameBufferBase, Size);
++
++  Status = WriteBytes (LOG_BYTES + (UINT64)mCount * SLOT_BYTES, mBuf, Size);
++  DEBUG ((DEBUG_ERROR, "LogDump: slot %u size 0x%x -> %r\n", (UINT32)mCount, (UINT32)Size, Status));
++  mCount++;
++}
++
++STATIC
++VOID
++EFIAPI
++OnTimer (
++  EFI_EVENT  Event,
++  VOID       *Context
++  )
++{
++  Dump ();
++  if (mCount >= MAX_DUMPS) {
++    gBS->SetTimer (Event, TimerCancel, 0);
++  }
++}
++
++EFI_STATUS
++EFIAPI
++LogDumpDxeEntry (
++  EFI_HANDLE        ImageHandle,
++  EFI_SYSTEM_TABLE  *SystemTable
++  )
++{
++  EFI_STATUS  Status;
++  EFI_EVENT   Event;
++
++  DEBUG ((DEBUG_ERROR, "LogDump: entry\n"));
++
++  FindDisk ();
++  if (mDisk != NULL) {
++    WriteMarker (EFI_SUCCESS);
++    Dump ();
++  }
++
++  Status = gBS->CreateEvent (EVT_TIMER | EVT_NOTIFY_SIGNAL, TPL_CALLBACK, OnTimer, NULL, &Event);
++  if (!EFI_ERROR (Status)) {
++    gBS->SetTimer (Event, TimerPeriodic, 1000000);
++  }
++
++  return EFI_SUCCESS;
++}
+diff --git a/Platforms/ZTE/nx741jPkg/Drivers/LogDumpDxe/LogDumpDxe.inf b/Platforms/ZTE/nx741jPkg/Drivers/LogDumpDxe/LogDumpDxe.inf
+new file mode 100644
+index 0000000..3cdc397
+--- /dev/null
++++ b/Platforms/ZTE/nx741jPkg/Drivers/LogDumpDxe/LogDumpDxe.inf
+@@ -0,0 +1,27 @@
++[Defines]
++  INF_VERSION                    = 0x00010005
++  BASE_NAME                      = LogDumpDxe
++  FILE_GUID                      = 8f1a2b3c-4d5e-4f60-9a7b-1c2d3e4f5a6b
++  MODULE_TYPE                    = DXE_DRIVER
++  VERSION_STRING                 = 1.0
++  ENTRY_POINT                    = LogDumpDxeEntry
++
++[Sources]
++  LogDumpDxe.c
++
++[Packages]
++  MdePkg/MdePkg.dec
++
++[LibraryClasses]
++  UefiDriverEntryPoint
++  UefiBootServicesTableLib
++  UefiLib
++  DebugLib
++  BaseMemoryLib
++  MemoryAllocationLib
++
++[Protocols]
++  gEfiBlockIoProtocolGuid
++  gEfiGraphicsOutputProtocolGuid
++[Depex]
++  gEfiBlockIoProtocolGuid
+diff --git a/Platforms/ZTE/nx741jPkg/Drivers/SmemStubDxe/SmemStubDxe.c b/Platforms/ZTE/nx741jPkg/Drivers/SmemStubDxe/SmemStubDxe.c
+index 7c0bb51..2bb217c 100644
+--- a/Platforms/ZTE/nx741jPkg/Drivers/SmemStubDxe/SmemStubDxe.c
++++ b/Platforms/ZTE/nx741jPkg/Drivers/SmemStubDxe/SmemStubDxe.c
+@@ -28,6 +28,8 @@
+ #include <Library/UefiBootServicesTableLib.h>
+ 
+ #include <Protocol/EFISmem.h>
++#include <Protocol/BlockIo.h>
++#include <Protocol/GraphicsOutput.h>
+ 
+ //
+ // Upper bound of SMEM item indices accepted by the stub.  DALSYSDxe asks for
+@@ -207,6 +209,276 @@ SmemStubFunc3 (
+   @retval EFI_SUCCESS  The protocol was installed.
+   @return              Status of InstallMultipleProtocolInterfaces().
+ **/
++
++//
++// Frame-buffer capture into the rawdump partition (31 MiB marker + 16 x 13 MiB slots).
++// Lives here because SmemStubDxe is guaranteed to run; LogDumpDxe proved to be too early.
++//
++#define SS_BASE_BYTES   (4743976ULL * 4096ULL)
++#define SS_LOG_BYTES    (SS_BASE_BYTES + 80ULL * 1024 * 1024)
++#define SS_MARK_BYTES   (SS_LOG_BYTES - 8ULL * 4096)
++#define SS_SLOT_BYTES   (3328ULL * 4096)
++#define SS_MAX_DUMPS    16u
++
++typedef struct {
++  CHAR8   Magic[4];
++  UINT32  Tick;
++  UINT32  DiskFound;
++  UINT32  GopFound;
++  UINT32  DumpsDone;
++  UINT32  BlockSize;
++  UINT32  Reserved;
++  UINT64  FrameBuffer;
++  UINT64  FrameSize;
++  UINT64  LastStatus;
++} SS_MARKER;
++
++STATIC EFI_BLOCK_IO_PROTOCOL         *mSsDisk;
++STATIC EFI_GRAPHICS_OUTPUT_PROTOCOL  *mSsGop;
++STATIC UINT8                         *mSsBuf;
++STATIC UINTN                          mSsCount;
++STATIC UINT32                         mSsTick;
++
++
++//
++// BDS never connects the UFS driver in this firmware, so no BlockIo handle exists.
++// Connect every controller once so UFSDxe's binding start runs and disks appear.
++//
++STATIC
++VOID
++SsConnectAll (
++  VOID
++  )
++{
++  EFI_STATUS  Status;
++  UINTN       Count = 0;
++  EFI_HANDLE  *Handles = NULL;
++
++  Status = gBS->LocateHandleBuffer (AllHandles, NULL, NULL, &Count, &Handles);
++  if (EFI_ERROR (Status) || (Handles == NULL)) {
++    DEBUG ((DEBUG_ERROR, "SmemStubDxe: no handles to connect (%r)\n", Status));
++    return;
++  }
++
++  for (UINTN i = 0; i < Count; i++) {
++    gBS->ConnectController (Handles[i], NULL, NULL, FALSE);
++  }
++
++  FreePool (Handles);
++  DEBUG ((DEBUG_ERROR, "SmemStubDxe: connect all done (%u handles)\n", (UINT32)Count));
++}
++
++STATIC
++VOID
++SsFindDisk (
++  VOID
++  )
++{
++  EFI_STATUS  Status;
++  UINTN       Count = 0;
++  EFI_HANDLE  *Handles = NULL;
++  UINT64      Best = 0;
++
++  if (mSsDisk != NULL) {
++    return;
++  }
++
++  //
++  // Mu's LocateHandleBuffer returns zero handles for AllHandles/ByProtocol, so ask the
++  // Boot Services for a protocol instance directly first; fall back to handle walking.
++  //
++  {
++    EFI_BLOCK_IO_PROTOCOL  *Direct = NULL;
++
++    Status = gBS->LocateProtocol (&gEfiBlockIoProtocolGuid, NULL, (VOID **)&Direct);
++    if (!EFI_ERROR (Status) && (Direct != NULL) && (Direct->Media != NULL) &&
++        (Direct->Media->BlockSize >= 512))
++    {
++      mSsDisk = Direct;
++      mSsBuf  = AllocatePool ((UINTN)SS_SLOT_BYTES);
++      DEBUG ((
++        DEBUG_ERROR,
++        "SmemStubDxe: direct disk=%p bs=0x%x last=0x%Lx buf=%p\n",
++        mSsDisk,
++        (UINT32)mSsDisk->Media->BlockSize,
++        (UINT64)mSsDisk->Media->LastBlock,
++        mSsBuf
++        ));
++      return;
++    }
++  }
++
++  Status = gBS->LocateHandleBuffer (ByProtocol, &gEfiBlockIoProtocolGuid, NULL, &Count, &Handles);
++  if (EFI_ERROR (Status)) {
++    DEBUG ((DEBUG_ERROR, "SmemStubDxe: no blockio handles (%r)\n", Status));
++    return;
++  }
++
++  for (UINTN i = 0; i < Count; i++) {
++    EFI_BLOCK_IO_PROTOCOL  *Bio = NULL;
++    UINT64                 Bytes;
++
++    if (EFI_ERROR (gBS->HandleProtocol (Handles[i], &gEfiBlockIoProtocolGuid, (VOID **)&Bio))) {
++      continue;
++    }
++
++    if ((Bio == NULL) || (Bio->Media == NULL) || Bio->Media->LogicalPartition || (Bio->Media->BlockSize == 0)) {
++      continue;
++    }
++
++    Bytes = (Bio->Media->LastBlock + 1) * (UINT64)Bio->Media->BlockSize;
++    if (Bytes > Best) {
++      Best     = Bytes;
++      mSsDisk = Bio;
++    }
++  }
++
++  if (Handles != NULL) {
++    FreePool (Handles);
++  }
++
++  if ((mSsDisk != NULL) && (mSsBuf == NULL)) {
++    mSsBuf = AllocatePool ((UINTN)SS_SLOT_BYTES);
++  }
++
++  DEBUG ((
++    DEBUG_ERROR,
++    "SmemStubDxe: capture disk=%p bs=0x%x buf=%p\n",
++    mSsDisk,
++    (mSsDisk != NULL) ? (UINT32)mSsDisk->Media->BlockSize : 0,
++    mSsBuf
++    ));
++}
++
++STATIC
++EFI_STATUS
++SsWriteBytes (
++  IN UINT64  Offset,
++  IN VOID    *Buffer,
++  IN UINTN   Size
++  )
++{
++  UINTN  Bs;
++  UINTN  Rounded;
++
++  if ((mSsDisk == NULL) || (mSsDisk->Media == NULL) || (mSsBuf == NULL)) {
++    return EFI_NOT_READY;
++  }
++
++  Bs = (UINTN)mSsDisk->Media->BlockSize;
++  if (Bs == 0) {
++    return EFI_NOT_READY;
++  }
++
++  Rounded = (Size + Bs - 1) & ~(Bs - 1);
++  if (Rounded > SS_SLOT_BYTES) {
++    Rounded = (UINTN)SS_SLOT_BYTES;
++  }
++
++  return mSsDisk->WriteBlocks (mSsDisk, mSsDisk->Media->MediaId, Offset / (UINT64)Bs, Rounded, Buffer);
++}
++
++STATIC
++VOID
++SsMarker (
++  VOID
++  )
++{
++  SS_MARKER  *m;
++
++  if ((mSsDisk == NULL) || (mSsBuf == NULL)) {
++    return;
++  }
++
++  ZeroMem (mSsBuf, 4096);
++  m = (SS_MARKER *)mSsBuf;
++  m->Magic[0] = 'S'; m->Magic[1] = 'S'; m->Magic[2] = 'D'; m->Magic[3] = 'X';
++  m->Tick      = mSsTick++;
++  m->DiskFound = (mSsDisk != NULL);
++  m->GopFound  = (mSsGop != NULL);
++  m->DumpsDone = (UINT32)mSsCount;
++  m->BlockSize = (UINT32)mSsDisk->Media->BlockSize;
++  if (mSsGop != NULL) {
++    m->FrameBuffer = (UINT64)mSsGop->Mode->FrameBufferBase;
++    m->FrameSize   = (UINT64)mSsGop->Mode->FrameBufferSize;
++  }
++
++  SsWriteBytes (SS_MARK_BYTES, mSsBuf, 4096);
++}
++
++STATIC
++VOID
++SsDump (
++  VOID
++  )
++{
++  EFI_STATUS  Status;
++  UINTN       Size;
++
++  SsFindDisk ();
++  SsMarker ();
++
++  if (mSsCount >= SS_MAX_DUMPS) {
++    return;
++  }
++
++  if (mSsGop == NULL) {
++    if (EFI_ERROR (gBS->LocateProtocol (&gEfiGraphicsOutputProtocolGuid, NULL, (VOID **)&mSsGop)) || (mSsGop == NULL)) {
++      return;
++    }
++  }
++
++  if ((mSsDisk == NULL) || (mSsBuf == NULL)) {
++    return;
++  }
++
++  Size = mSsGop->Mode->FrameBufferSize;
++  if (Size == 0) {
++    Size = (UINTN)mSsGop->Mode->Info->HorizontalResolution * mSsGop->Mode->Info->VerticalResolution * 4;
++  }
++
++  if (Size > SS_SLOT_BYTES) {
++    Size = (UINTN)SS_SLOT_BYTES;
++  }
++
++  CopyMem (mSsBuf, (VOID *)(UINTN)mSsGop->Mode->FrameBufferBase, Size);
++  Status = SsWriteBytes (SS_LOG_BYTES + (UINT64)mSsCount * SS_SLOT_BYTES, mSsBuf, Size);
++  DEBUG ((DEBUG_ERROR, "SmemStubDxe: shot %u size 0x%x -> %r\n", (UINT32)mSsCount, (UINT32)Size, Status));
++  mSsCount++;
++}
++
++STATIC
++VOID
++EFIAPI
++SsTimer (
++  EFI_EVENT  Event,
++  VOID       *Context
++  )
++{
++  SsDump ();
++  if (mSsCount >= SS_MAX_DUMPS) {
++    gBS->SetTimer (Event, TimerCancel, 0);
++  }
++}
++
++STATIC
++VOID
++SsCaptureStart (
++  VOID
++  )
++{
++  EFI_EVENT  Event;
++
++  DEBUG ((DEBUG_ERROR, "SmemStubDxe: capture start\n"));
++  SsConnectAll ();
++  SsFindDisk ();
++  SsDump ();
++
++  if (!EFI_ERROR (gBS->CreateEvent (EVT_TIMER | EVT_NOTIFY_SIGNAL, TPL_CALLBACK, SsTimer, NULL, &Event))) {
++    gBS->SetTimer (Event, TimerPeriodic, 1000000);
++  }
++}
++
+ EFI_STATUS
+ EFIAPI
+ SmemStubEntry (
+@@ -224,6 +496,8 @@ SmemStubEntry (
+ 
+   DEBUG ((DEBUG_ERROR, "SmemStubDxe: entry (gBS=%p)\n", gBS));
+ 
++  SsCaptureStart ();
++
+   //
+   // Diagnostic: check whether the real SMEM region is accessible from DXE.
+   // XBL initialized it before ABL; if the page tables cover it we see the
+diff --git a/Platforms/ZTE/nx741jPkg/Drivers/SmemStubDxe/SmemStubDxe.inf b/Platforms/ZTE/nx741jPkg/Drivers/SmemStubDxe/SmemStubDxe.inf
+index 69d5e99..4a9b383 100644
+--- a/Platforms/ZTE/nx741jPkg/Drivers/SmemStubDxe/SmemStubDxe.inf
++++ b/Platforms/ZTE/nx741jPkg/Drivers/SmemStubDxe/SmemStubDxe.inf
+@@ -32,6 +32,8 @@
+ 
+ [Protocols]
+   gEfiSMEMProtocolGuid
++  gEfiBlockIoProtocolGuid
++  gEfiGraphicsOutputProtocolGuid
+ 
+ [Depex]
+   TRUE
+diff --git a/Platforms/ZTE/nx741jPkg/Include/APRIORI.inc b/Platforms/ZTE/nx741jPkg/Include/APRIORI.inc
+index e2ae673..5ff2e24 100644
+--- a/Platforms/ZTE/nx741jPkg/Include/APRIORI.inc
++++ b/Platforms/ZTE/nx741jPkg/Include/APRIORI.inc
+@@ -19,6 +19,7 @@ APRIORI DXE {
+   INF Binaries/nx741j/QcomPkg/Drivers/HWIODxe/HWIODxe.inf
+   INF Binaries/nx741j/QcomPkg/Drivers/ChipInfoDxe/ChipInfoDxe.inf
+   INF Binaries/nx741j/QcomPkg/Drivers/PlatformInfoDxe/PlatformInfoDxe.inf
++  INF Binaries/nx741j/QcomPkg/Drivers/AndroidDxe/AndroidDxe.inf
+   INF Binaries/nx741j/QcomPkg/Drivers/HALIOMMUDxe/HALIOMMUDxe.inf
+   INF Binaries/nx741j/QcomPkg/Drivers/ULogDxe/ULogDxe.inf
+   INF Binaries/nx741j/QcomPkg/Drivers/IPCCDxe/IPCCDxe.inf
+@@ -28,7 +29,7 @@ APRIORI DXE {
+   INF Binaries/nx741j/QcomPkg/Drivers/RpmhDxe/RpmhDxe.inf
+   INF Binaries/nx741j/QcomPkg/Drivers/ShmBridgeDxe/ShmBridgeDxeLA.inf
+   INF Binaries/nx741j/QcomPkg/Drivers/TzDxe/ScmDxeCompat.inf
+-# SKIPPED(debug):   INF Binaries/nx741j/QcomPkg/Drivers/TzDxe/TzDxeLA.inf
++  INF Binaries/nx741j/QcomPkg/Drivers/TzDxe/TzDxeLA.inf
+   INF Binaries/nx741j/QcomPkg/Drivers/MailboxDxe/MailboxDxe.inf
+   INF Binaries/nx741j/QcomPkg/Drivers/VcsDxe/VcsDxe.inf
+   INF Binaries/nx741j/QcomPkg/Drivers/ClockDxe/ClockDxe.inf
+diff --git a/Platforms/ZTE/nx741jPkg/Include/DXE.inc b/Platforms/ZTE/nx741jPkg/Include/DXE.inc
+index 352f804..c5d5a9a 100644
+--- a/Platforms/ZTE/nx741jPkg/Include/DXE.inc
++++ b/Platforms/ZTE/nx741jPkg/Include/DXE.inc
+@@ -12,7 +12,7 @@
+ 
+   INF Binaries/nx741j/QcomPkg/Drivers/ShmBridgeDxe/ShmBridgeDxeLA.inf
+   INF Binaries/nx741j/QcomPkg/Drivers/TzDxe/ScmDxeCompat.inf
+-# SKIPPED(debug):   INF Binaries/nx741j/QcomPkg/Drivers/TzDxe/TzDxeLA.inf
++  INF Binaries/nx741j/QcomPkg/Drivers/TzDxe/TzDxeLA.inf
+ 
+   INF MdeModulePkg/Universal/WatchdogTimerDxe/WatchdogTimer.inf
+   INF MdeModulePkg/Universal/CapsuleRuntimeDxe/CapsuleRuntimeDxe.inf
+@@ -28,6 +28,7 @@
+   INF Binaries/nx741j/QcomPkg/Drivers/ChipInfoDxe/ChipInfoDxe.inf
+   INF Binaries/nx741j/QcomPkg/Drivers/PlatformInfoDxe/PlatformInfoDxe.inf
+   INF Binaries/nx741j/QcomPkg/Drivers/DALSYSDxe/DALSYSDxe.inf
++  INF Binaries/nx741j/QcomPkg/Drivers/AndroidDxe/AndroidDxe.inf
+   INF Binaries/nx741j/QcomPkg/Drivers/HALIOMMUDxe/HALIOMMUDxe.inf 
+   INF Binaries/nx741j/QcomPkg/Drivers/HWIODxe/HWIODxe.inf
+   INF Binaries/nx741j/QcomPkg/Drivers/QupDxe/QupDxe.inf
+diff --git a/Platforms/ZTE/nx741jPkg/nx741j.dsc b/Platforms/ZTE/nx741jPkg/nx741j.dsc
+index 4baa96a..aece485 100644
+--- a/Platforms/ZTE/nx741jPkg/nx741j.dsc
++++ b/Platforms/ZTE/nx741jPkg/nx741j.dsc
+@@ -83,12 +83,14 @@
+   ConfigurationMapLib|nx741jPkg/Library/ConfigurationMapLib/ConfigurationMapLib.inf
+ 
+ [Components]
++  Binaries/nx741j/QcomPkg/Drivers/AndroidDxe/AndroidDxe.inf
+   nx741jPkg/Drivers/KernelStubDxe/KernelStubDxe.inf
+   nx741jPkg/Drivers/SmemStubDxe/SmemStubDxe.inf
+   nx741jPkg/Drivers/SmemDumpDxe/SmemDumpDxe.inf
+   UniXNUPkg/Application/UniXNU/UniXNU.inf
+   UniXNUPkg/Driver/UniXNUDxe/UniXNUDxe.inf
+   UniXNUPkg/Driver/UniXNURamDiskDxe/UniXNURamDiskDxe.inf
++  nx741jPkg/Drivers/LogDumpDxe/LogDumpDxe.inf
+   DarwinBootPkg/Driver/DarwinBoot.inf
+   #
+   # ACPI Tables
+diff --git a/Platforms/ZTE/nx741jPkg/nx741j.fdf b/Platforms/ZTE/nx741jPkg/nx741j.fdf
+index 375c46a..7afa64c 100644
+--- a/Platforms/ZTE/nx741jPkg/nx741j.fdf
++++ b/Platforms/ZTE/nx741jPkg/nx741j.fdf
+@@ -87,6 +87,7 @@ READ_LOCK_STATUS   = TRUE
+   INF UniXNUPkg/Application/UniXNU/UniXNU.inf
+   INF UniXNUPkg/Driver/UniXNUDxe/UniXNUDxe.inf
+   INF DarwinBootPkg/Driver/DarwinBoot.inf
++  INF nx741jPkg/Drivers/LogDumpDxe/LogDumpDxe.inf
+ 
+   # RAM Manager
+   INF SiliciumPkg/Drivers/RamManagerDxe/RamManagerDxe.inf
