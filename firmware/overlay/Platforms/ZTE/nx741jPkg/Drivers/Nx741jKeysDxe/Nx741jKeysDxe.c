@@ -16,10 +16,12 @@
 #include <Library/MemoryAllocationLib.h>
 #include <Library/BaseMemoryLib.h>
 #include <Library/BaseLib.h>
+#include <Library/DxeServicesTableLib.h>
 #include <Library/DebugLib.h>
 #include <Library/PrintLib.h>
 
 #define TLMM_BASE        0x0F000000ULL
+#define TLMM_SIZE        0x202000ULL
 #define KEY_COUNT        3
 #define KEY_QUEUE_SIZE   16
 #define CALIBRATION_MS   4000
@@ -66,6 +68,41 @@ STATIC KEY_DEVICE_PATH  mDevicePath = {
 };
 
 STATIC UINT16  mScanCode[KEY_COUNT] = { SCAN_UP, SCAN_DOWN, 0 };
+
+
+STATIC BOOLEAN  mTlmmMapped = FALSE;
+
+STATIC
+BOOLEAN
+EnsureTlmmMapped (
+  VOID
+  )
+{
+  EFI_STATUS                     Status;
+  EFI_GCD_MEMORY_SPACE_DESCRIPTOR Desc;
+
+  Status = gDS->GetMemorySpaceDescriptor ((EFI_PHYSICAL_ADDRESS)TLMM_BASE, &Desc);
+  if (EFI_ERROR (Status) || (Desc.GcdMemoryType == EfiGcdMemoryTypeNonExistent)) {
+    Status = gDS->AddMemorySpace (
+                     EfiGcdMemoryTypeMemoryMappedIo,
+                     (EFI_PHYSICAL_ADDRESS)TLMM_BASE,
+                     TLMM_SIZE,
+                     EFI_MEMORY_UC
+                     );
+    DEBUG ((DEBUG_ERROR, "KEYS: AddMemorySpace %r\n", Status));
+    if (EFI_ERROR (Status)) {
+      return FALSE;
+    }
+  }
+
+  Status = gDS->SetMemorySpaceAttributes (
+                   (EFI_PHYSICAL_ADDRESS)TLMM_BASE,
+                   TLMM_SIZE,
+                   EFI_MEMORY_UC
+                   );
+  DEBUG ((DEBUG_ERROR, "KEYS: SetMemorySpaceAttributes %r\n", Status));
+  return !EFI_ERROR (Status);
+}
 
 STATIC
 UINT32
@@ -338,7 +375,12 @@ Nx741jKeysDxeEntry (
   LoadCalibration ();
 
   if (!mCal.Valid) {
-    DEBUG ((DEBUG_ERROR, "KEYS: begin calibration (TLMM, active low)\n"));
+    mTlmmMapped = EnsureTlmmMapped ();
+    DEBUG ((DEBUG_ERROR, "KEYS: begin calibration (mapped=%u)\n", mTlmmMapped));
+    if (!mTlmmMapped) {
+      DEBUG ((DEBUG_ERROR, "KEYS: TLMM window not mappable, keys unavailable\n"));
+      mCal.Valid = 0;
+    } else {
     VolOk   = CalibrateKey (0, L"VOL+");
     FocusOk = CalibrateKey (1, L"FOCUS");
     ShootOk = CalibrateKey (2, L"SHOOT");
@@ -357,6 +399,7 @@ Nx741jKeysDxeEntry (
     } else {
       DEBUG ((DEBUG_ERROR, "KEYS: calibration failed, menu will use timeout\n"));
       gBS->Stall (3 * 1000 * 1000);
+    }
     }
 
     DEBUG ((

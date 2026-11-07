@@ -20,6 +20,7 @@
   UefiDriverEntryPoint
   UefiBootServicesTableLib
   UefiRuntimeServicesTableLib
+  DxeServicesTableLib
   MemoryAllocationLib
   BaseMemoryLib
   BaseLib

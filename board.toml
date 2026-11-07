@@ -55,12 +55,12 @@ volume = "NX741J"
 size_mib = 64
 loader = "firmware"
 title = "NX741J"
-kernel_args = ["-v", "serial=3"]
+kernel_args = ["-v", "serial=3", "keepsyms=1", "debug=0x144"]
 timeout = 5
 # Tools 菜单是固件日志导出的入口（Tools → Advanced Logger → 二维码页），
 # 对应固件侧 AdvancedLogDxe 与 Advanced Logger 缓冲区。
 tools = true
-panic_screen = false
+panic_screen = true
 # 来自 out/.../payload/payload.json（上一次 payload 构建记录）
 trust_cache_sha256 = ["63e01c03b31e1532a5581a24865490673f0b5c297b0199fe0095637c6100ef4b",
                         "9cc478fe3525e2683b5b9ea1eea0851eaebebdab21d206556233400e59d2e361"]
