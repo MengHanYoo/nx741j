@@ -297,3 +297,37 @@ MyDriver -> /tmp/localmods/MyDriver          # 目录外组件已链接
 
 注：官方 pin 的 `XnuPrelink` 为 `c645d76b`（本地原为 `2b39ff7`），通过 ghfast 取得后完整重建通过；若后续官方目录再变，
 `status --json` 会显示每个模块的实际 revision 与官方 pin 的差异。
+
+## 10. OS 基准（2026-11-07 起，硬性）
+
+**唯一基准：iOS 16.7.16（20H392）**，profile 目录 ios-16.7.16-20H392。本机没有官方文档里的
+iPadOS 17/26/27 运行环境，因此所有配置、构建与验证都以 16.7.16 为准。
+
+| 项 | 值 |
+|---|---|
+| profile | profiles/os/ios-16.7.16-20H392 |
+| IPSW | `E:\default-workspace\ipsw\iPhone10,3,iPhone10,6_16.7.16_20H392_Restore (1).ipsw` |
+| 身份 | product = iPhone10,3、device_class = d221ap、oard_id = 14、chip_id = 32789 |
+| 输出目录 | out/nx741j/ios-16.7.16-20H392/nx741j |
+| 内核 | xnu-8796.141.3（Darwin 22.6.0） |
+
+规则（已写入 AGENTS.md 的「OS 基准」一节）：
+
+1. oard.toml [board] os_profile 固定为 ios-16.7.16-20H392；默认构建不传 --os，需要对比时才显式传；
+2. 不把官方 iPadOS 26/27 的 profile、默认值或前提当成本机基准；
+3. 回移官方代码时，凡"仅 iPadOS 27 可用"的分支（如 [payload.runtime] appsync）不得影响 16.7.16 构建；
+4. 组件 os_abi 必须包含 ios-16.7.16-20H392（ArmCpu、ArmDTPlatform、SoftwareAES、GopFramebuffer 已补；
+   这是相对官方目录的本地 delta，重新同步目录后需复查）；
+5. 基准构建命令：./unixnu release --no-deps -D ../UniXNU-nx741j。
+
+**基准构建实测**（
+elease --no-deps --os ios-16.7.16-20H392）：
+
+| 产物 | 结果 |
+|---|---|
+| kernel.macho | 51,691,520 B sha `37acfdd4016b19487a29fc997b77d8fc24a71ac75b2cde8fa0686d43256b17b8` |
+| payload.img | 67,108,864 B sha `1bb8db40b5bb6f7dada2b0ed40ecfa11400180cc190a3c221d75f8cdd2779876` |
+| oot.img | 68,493,312 B sha `e97cf72c6af0b8fd33a045e494def79793131b4eef8959db09a002dc50cf66a3` |
+| package.manifest.json | ✅ 已写出 |
+
+（payload.img/oot.img 含随机 ADT 种子，哈希每次构建不同；kernel.macho 的差异来自预链接与构建时间戳。）

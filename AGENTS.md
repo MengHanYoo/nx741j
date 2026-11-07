@@ -7,6 +7,27 @@
 - **硬件清单与缺失输入**：`docs/HARDWARE-INVENTORY.md`（每条注明来源；缺失项随测量划掉）。
 - 结构化移植记录：`porting.toml` 的 14 个 area（`./unixnu` 的 `porting-record.py check` 校验）。
 
+## OS 基准（2026-11-07 起，硬性）
+
+- **唯一基准镜像：iOS 16.7.16（20H392）**，profile `ios-16.7.16-20H392`；
+  IPSW：`E:\default-workspace\ipsw\iPhone10,3,iPhone10,6_16.7.16_20H392_Restore (1).ipsw`
+  （`product = iPhone10,3`、`device_class = d221ap`、`board_id = 14`、`chip_id = 32789`）。
+- `board.toml` 的 `[board] os_profile` 固定为该目录名；输出目录固定为
+  `out/nx741j/ios-16.7.16-20H392/nx741j`。
+- **不把官方 iPadOS 17/26/27 的 profile、默认 `--os` 或只对 iPadOS 27 成立的前提当成本机基准**；
+  仅在对比实验时显式传 `--os`，默认构建永远走 16.7.16。
+- 回移官方代码时，凡遇到"仅 iPadOS 27 可用"的分支（例如 `[payload.runtime] appsync`），
+  必须保证 16.7.16 的构建路径不受影响，并在 `docs/CONFIG-MAP.md` 记录例外。
+- 组件条目的 `os_abi` 必须包含 `ios-16.7.16-20H392`；本机使用的 ArmCpu、ArmDTPlatform、
+  SoftwareAES、GopFramebuffer 已补入该值（`components.toml` 为本地 delta，重新同步官方目录后需复查）。
+- 基准构建/验证命令：
+
+  ```sh
+  ./unixnu release --no-deps -D ../UniXNU-nx741j
+  # 或显式指定
+  ./unixnu release --no-deps --os ios-16.7.16-20H392 -D ../UniXNU-nx741j
+  ```
+
 ## 仓库内容布局（2026-11-07 补充）
 
 | 目录 | 内容 |
