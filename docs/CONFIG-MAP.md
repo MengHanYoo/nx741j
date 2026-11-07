@@ -127,22 +127,28 @@ JOBS=8 UNIXNU_EDK2=/opt/work/uefi-sheng-main/Mu_Basecore bash package/Scripts/sm
 | 文件 | 改动 |
 |---|---|
 | `docs/devices/nx741j.md` | 新建设备页，含 `<!--@include: ../.vitepress/records/nx741j.md-->` |
-| `docs/zh/devices/nx741j.md` | 中文设备页，含 `<!--@include: ../../.vitepress/records/nx741j.zh.md-->` |
+| `docs/zh/devices/nx741j.md` | 中文设备页，含 `<!--@include: ./records/nx741j.md-->` |
+| `docs/devices/records/nx741j.md`、`docs/zh/devices/records/nx741j.md` | **提交进仓库**的记录快照（`.vitepress/records/` 被 gitignore，不能用于 CI） |
 | `docs/.vitepress/config.mts` | 中英文设备侧边栏各加一条 `nx741j` |
-| `docs/devices/index.md`、`docs/zh/devices/index.md` | 「组织维护的设备」表各加一行 |
-| `devices.toml` | `nx741j` 的 `repository` 改为 `UniXNU/UniXNU-nx741j`，并加注释说明镜像仍在 `MengHanYoo/UniXNU-nx741j` |
+| `docs/devices/index.md`、`docs/zh/devices/index.md` | 「社区移植」表各加一行（维护者 MengHanYoo） |
+| `devices.toml` | 移除 `nx741j` 条目（官方站点只接受 `UniXNU/<name>`；按社区移植处理） |
 
 网络限制的处理：WSL 直连 `raw.githubusercontent.com` 被拒，证据文件统一用
 `https://ghfast.top/https://raw.githubusercontent.com/...` 抓取（sheng 的 11 个证据文件）。
 
-**仅剩一个外部前提（本机无权限完成）**：
+### 6.3 发布位置（2026-11-07）
 
-```
-UniXNU/UniXNU-nx741j  → GitHub 404（组织下尚未创建该仓库）
-```
+不创建 `UniXNU` 组织仓库；本机唯一可写、且带 deploy key 的是 `MengHanYoo/nx741j`，
+因此两个仓库以**分支**形式发布到该仓库，`main` 不受影响：
 
-本机没有 UniXNU 组织的写权限（无 `gh` CLI、无 token、origin 指向本地缓存），因此无法代建。
-发布前需要：把设备仓库转移/镜像到 `UniXNU/UniXNU-nx741j`（revision 保持
-`32b9855fb815cf2f33f845578a622ab0b6704b72`），届时 `devices.toml` 已就位，站点记录与链接即可生效。
+| 内容 | 仓库与分支 | Commit |
+|---|---|---|
+| 设备仓库（本仓库） | `https://github.com/MengHanYoo/nx741j/tree/unixnu-nx741j` | `d09054eda9fc114711af574436594a1aeafde30a` |
+| 框架仓库（UniXNU 检出） | `https://github.com/MengHanYoo/nx741j/tree/unixnu-main` | `c92306a13db4aa5a4337a34a0fa6db3dd6cebff5` |
+
+- 推送方式：deploy key `~/.ssh/nx741j_push`（只对该仓库有权限），`ssh.github.com:443` 与 `github.com:22` 均可用；
+- 设备页里的"设备仓库"链接已指向 `…/tree/unixnu-nx741j`，记录快照按
+  `MengHanYoo/nx741j@d09054e` 渲染（证据链接可点开）；
+- 若之后把仓库迁到 `UniXNU` 组织，把 `devices.toml` 条目加回并把两处链接改回即可，其余无需改动。
 
 失败时按[故障排查](https://unixnu.com/zh/reference/troubleshooting#procedure)处理，保存命令、输入版本与[日志](https://unixnu.com/zh/guide/debugging#procedure)。
