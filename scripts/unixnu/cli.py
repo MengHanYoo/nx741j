@@ -5,12 +5,12 @@ import platform
 import shutil
 import sys
 
-from . import bootimg, components, feeds, firmware, ipsw, kernel, package, patches, payload, pipeline, profiles, tree, userdata
+from . import bootimg, components, feeds, firmware, ipsw, kernel, package, patches, payload, pipeline, profiles, runtime, tree, userdata
 from .config import LOCAL_KINDS, Context, parse_config
 from .util import Error, expand, git, log
 
 STEPS = ('kernel', 'package', 'firmware', 'payload')
-OPTIONAL_STEPS = ('userdata',)   # large; built only when named
+OPTIONAL_STEPS = ('userdata', 'runtime')   # large; built only when named
 
 
 def common():
@@ -153,6 +153,8 @@ def cmd_build(ctx):
     if 'firmware' in steps:
         need_uefi(ctx)   # fail before fetching anything
     modules = prepare(ctx, steps + (['kernel'] if 'prelink' in steps else []))
+    if 'payload' in steps or 'runtime' in steps:
+        runtime.prepare(ctx, kernel_build='kernel' in steps)
     if 'kernel' in steps:
         kernel.build(ctx, modules)
         kernel.prelink(ctx)
