@@ -679,3 +679,50 @@ LogDumpDxe/SmemStubDxe 的文件与 DSC/FDF 接线仍在（`git status` 可见�
 下一步必须先拿到"最后一行日志"。屏幕日志在 MemoryDump 前会被覆盖，因此计划：
 用一个 Depex `TRUE` 的早期驱动 + 定时器，把心跳写到 **SMEM**（不依赖屏幕/BlockIo），
 崩溃后由 loader 在下次启动时读出并显示；若 DRAM 不保留，则改为写 UEFI 变量（`uefivarstore` 持久化）。
+
+### 19.12 19:32 实机日志（V0 基线，无探针）—— 真实崩溃点接近 TzDxeLA
+
+用户提供的完整屏幕日志（2026-11-07 19:32:11）：
+
+```
+smemstub item 404 -> 0xC17E7000 (8192 bytes)
+loading HWIODxeDriver.efi
+loading ChipInfo.efi
+loading PlatformInfoDxeDriver.efi
+loading AndroidDxe.efi
+loading HALIOMMU.efi
+  locate DTBExtnProtocol failed: not found
+  locate DTBExtnProtocol failed with error not found
+  error: image at 000C16ED000 start failed: not found
+loading ULogDxe.efi
+loading IPCCDxe.efi
+loading ~
+loading ~
+loading TzDxeLA.efi
+not found
+（随后 ZTE MemoryDump Mode）
+```
+
+判读：
+
+| 事实 | 含义 |
+|---|---|
+| DALSYSDxe、HWIODxe、ChipInfo、PlatformInfo 都正常加载 | 之前"崩在 DALSYSDxe"的判断是**误读**（把 `Dalsys` 行当成最后一行） |
+| `AndroidDxe` 加载后报 `error: image … start failed: not found` | 我们加入的 stock 提取驱动启动失败，但 DXE 继续（非致命） |
+| HALIOMMU 的两条 DTBExtn 失败 | stock 同样存在，非原因 |
+| **最后是 `loading TzDxeLA.efi` → `not found`，之后无任何 driver 行** | TzDxeLA 是我们从 `# SKIPPED(debug)` **恢复**的；它的启动失败之后系统就进入 MemoryDump |
+
+### 19.13 V5：重新跳过 TzDxeLA + 探针移到 APRIORI 末尾
+
+| 项 | 内容 |
+|---|---|
+| 改动 | `DXE.inc`/`APRIORI.inc` 中 TzDxeLA 恢复为 `# SKIPPED(debug):`；StopDxe 探针移到 APRIORI 最后一行（第 119 行前） |
+| FD | `fv-bisect/fd-v5-no-tzdxela-probe-end.img`，sha `2e1a00beac82f6ac39a9ecd346be88987d9f2cea37fb2e6a9c8e883f0ab7f616` |
+| 判读 | 若屏幕出现 `NX741J STOP` → APRIORI 全部派发完成，崩溃在 DXE.inc 阶段或之后；若直接 MemoryDump → 崩溃仍在 APRIORI 范围内且与 TzDxeLA 无关 |
+
+### 19.14 可能的根因排序（更新）
+
+1. **TzDxeLA**（最可疑）：stock 明确跳过它；我们恢复后它返回 not found 且随后崩溃。V5 直接验证；
+2. `AndroidDxe`（stock 提取）启动失败可能留下半初始化状态；
+3. APRIORI 之后的某个 DXE.inc 驱动；
+4. SEC/PEI 环境（仍未被排除，但优先级降低）。
