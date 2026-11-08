@@ -299,6 +299,7 @@ completion = [
 limits = [
   "No Mu-side UFS BlockIo: UFSDxe/HALIOMMU cannot be enabled without DTBExtn, NPA and RPMH providers",
   "No XNU UFS driver yet: ShengUfs targets SM8550 and needs an SM8850 clock/reset table plus ArmSmmu4K",
+  "ShengUfs link needs build-boot-progress.py plus storage policy/VerifiedRoot archives; the upstream public script depends on private kits/sheng sources and build-sheng-source-storage.py is not published (404).",
 ]
 next_action = [
   "Keep the payload-volume path for stage 2/3 verification and revisit UFS only for the root volume after stage 4 passes",
@@ -450,6 +451,7 @@ inputs = [
   "Vendor build BQ2A.250705.001-BP2A.250605.031.A3; Wi-Fi config /vendor/etc/wifi/peach_v2/WCNSS_qcom_cfg.ini; modules cnss2/icnss2/wlan_firmware_service/qbt_handler/qti_btl.",
   "Wireless is WCN7880 (phyAni*_wcn7880 symbols in modem_a); BT firmware BTFW.BRAHMA.2.0.1-00181 and BTFW.GANGES.2.0.1-00184 live in bluetooth_a FAT; Wi-Fi board data is /IMAGE/PEACH/BDWLAN.E01..E49 plus BDWLAN.ELF in modem_a.",
   "Wi-Fi config /vendor/etc/wifi/peach_v2/WCNSS_qcom_cfg.ini is extracted; wlan_mac.bin lives in /mnt/vendor/persist and wlanmdsp.mbn is runtime-extracted (no image entity).",
+  "Wi-Fi MAC is 5C:7D:AE:43:D9:F8 from persist/wifimac.dat (39 B, sha256 8140b5beba299ee817a91600303393a2cec0335379843ec690b63dfbe77eab74), not from the absent persist/peach_v2/wlan_mac.bin path.",
 ]
 configuration = [
   "board.toml [hardware.wireless] records the chip and the PCIe identity",

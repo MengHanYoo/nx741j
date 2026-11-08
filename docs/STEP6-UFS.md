@@ -84,4 +84,10 @@ _vr_open / _vr_verify_block / _vr_xnu_crypto / _verified_root_key / _verified_ro
 `build-sheng-source-storage.py`、`build-boot-progress.py`、`build-virtio-mmio-bindings.py`（RamBlock/VirtioMmioBlock）。
 nx741j 还需为 iOS 16 profile 提供对应策略目录（`scripts/policies/ios-16.7.16-20H392`）。
 
-**当前状态**：已回退组件选中（保持内核可构建），源码覆盖与记录保留；下一步是实现上述两个设备脚本后再选中。
+**当前状态**：已回退组件选中（保持内核可构建），源码覆盖与记录保留。
+
+官方公开仓库只提供 `scripts/build-boot-progress.py`，它依赖 **私有 sheng 仓库**的
+`kits/sheng/BootProgress.c`、`BootFaultProbe.c`、`BootDiagExport.c`、`BootWatchdogPolicy.c`、
+`BootLatencyTrace.c`、`AdspFirmware.c`；`scripts/build-sheng-source-storage.py` 在上游返回 404。
+因此 nx741j 无法直接复用这套 ABI：需要为 iOS 16 自行实现 storage policy/VerifiedRoot 归档与
+boot-progress 符号，或取得官方私有仓库的对应源码。

@@ -252,3 +252,16 @@
 | `bluetooth_a` `/IMAGE/*.MBN` | BT 固件 BRAHMA/GANGES |
 
 即：MAC 固件 `wlanmdsp.mbn` 只在设备运行期存在，persist 里的 MAC 需单独 dump persist 分区。
+
+## Wi-Fi MAC（persist 提取，9584183）
+
+9008 dump `persist`（LUN0 LBA 8，8192 扇区 = 32 MiB）→ ext4 挂载 → 取得：
+
+| 项 | 值 |
+|---|---|
+| 文件 | `persist/wifimac.dat`，39 B，sha256 `8140b5beba299ee817a91600303393a2cec0335379843ec690b63dfbe77eab74` |
+| 内容 | `wifiaddr:0x5C 0x7D 0xAE 0x43 0xD9 0xF8` |
+| MAC | **5C:7D:AE:43:D9:F8** |
+
+`/vendor/firmware/wlan/qca_cld/peach_v2/wlan_mac.bin` 的符号链接目标
+`/mnt/vendor/persist/peach_v2/wlan_mac.bin` 在本机不存在，MAC 实际存放在根目录 `wifimac.dat`。
