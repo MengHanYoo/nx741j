@@ -273,6 +273,7 @@ inputs = [
   "GPT entries: boot_a 119078, uefi_a 6, efisp 748894, vbmeta_a 143706, vendor_boot_a 302310",
   "boot_a is 96 MiB (100663296 bytes)",
   "Payload volume 64 MiB and the efisp / userdata fallbacks",
+  "Boot device is soc/1d84000.ufshc with PHY 1d80000.ufsphy_mem; UFS part KLUGG8NHKB per the stock record.",
 ]
 configuration = [
   "board.toml [hardware.storage] records the UFS identity and the partition LBAs",
@@ -317,6 +318,7 @@ inputs = [
   "Panel bf375 / rm692h5 6.8 inch, native 1440x3200, DSI command mode with dual 1216x2688 modes (120/60 fps)",
   "UEFI GOP must be 1216x2688; the framebuffer region is 0xFC800000 / 0x2B00000",
   "ZTE private dimming commands (zte,mdss-dsi-dim-on-commands)",
+  "Panel is bf375 with rm692h5 controller (msm_drm.dsi_display0=qcom,mdss_dsi_bf375_rm692h5_6p8_dev0_dsc_cmd in the stock DTB bootargs); GOP framebuffer is 1216x2688.",
 ]
 configuration = [
   "board.toml [hardware.display] pins panel name, resolution and GOP geometry",
@@ -356,6 +358,7 @@ inputs = [
   "Synaptics TCM touch on SPI, reset GPIO <0x33 0x42 0x00>, input device synaptics_tcm_touch",
   "Goodix fingerprint as a separate input device",
   "Buttons through ButtonsDxe in the firmware tree",
+  "Touch is a Synaptics TCM device (synaptics_tcm_touch, 10 slots, ABS_X 0-12159 / ABS_Y 0-26879); fingerprint goodix_fp and proximity vi530x are separate input nodes (adb shell getevent -pl).",
 ]
 configuration = [
   "board.toml [hardware.touch] records the bus, GPIO and device name",
@@ -433,6 +436,7 @@ paths = ["board.toml", "docs/DRIVER-CHECKLIST.md"]
 inputs = [
   "WCN7850 over PCIe (17cb:110e), PCIe SM registers at 0x1D07000",
   "No WLAN or BT driver exists in the firmware tree",
+  "Wireless module is WCN7861 (ro.vendor.feature.board_wlan_bt_chip), PCI 0000:01:00.0; the catalog Ath12kWifi/QcaBluetooth implementations target WCN7850 and need a WCN7861 check.",
 ]
 configuration = [
   "board.toml [hardware.wireless] records the chip and the PCIe identity",

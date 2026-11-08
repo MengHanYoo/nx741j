@@ -169,3 +169,16 @@
 - §5.2 第 6 项（音频 codec/DSP、USB 控制器与 PHY、基带）→ **✅ 已登记**；
 - 本节只登记"输入"，不含驱动实现：音频/USB/基带分别按官方步骤 6 的 DSP/音频/电源与 USB 章节推进；
 - 固件文件（`adsp.mdt`、`modem.mdt` 等）需在 `proprietary-files.txt` 中补对应来源，属步骤 3 收尾项。
+
+## 实机输入采集（f5a4e36）
+
+| 类别 | 实测 | 来源命令 |
+|---|---|---|
+| 触摸 | `synaptics_tcm_touch`（Synaptics TCM，10 指，ABS_X 0–12159 / ABS_Y 0–26879） | `adb shell getevent -pl` |
+| 指纹 | `goodix_fp` | 同上 |
+| 环境光/接近 | `vi530x` | 同上 |
+| 面板 | `bf375` + `rm692h5`，`msm_drm.dsi_display0=qcom,mdss_dsi_bf375_rm692h5_6p8_dev0_dsc_cmd` | 实机 DTB chosen bootargs |
+| Wi-Fi/BT | `WCN7861`（`ro.vendor.feature.board_wlan_bt_chip=WCN7861`），PCI `0000:01:00.0` | `adb shell getprop` |
+| 存储 | UFS `KLUGG8NHKB`，boot device `soc/1d84000.ufshc`，PHY `1d80000.ufsphy_mem` | stock 记录 + `getprop ro.boot.boot_devices` |
+| 固件 | build `CP2A.260605.016`，baseband `EN_PACK-2.124266.53`，fingerprint `Xiaomi/nezha/nezha:17/...` | `adb shell getprop` |
+| SoC 序列 | `160370627`（`0x098EE0C3`，QFPROM） | `/sys/devices/soc0/serial_number` |
