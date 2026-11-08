@@ -13,12 +13,13 @@ summary = "Nubia Z80 Ultra (NX741J), Qualcomm SM8850 / Kaanapali (canoe), 8 core
 id = "configuration"
 status = "implemented"
 components = ["ArmDTPlatform"]
-paths = ["board.toml", "feeds.toml", "unixnu.lock", "configs/nx741j_defconfig", ".github/workflows/**"]
-inputs = [
-  "SoC SM8850 (Kaanapali, codename canoe): 8 cores in a 6+2 layout, GICv3, 4 KiB pages",
-  "iOS 16.7.16 (20H392) is the only IPSW available for this device, so the target is fixed at xnu 8796.141.3",
-  "UniXNU profile pair: profiles/arch/arm64 with profiles/os/ios-16.7.16-20H392",
-  "Shared SoC support in UniXNU-sm8850-common (soc.toml, dtsi, configs, XNU series)",
+paths = [
+  "board.toml",
+  "feeds.toml",
+  "unixnu.lock",
+  "configs/nx741j_defconfig",
+  ".github/workflows/**",
+  ".gitignore",
 ]
 configuration = [
   "board.toml: soc = \"SM8850\", soc_source = \"sm8850\", os_profile = \"ios-16.7.16-20H392\", kit = \"nx741j\"",
@@ -37,6 +38,7 @@ findings = [
   "A local sm8850 override in local.toml keeps the source unpinned and makes status report 'not reproducible'; the repository is mirrored into the host source cache and fetched through feeds.toml instead.",
   "The libpthread reference must match the 8796 kernel generation: 519.120.4 calls proc_get_jit_entitled, which 8796's pthread_callbacks_s does not define.",
   "GitHub Actions are disabled for this repository: both workflows moved to .github/workflows-disabled (owner request); the record check no longer runs on pushes until they are restored.",
+  "Ownership backfill: .gitignore belongs to this area (historical baseline check).",
 ]
 completion = [
   "status --json resolves device, OS profile, configuration, module sources and output directory",
