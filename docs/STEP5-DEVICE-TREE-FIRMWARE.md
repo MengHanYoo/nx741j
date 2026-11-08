@@ -45,7 +45,7 @@
 | 产物 | sha256 |
 |---|---|
 | `payload.img` | `467b3bcfdf08131c32f40597410fb766251d6d3d8aa5101fef017062a13907b4` |
-| `boot.img` | `0ab6a94e106194bada023aeea033981cf19cdfb4058f4ef80e5e43a611b6ba36` |
+| `boot.img` | `b29893a8acc52a501066e28d9c05678aea85414de29a6b80539c63bffa487bf3` |
 | 固件 FD | `bbbcc3cf1b5dfe648a45544f171e2ff70425534c067772f4570b477ea1d42b0a` |
 
 ## 5. 存疑
