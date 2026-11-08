@@ -10,15 +10,17 @@
 # A "pending" entry is a missing input recorded in docs/HARDWARE-INVENTORY.md.
 # Verified from local dumps: boot_a (3d988255…) and vendor_boot_a (fabb1a67…).
 
+# All ten entries are now hashed from local 9008 dumps (boot_a/vendor_boot_a earlier,
+# the other eight on 2026-11-08).
 # Remaining pending entries need a 9008 dump of the stock partition (no absolute paths).
 #
-xbl_a.img          xbl_a          sha256=pending
-xbl_config_a.img   xbl_config_a   sha256=pending
-abl_a.img          abl_a          sha256=pending
-uefi_a.img         uefi_a         sha256=pending
-uefisecapp_a.img   uefisecapp_a   sha256=pending
-tz_a.img           tz_a           sha256=pending
-hyp_a.img          hyp_a          sha256=pending
+xbl_a.img  xbl_a  sha256=5d5c19f0083071929b45342ba7fd16062b72fbe7e4b16a26aae8334df078ee21
+xbl_config_a.img  xbl_config_a  sha256=cc54b533a14fb8bfaec00761a50132731134e40e62267c490cb1c6ccd90f5ca2
+abl_a.img  abl_a  sha256=7e77fd5b737c2a8d3c3e214cd59fd87404b38d64368e67219ebd07e66b52963d
+uefi_a.img  uefi_a  sha256=35a4853d18397dec20a5b30ccc23d0ef6f44b1aca36d4e4a26c123efcf8b482c
+uefisecapp_a.img  uefisecapp_a  sha256=41e8c3c98ab741d7b1387e068dac1bfe500c4cc53f376401903db7f7fec1cdac
+tz_a.img  tz_a  sha256=bd8b31f94e8e7338f817d4bbec41c92414b8809de722becb398e702be2339fd8
+hyp_a.img  hyp_a  sha256=1ab8ac432062c88225d75c941a1647ba2f2031558c9fcfe7be8eb41ed2ee2b4b
 vendor_boot_a.img  vendor_boot_a  sha256=fabb1a67ce9781b6c0cf8929c414914daa6d9068ec915e363b0883a8076e6178
 boot_a.img         boot_a         sha256=3d988255d51fdaf7d6ae46fc3a36373d37e88bf52e8b437557d12b0148a90cf7
-dtbo_a.img         dtbo_a         sha256=pending
+dtbo_a.img  dtbo_a  sha256=cdb44748b22f2c8a80822818744127261f663d2c914203e6dea25ec6eea78cc8

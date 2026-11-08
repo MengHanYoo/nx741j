@@ -13,7 +13,7 @@
 | 7 | GPU/Metal | [GPU 与 Metal](/zh/porting/gpu) | 未开始 | 目录 `Adreno740`/`AdrenoMetal` 面向 SM8550/A740，SM8850 需对应实现 |
 | 8 | Wi-Fi/蓝牙 | [Wi-Fi](/zh/porting/network) | 未开始 | 确认模组型号（目录参考 WCN7850） |
 | 9 | USB/基带/音频 | [USB](/zh/porting/usb)、[基带](/zh/porting/baseband)、[电源](/zh/porting/power) | 未开始 | 按驱动顺序在存储/显示之后 |
-| 10 | 专有文件哈希 | [设备仓库](/zh/porting/device-repository) | 进行中 | `boot_a`/`vendor_boot_a` 已回填（来自本地 dump）；其余 8 项需 9008 dump 对应分区 |
+| 10 | 专有文件哈希 | [设备仓库](/zh/porting/device-repository) | ✅ 完成 | 10 项全部由本地 9008 dump 回填（xbl/xbl_config/abl/uefi/uefisecapp/tz/hyp/dtbo + boot/vendor_boot） |
 | 11 | userdata 双系统分区 | [双系统分区](/zh/porting/dual-system-partition) | 未开始 | `board.toml [userdata]` 的 `first_lba/last_lba` 未填（需 GPT 实测） |
 | 12 | 记录完成等级 | [适配记录](/zh/porting/records) | 进行中 | 仅 `firmware` 为 device-verified；`storage/input` 为 planned，其余按证据升级 |
 | 13 | 打包脚本 | [设备打包脚本](/zh/porting/packaging) | 进行中 | `scripts/package.sh` 需在干净检出跑通并记录产物 |
