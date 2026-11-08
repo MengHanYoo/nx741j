@@ -584,6 +584,7 @@ procedure = [
 findings = [
   "The trust cache and the ADT identity are already enforced by the payload build; a mismatch fails the build rather than the device.",
   "early_security_init stays empty because the original AMFI initializer address in this kernelcache has not been identified, so the early initializer does not run.",
+  "board.toml changed in this range: the platform ADT inputs (psci_method/dram_size/owned_memory_size/cpu_regs) and the payload trust cache list were made explicit; see docs/STEP6-PLATFORM.md.",
 ]
 completion = [
   "Trust cache and ADT identity match the device and the kernel reaches the early security stage",
