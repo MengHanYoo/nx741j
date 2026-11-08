@@ -54,3 +54,21 @@ scripts/linux/setup-toolchain.py --check
 | `unique_chip_id` | 本 ROM 的 `ro.boot.unique_chip_id` 为空；改用 QFPROM 派生的 socinfo 序列号（`160370627`）。若后续能在 bootloader 侧读到 QFPROM 原始 fuse，应交叉核对 |
 | 无 `.ipsw` 原包 | 若要 `unixnu ipsw fetch` 需配置 `[ipsw] url` 或 `UNIXNU_IPSW` |
 | macOS 步骤 | 本机不执行 `--skip-setup`/`seed-data-grow`；如需要走 GitHub macOS runner |
+
+## 构建存储位置（9a1ab09）
+
+WSL 发行版根盘（`/dev/sdd`）落在 C: 的 `ext4.vhdx`，重 IO 会拖慢构建。现将整个构建树迁到
+**E: 上的 ext4 镜像**，路径保持不变：
+
+| 项 | 值 |
+|---|---|
+| 镜像 | `E:\default-workspace\z80u-collect\work-ext4.img`（稀疏，118 GiB 逻辑容量，当前用 81 GiB） |
+| 挂载点 | `/opt/work`（`/dev/loop0`，ext4） |
+| 持久化 | `/etc/wsl.conf` 的 `[boot] command = /usr/local/bin/optwork-mount` |
+| 手动挂载 | `/usr/local/bin/optwork-mount`（幂等：已挂载则跳过） |
+| 临时目录 | `TMPDIR=/opt/work/tmp`（`/etc/profile.d/optwork-tmp.sh`） |
+
+迁移验证：`./unixnu status --json`（configured=true、modules 20）与 `./unixnu payload`
+（64 MiB）均成功；C: 上的旧副本已删除，根盘占用从 126 G 降到 58 G。
+
+注意：若 WSL 版本不支持 `[boot] command`，每次启动后手动执行 `/usr/local/bin/optwork-mount`。
