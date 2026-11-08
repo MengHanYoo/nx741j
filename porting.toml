@@ -540,6 +540,7 @@ paths = [
   ".github/workflows-disabled/package.yml",
   ".github/workflows-disabled/porting-record.yml",
   "scripts/apply-firmware-overlay.py",
+  "scripts/read-device-identity.sh",
 ]
 inputs = [
   "Self-built XNU kernel (8796.141.3) and the original kernelcache matching the profile pin (2ec297ba)",
