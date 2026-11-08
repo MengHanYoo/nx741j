@@ -37,6 +37,7 @@
 !include KaanapaliPkg/KaanapaliPkg.dsc.inc
 
 [PcdsFixedAtBuild]
+  gUniXNUPkgTokenSpaceGuid.PcdUniXNUDeviceModel|"nx741j"
   # Explicit: this platform only provides a device tree, no ACPI tables.
   gEmbeddedTokenSpaceGuid.PcdDefaultDtPref|TRUE
   # V7: keep DEBUG prints but never halt on ASSERT (vendor drivers assert routinely)
@@ -74,6 +75,8 @@
   gQcomPkgTokenSpaceGuid.PcdPlatformType|"LA"
 
 [LibraryClasses]
+  AdvancedLoggerAccessLib|AdvLoggerPkg/Library/AdvancedLoggerAccessLib/AdvancedLoggerAccessLib.inf
+  QrEncoderLib|MsGraphicsPkg/Library/QrEncoderLib/QrEncoderLib.inf
   UniXNULib|UniXNUPkg/Library/UniXNULib/UniXNULib.inf
   FdtLib|MdePkg/Library/BaseFdtLib/BaseFdtLib.inf
   #
@@ -103,6 +106,7 @@
   UniXNUPkg/Application/UniXNU/UniXNU.inf
   UniXNUPkg/Driver/UniXNUDxe/UniXNUDxe.inf
   UniXNUPkg/Driver/UniXNURamDiskDxe/UniXNURamDiskDxe.inf
+  UniXNUPkg/Driver/AdvancedLogDxe/AdvancedLogDxe.inf
   nx741jPkg/Drivers/LogDumpDxe/LogDumpDxe.inf
   DarwinBootPkg/Driver/DarwinBoot.inf
   #

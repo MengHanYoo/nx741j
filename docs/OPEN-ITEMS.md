@@ -18,6 +18,7 @@
 | 12 | 记录完成等级 | [适配记录](/zh/porting/records) | 进行中 | 仅 `firmware` 为 device-verified；`storage/input` 为 planned，其余按证据升级 |
 | 13 | 打包脚本 | [设备打包脚本](/zh/porting/packaging) | 进行中 | `scripts/package.sh` 需在干净检出跑通并记录产物 |
 | 14 | 发布 | [设备仓库 §发布](/zh/porting/device-repository#publish) | 阻塞 | 需要 `unixnu` topic、`Porting record` CI 通过、设备页收录 |
+| 15 | 固件日志导出（QR） | [日志抓取](/zh/porting/log-capture) | 进行中 | AdvancedLogDxe 已驻留且 PCD/库已映射；需启用 Advanced Logger 采集模块（会切换 DxeCore 调试通道） |
 
 ## 本次已完成的配置收口
 
