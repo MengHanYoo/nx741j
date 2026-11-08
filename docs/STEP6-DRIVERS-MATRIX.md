@@ -51,3 +51,37 @@ llvm-ar t <archive.a>; llvm-nm --defined-only <archive.a>
 
 1. 取到 `clk-canoe.ko` → 提取 UFS 分支/复位偏移 → 适配 `ShengUfs` → 选中组件并验证存储；
 2. 存储打通后按顺序做显示（`AppleARMBacklight`/`GeniI2c`）与输入（`QcomGeniSpi`/触摸）。
+
+## 驱动接口定义（官方第 1 节）
+
+对已选 6 个组件按官方五类接口登记；来源为组件目录字段、源码与本次构建产物。
+
+| 组件 | 硬件 | 传输 | 内存 | OS | 构建 |
+|---|---|---|---|---|---|
+| `ArmDTPlatform` | ADT 根节点/子设备/NVRAM；无 MMIO | device-tree 解析 | 由 XNU 分配 | `IOService` 平台专家，匹配 `arm-io` | `drivers/ArmDTPlatform/ArmDTPlatform.cpp` → `libArmDTPlatform.a` |
+| `ArmCpu` | GICv3 dist/redist（`0x17000000+0x10000`、`0x17080000+0x200000`，stride `0x40000`）；19.2 MHz 定时器 | 无请求队列；CPU 启动/IPI 走 PSCI | 每 CPU 栈由内核分配 | CPU 注册、`arm,cpu` 匹配、IPI | `ArmCpu.cpp` → `libArmCpu.a` |
+| `SoftwareAES` | 无独立 MMIO（走 IOCryptoAcceleratorFamily） | 同步 AES-CBC 调用 | 调用方缓冲 | `IOAESAccelerator` ABI 绑定 | `NativeAES.cpp` + bindings → `libSoftwareAES.a` |
+| `GopFramebuffer` | UEFI GOP 帧缓冲（1216×2688，32bpp） | 无 | 帧缓冲映射 | `IOService` 显示 provider | `NativeMobileDisplay.cpp` → `libGopFramebuffer.a` |
+| `DarwinBoot` | 无 MMIO；内存窗口由 boot_args 描述 | 文件读取 + Mach-O/ADT 校验 | `WINDOW_SIZE` 连续窗口 | UEFI driver，产出 `EFI_UNIXNU_LOADER_PROTOCOL` | `DarwinBoot.c` → FV 内 `DarwinBoot.efi` |
+| `XnuPrelink` | 无 | 命令行工具 | 无 | 预链接脚本 | `kits/XnuPrelink/emit_prelink.py` |
+
+### 资源所有权与清理（官方第 3.2 节）
+
+| 组件 | 所有者 | 释放路径 |
+|---|---|---|
+| `ArmCpu` | 内核（CPU 启动后常驻） | 无卸载路径；失败时停止后续 CPU 启动 |
+| `ArmDTPlatform` | 内核平台专家 | `deleteList`/`free`（源码内置） |
+| `SoftwareAES` | 内核加密服务 | 实例 detach 时释放请求缓冲 |
+| `GopFramebuffer` | 内核显示服务 | `stop` 时解除映射 |
+| `DarwinBoot` | 固件（`ExitBootServices` 前） | `Unload` 卸载协议 |
+
+### 本次构建验证
+
+```sh
+./unixnu kernel -D ../UniXNU-nx741j      # 归档 + 预链接成功，kernel.macho sha256 1d38517f…
+llvm-ar t build/armdt-platform/libArmDTPlatform.a   # ArmDTPlatform.o
+llvm-nm --defined-only build/armcpu/libArmCpu.a     # ArmCpu 元类/方法符号
+llvm-ar t build/software-aes/libSoftwareAES.a       # NativeAES.o + original-bindings.o
+```
+
+设备仓库 revision `4d28c6089e0fc4e60c973278747b3f5ba142a646`。
