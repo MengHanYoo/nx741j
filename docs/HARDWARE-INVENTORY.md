@@ -202,3 +202,16 @@
 | UFS 具体型号字符串 | `/sys/block/*/device/model`、`/proc/partitions` 被 SELinux 拒绝 | 9008 下 `fh_loader --getstorageinfo` 或 root 读取 |
 | Synaptics TCM 固件与配置 | `/vendor/firmware_mnt`、`/odm` 无对应公开文件 | root 读 `/vendor/firmware_mnt/image` 或 vendor 分区 |
 | WCN7861 固件文件名/蓝牙 UART | `/vendor/firmware_mnt` 拒绝访问 | root 或 vendor 分区提取 |
+
+## 无线与触摸固件（9008 分区提取，3336080）
+
+| 项 | 值 | 来源 |
+|---|---|---|
+| Wi-Fi/BT 芯片 | **WCN7880**（`phyAniDynamicOffset_wcn7880` 等符号），不是属性里的 WCN7861 | `modem_a` FAT 内字符串 |
+| BT 固件 | `BTFW.BRAHMA.2.0.1-00181-PATCHZ-1_DEF`、`BTFW.GANGES.2.0.1-00184-PATCHZ-1_DEF` | `bluetooth_a` FAT `/IMAGE/*.VER` |
+| BT MBN | `BRHBTFW2.MBN`(291,532 B)、`GNGBTFW2.MBN`(291,532 B)、`GNGBTFW2.TLV`(278,392 B)、`BRHBTFW2.TLV` | 同上 |
+| Wi-Fi board data | `/IMAGE/PEACH/BDWLAN.E01`…`E49`（72 个，125,420 B）+ `BDWLAN.ELF`（125,264 B） | `modem_a` FAT（`modem_a` sha256 `abf6f10dc0b681c2`） |
+| Wi-Fi 配置 | `/vendor/etc/wifi/peach_v2/WCNSS_qcom_cfg.ini` | Android |
+| 触摸 TCM | `sdc_code_tcm.bin`、`sdc_data_tcm.bin` 名称出现在 modem 镜像字符串中，但不在其 FAT 树内 | 待 super/vendor 提取 |
+
+提取命令：`read-9008.ps1` dump `bluetooth_a`(LBA 95238,2048) / `modem_a`(LBA 5638,89600)，再用 FAT12/FAT16 解析脚本读取。

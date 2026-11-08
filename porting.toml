@@ -362,6 +362,7 @@ inputs = [
   "Goodix fingerprint as a separate input device",
   "Buttons through ButtonsDxe in the firmware tree",
   "Touch is a Synaptics TCM device (synaptics_tcm_touch, 10 slots, ABS_X 0-12159 / ABS_Y 0-26879); fingerprint goodix_fp and proximity vi530x are separate input nodes (adb shell getevent -pl).",
+  "Synaptics TCM firmware file names sdc_code_tcm.bin and sdc_data_tcm.bin appear in the modem image strings but are not present in its FAT tree; they must be extracted from the vendor image.",
 ]
 configuration = [
   "board.toml [hardware.touch] records the bus, GPIO and device name",
@@ -442,6 +443,7 @@ inputs = [
   "No WLAN or BT driver exists in the firmware tree",
   "Wireless module is WCN7861 (ro.vendor.feature.board_wlan_bt_chip), PCI 0000:01:00.0; the catalog Ath12kWifi/QcaBluetooth implementations target WCN7850 and need a WCN7861 check.",
   "Vendor build BQ2A.250705.001-BP2A.250605.031.A3; Wi-Fi config /vendor/etc/wifi/peach_v2/WCNSS_qcom_cfg.ini; modules cnss2/icnss2/wlan_firmware_service/qbt_handler/qti_btl.",
+  "Wireless is WCN7880 (phyAni*_wcn7880 symbols in modem_a); BT firmware BTFW.BRAHMA.2.0.1-00181 and BTFW.GANGES.2.0.1-00184 live in bluetooth_a FAT; Wi-Fi board data is /IMAGE/PEACH/BDWLAN.E01..E49 plus BDWLAN.ELF in modem_a.",
 ]
 configuration = [
   "board.toml [hardware.wireless] records the chip and the PCIe identity",
@@ -459,6 +461,7 @@ completion = [
 limits = [
   "Blocked behind the platform and PCIe host work; does not block the boot chain",
   "WCN7861 firmware image names and Bluetooth UART routing need root access to /vendor/firmware_mnt.",
+  "The catalog Ath12kWifi/QcaBluetooth implementations reference WCN7850, so the WCN7880 firmware/board-data pairing still needs an adaptation.",
 ]
 next_action = [
   "Add the PCIe host node and platform clocks after layer 2 produces a menu",
