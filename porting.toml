@@ -276,6 +276,7 @@ inputs = [
   "Boot device is soc/1d84000.ufshc with PHY 1d80000.ufsphy_mem; UFS part KLUGG8NHKB per the stock record.",
   "dumpsys diskstats reports about 975,850,316 KiB usable (1 TB part); the exact UFS model string is hidden from the shell.",
   "vendor_boot ramdisk provides gcc-canoe.ko (per-branch UFS offsets), phy-qcom-ufs-qmp-v4-canoe.ko, ufs-qcom.ko and ufshcd-crypto-qti.ko; the canoe UFS branch offsets differ from SM8550 except GDSCR and AXI.",
+  "UFS part is SAMSUNG KLUGG8NHKB-F0H1 firmware 0500, 0xED4F800 logical blocks (~1 TB), LUN enable mask 0x3f (fh_loader getstorageinfo).",
 ]
 configuration = [
   "board.toml [hardware.storage] records the UFS identity and the partition LBAs",
@@ -364,6 +365,7 @@ inputs = [
   "Buttons through ButtonsDxe in the firmware tree",
   "Touch is a Synaptics TCM device (synaptics_tcm_touch, 10 slots, ABS_X 0-12159 / ABS_Y 0-26879); fingerprint goodix_fp and proximity vi530x are separate input nodes (adb shell getevent -pl).",
   "Synaptics TCM firmware file names sdc_code_tcm.bin and sdc_data_tcm.bin appear in the modem image strings but are not present in its FAT tree; they must be extracted from the vendor image.",
+  "Synaptics TCM firmware is /vendor/firmware/syna_firmware.img (241,578 B, sha256 f6a687255be5bf13dc0bb0f35d28569a1a62c9c20ad0635534732d2f3c24737b) with a BOOT_CONFIG header; the VI5300 proximity/ALS firmware is /vendor/firmware_mnt/image/VI5300-M40_G10_R03_V1.18_20231102.bin.",
 ]
 configuration = [
   "board.toml [hardware.touch] records the bus, GPIO and device name",
@@ -386,6 +388,7 @@ limits = [
   "No working UEFI input device: neither the vendor stack nor a board TLMM driver has produced SimpleTextInput on device",
   "No touch protocol driver exists for this panel yet",
   "Synaptics TCM firmware/config is not exposed to the shell; read /vendor/firmware_mnt/image with root.",
+  "The TCM firmware image is extracted; the touch driver still needs the TCM protocol/IRQ/SPI wiring implemented.",
 ]
 next_action = [
   "Boot V41 and read the KEYS: dump for the three pin blocks, then either hardcode the mapping or fix the MMU mapping for the TLMM window",

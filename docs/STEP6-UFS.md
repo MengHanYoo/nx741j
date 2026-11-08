@@ -20,7 +20,7 @@
 | DMA | `dma-coherent`、`qcom,iommu-dma = "fastmap"`、`iommu-msi-size = 0x1000` | 需在接管时保留一致性 |
 | ICE | `qcom,ice-use-hwkm`、`shared-ice-cfg`、`reg-names` 含 `ice` | SM8550 参考实现未覆盖 ICE |
 | 通道/速率 | `lanes-per-direction = 2`，`qcom,prime-mask = 0xc0`、`silver-mask = 0x3f` | 影响 IRQ 亲和 |
-| 存储布局 | 待从本机 GPT 读取（LUN/块大小/容量/根卷窗口） | 官方要求记录后再选 `[userdata]` |
+| 存储布局 | `SAMSUNG KLUGG8NHKB-F0H1`（FW 0500），`0xED4F800` 块 × 4096 B ≈ 1 TB，LUN 掩码 `0x3f`；GPT/根卷窗口待分区步骤 | 已记录 |
 
 ## 与 ShengUfs（SM8550 常量）的差异
 

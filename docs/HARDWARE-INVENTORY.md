@@ -229,3 +229,13 @@
 | `gcc-alor.ko`、`camcc-canoe.ko`、`dispcc-canoe.ko`、`gpucc-canoe.ko`、`qnoc-canoe.ko`、`pinctrl-canoe.ko` | 其余 GCC/互联/引脚控制器 |
 
 触摸 TCM 固件（`sdc_code_tcm.bin`/`sdc_data_tcm.bin`）不在该 ramdisk 中，需 vendor 镜像。
+
+## UFS 与触摸固件（9008 提取，8ad1d6d）
+
+| 项 | 值 |
+|---|---|
+| UFS 型号 | `SAMSUNG KLUGG8NHKB-F0H1`，固件版本 `0500`（`fh_loader getstorageinfo` 输出：`UFS Inquiry Command Output: SAMSUNG KLUGG8NHKB-F0H1 0500`） |
+| UFS 容量 | `Logical Block Count: 0xED4F800`（≈1 TB），`LUN Enable Bitmask: 0x3f`（6 LUN） |
+| Synaptics TCM 固件 | `/vendor/firmware/syna_firmware.img`，241,578 B，sha256 `f6a687255be5bf13dc0bb0f35d28569a1a62c9c20ad0635534732d2f3c24737b`，头部 `BOOT_CONFIG` + `#SYNA CFG$]` |
+| 接近/ALS 固件 | `/vendor/firmware_mnt/image/VI5300-M40_G10_R03_V1.18_20231102.bin` |
+| 提取方式 | 9008 dump `super_a` → 解析 liblp → 截取 `vendor_a`（EROFS，偏移扇区 12935168）→ mount 后复制 |
