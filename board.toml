@@ -11,11 +11,24 @@ kit = "nx741j"
 [components]
 # SoftwareAES：arch profile 的 [kernel].archives 里写了 component:SoftwareAES，
 # 且 common.config 打开 CONFIG_XNU_NATIVE_AES，必须选中才能在归档阶段解析到它。
-include = ["ArmDTPlatform", "ArmCpu", "SoftwareAES", "XnuPrelink", "DarwinBoot", "GopFramebuffer"]
+include = ["ArmDTPlatform", "ArmCpu", "SoftwareAES", "XnuPrelink", "DarwinBoot", "GopFramebuffer", "ShengUfs"]
 
 [kernel]
 defconfig = "nx741j_defconfig"
 config_fragments = ["arch:configs/common.config", "soc:configs/sm8850.config", "os:configs/ios.config"]
+archives = [
+  "build-corecrypto-14.py",
+  "build-corecrypto-14.py --namespace",
+  "component:ArmDTPlatform",
+  "component:ArmCpu",
+  "component:SoftwareAES",
+  "component:ShengUfs",
+  "component:VirtioMmioBlock",
+  "build-storage-bringup.py",
+  "build-software-aes-bindings.py",
+  "build-mockfs-fixture.py",
+  "build-libpthread-kernel.py",
+]
 patch_series = ["arch:patches/xnu/series", "soc:patches/xnu/series", "os:patches/xnu/series", "device:patches/xnu/series"]
 
 [kernel.prelink]

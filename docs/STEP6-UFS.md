@@ -115,3 +115,11 @@ nx741j 还需为 iOS 16 profile 提供对应策略目录（`scripts/policies/ios
    `scripts/policies/ios-16.7.16-20H392`；
 2. `source-storage-runtime.patch` 的 **xnu-8796 版本**（当前只有 xnu-12377）；
 3. 与 xnu-8796 匹配的公开 IOStorageFamily 源码版本（用于重新生成 `storage-abi` 审计与绑定）。
+
+## 构建已打通（本地 bring-up）
+
+`ShengUfs` 已选中并链接成功（`kernel.macho` sha256 `ec801093…`）：官方 audit 产出
+`IOBlockStorageDevice-reference.o`，设备仓库 `package/storage-bringup/Stubs.c` +
+`scripts/build-storage-bringup.py` 提供剩余符号，框架 `build-xnu-4k-baseline.sh` 追加
+`-force_load` 入链接。运行时仍受 `native-source-storage=1` 门控，stub 绕过 verified-root，
+正式启用前需替换为私有 storage policy 归档。详见 `docs/STORAGE-BRINGUP.md`。
