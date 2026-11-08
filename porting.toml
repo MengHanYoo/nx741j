@@ -221,6 +221,7 @@ procedure = [
 findings = [
   "UFS is not required for the official stage 2 path: the payload volume is a RAM initrd published by UniXNURamDiskDxe, and DiskIoDxe/Fat mount it successfully on device.",
   "The vendor UFS stack cannot run in this firmware because HALIOMMU needs DTBExtnProtocol and UFSDxe needs the RPMH/SCM chain; both providers are absent.",
+  "board.toml changed in this range: the platform ADT inputs (psci_method/dram_size/owned_memory_size/cpu_regs) and the payload trust cache list were made explicit; see docs/STEP6-PLATFORM.md.",
 ]
 completion = [
   "SCSI capacity, GPT and known blocks read correctly",
