@@ -1,5 +1,7 @@
 # NX741J 驱动适配清单（按官方 drivers 页）
 
+硬件参数与 `dts/nx741j-hw.dtsi`、`docs/DTB-PARAMETERS.md` 同源（实机 stock FDT）。
+
 依据 <https://unixnu.com/zh/porting/drivers> 的 8 级硬件依赖顺序与"接口五要素"
 （硬件 / 传输 / 内存 / OS / 构建）。设备：SM8850 "canoe"，数据来自实机 DTB、vendor_boot ramdisk
 与 Android 运行态（见 `HARDWARE-INVENTORY.md`）。设备仓库 revision `638b6517ea3ec4f2a75f8f06552332e0a17b120c`。
@@ -56,7 +58,7 @@
 | 接口 | 内容 |
 |---|---|
 | 硬件 | **Synaptics TCM**（`synaptics_tcm_touch`，10 指，ABS 0–12159 / 0–26879）；SPI + reset GPIO |
-| 传输 | SPI（`QcomGeniSpi` 提供 GENI SPI 传输）；TCM 报告协议待实现 |
+| 传输 | SPI `spi@1a80000`（GENI，IRQ 856，50 MHz）；TCM 报告协议待实现 |
 | 内存 | 无 DMA 窗口需求（SPI 小缓冲） |
 | OS | 复用 `ShengHidInput` 的 IOHIDDevice；`ShengNovatekTouch` 不适用 |
 | 构建 | 需新建 Synaptics TCM 组件或板级 package 驱动；`QcomGeniSpi`/`ShengHidInput` 加入 include 后再接 archives |
@@ -68,9 +70,10 @@
 
 | 顺序 | 已确认输入 | 状态 |
 |---|---|---|
-| GPU | 目录实现面向 SM8550/A740；SM8850 为 Adreno 840 级，需新实现 | ⬜ |
-| Wi-Fi/BT | **WCN7880**；BT 固件 `BTFW.BRAHMA.2.0.1-00181` / `BTFW.GANGES.2.0.1-00184`；WLAN board data `/IMAGE/PEACH/BDWLAN.E01…E49`；`WCNSS_qcom_cfg.ini`；MAC `5C:7D:AE:43:D9:F8` | ⬜ |
+| GPU | 实机 DTB：`qcom,adreno-gpu-gen8-2-1`，`Adreno840v2`，chipid `0x44050a01`，reg `0x3d00000+0x40000`，IRQ 300/80；目录 A740 需新实现 | ⬜ |
+| Wi-Fi/BT | **WCN7880**（cnss `0xb0000000+0x10000`，PCIe `1c00000` BAR `0x40200000`）；BT 固件 `BTFW.BRAHMA.2.0.1-00181` / `BTFW.GANGES.2.0.1-00184`；WLAN board data `/IMAGE/PEACH/BDWLAN.E01…E49`；`WCNSS_qcom_cfg.ini`；MAC `5C:7D:AE:43:D9:F8` | ⬜ |
 | 基带 | modem 镜像内 `MODEM_OE/KAANAPAL` 构建；baseband `EN_PACK-2.124266.53` | ⬜ |
+| USB | `ssusb@a600000/dwc3@a600000`，reg `0xa600000+0xd93c`，IRQ 133，SMMU stream `0x40` | ⬜ |
 | 音频 | codec `wsa884x`（`canoe-mtp-wsa884x-snd-card`）；`mixer_paths_canoe_mtp_wsa884x.xml` | ⬜ |
 
 ## 8. OS 服务

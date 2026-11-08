@@ -4,7 +4,8 @@
  * NX741J 板级设备树（对应 https://unixnu.com/zh/porting/device-tree#procedure）
  *
  * 结构：
- *   - SoC 层：/include/ "sm8850.dtsi"（来自 feeds.toml 的 sm8850 源，include_dirs = soc:dts）
+ *   - SoC 层：/include/ "sm8850.dtsi"
+/include/ "nx741j-hw.dtsi"（来自 feeds.toml 的 sm8850 源，include_dirs = soc:dts）
  *   - 板级层：本文件只放本机差异项（model / compatible / memory / CPU 时基）
  *
  * 说明：此前本文件把 SoC 节点（psci/timer/gic）复制了一份，与 sm8850.dtsi 内容重复；
