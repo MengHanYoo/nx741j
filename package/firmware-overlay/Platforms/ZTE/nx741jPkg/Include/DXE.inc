@@ -117,3 +117,4 @@
 #   INF nx741jPkg/Drivers/Nx741jKeysDxe/Nx741jKeysDxe.inf
 # V41 disabled: INF SiliciumPkg/Drivers/KeypadDxe/KeypadDxe.inf
   INF DarwinBootPkg/Driver/DarwinBoot.inf
+  INF nx741jPkg/Drivers/AdvLoggerInstallDxe/AdvLoggerInstallDxe.inf

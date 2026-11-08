@@ -1,0 +1,30 @@
+## @file
+# Installs gAdvancedLoggerProtocolGuid by linking the AdvLoggerPkg Dxe library.
+#
+# UniXNUPkg/Driver/AdvancedLogDxe reads that protocol to export the firmware log as
+# QR frames (Tools -> Advanced Logger). The platform has no SEC/PEI logger HOB, so the
+# protocol may report an empty buffer until a real Advanced Logger collector is wired in.
+##
+[Defines]
+  INF_VERSION    = 0x00010019
+  BASE_NAME      = AdvLoggerInstallDxe
+  FILE_GUID      = 5F1E3C2A-7B4D-4E6A-9C11-3D8A2B6E4F01
+  MODULE_TYPE    = DXE_DRIVER
+  VERSION_STRING = 1.0
+  ENTRY_POINT    = AdvLoggerInstallEntry
+
+[Sources]
+  AdvLoggerInstallDxe.c
+
+[Packages]
+  MdePkg/MdePkg.dec
+  AdvLoggerPkg/AdvLoggerPkg.dec
+
+[LibraryClasses]
+  DebugLib
+  UefiDriverEntryPoint
+  UefiBootServicesTableLib
+  AdvancedLoggerLib
+
+[Depex]
+  TRUE

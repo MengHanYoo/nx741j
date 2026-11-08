@@ -75,10 +75,12 @@
   gQcomPkgTokenSpaceGuid.PcdPlatformType|"LA"
 
 [LibraryClasses]
+  AdvancedLoggerLib|AdvLoggerPkg/Library/AdvancedLoggerLib/Dxe/AdvancedLoggerLib.inf
   AdvancedLoggerAccessLib|AdvLoggerPkg/Library/AdvancedLoggerAccessLib/AdvancedLoggerAccessLib.inf
   QrEncoderLib|MsGraphicsPkg/Library/QrEncoderLib/QrEncoderLib.inf
   UniXNULib|UniXNUPkg/Library/UniXNULib/UniXNULib.inf
   FdtLib|MdePkg/Library/BaseFdtLib/BaseFdtLib.inf
+  HobLib|MdePkg/Library/DxeHobLib/DxeHobLib.inf
   #
   # Memory Libraries
   #
@@ -107,6 +109,7 @@
   UniXNUPkg/Driver/UniXNUDxe/UniXNUDxe.inf
   UniXNUPkg/Driver/UniXNURamDiskDxe/UniXNURamDiskDxe.inf
   UniXNUPkg/Driver/AdvancedLogDxe/AdvancedLogDxe.inf
+  nx741jPkg/Drivers/AdvLoggerInstallDxe/AdvLoggerInstallDxe.inf
   nx741jPkg/Drivers/LogDumpDxe/LogDumpDxe.inf
   DarwinBootPkg/Driver/DarwinBoot.inf
   #

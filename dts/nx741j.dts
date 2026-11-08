@@ -31,6 +31,11 @@
         reg = <0x8 0xc0000000 0x1 0x40000000>;
     };
 
+    timer {
+        /* exported as the ARM generic timer node by the shared generator */
+        unixnu,adt-name = "arm-timer";
+    };
+
     cpus {
         timebase-frequency = <19200000>;
         #address-cells = <1>;
@@ -44,4 +49,11 @@
         cpu@10000 { device_type = "cpu"; compatible = "arm,armv8"; reg = <0x10000>; enable-method = "psci"; };
         cpu@10100 { device_type = "cpu"; compatible = "arm,armv8"; reg = <0x10100>; enable-method = "psci"; };
     };
+};
+
+/* The shared ADT generator exports enabled nodes that carry unixnu,adt-name into
+ * /arm-io. XNU's platform expert needs the GIC there, otherwise /arm-io has no
+ * interrupt controller and stage 5 cannot start. */
+&intc {
+    unixnu,adt-name = "intc";
 };
