@@ -13,7 +13,35 @@ summary = "Nubia Z80 Ultra (NX741J), Qualcomm SM8850 / Kaanapali (canoe), 8 core
 id = "configuration"
 status = "implemented"
 components = ["ArmDTPlatform"]
-paths = ["board.toml", "feeds.toml", "unixnu.lock", "configs/nx741j_defconfig", ".github/workflows/**"]
+paths = [
+  "board.toml",
+  "feeds.toml",
+  "unixnu.lock",
+  "configs/nx741j_defconfig",
+  ".github/workflows/**",
+  ".gitignore",
+  "artifacts/nx741j-stage2-2026-11-08.zip",
+  "loader/build-p2.sh",
+  "loader/build-p2c.sh",
+  "loader/build-p3.sh",
+  "loader/build-p3n.sh",
+  "loader/build-p4.sh",
+  "loader/build-p5.sh",
+  "loader/build-p6.sh",
+  "loader/images/efisp-p3n.img",
+  "loader/images/efisp-p5.img",
+  "loader/p2.c",
+  "loader/p2_fdt_test.c",
+  "loader/p2c.c",
+  "loader/p3.c",
+  "loader/p3n.c",
+  "loader/p4.c",
+  "loader/p5.c",
+  "loader/p6.c",
+  "loader/test-fdt.sh",
+  "local.toml.example",
+  "patches/firmware/2026-11-07-efisp-loader-platform.patch",
+]
 inputs = [
   "SoC SM8850 (Kaanapali, codename canoe): 8 cores in a 6+2 layout, GICv3, 4 KiB pages",
   "iOS 16.7.16 (20H392) is the only IPSW available for this device, so the target is fixed at xnu 8796.141.3",
@@ -37,6 +65,28 @@ findings = [
   "A local sm8850 override in local.toml keeps the source unpinned and makes status report 'not reproducible'; the repository is mirrored into the host source cache and fetched through feeds.toml instead.",
   "The libpthread reference must match the 8796 kernel generation: 519.120.4 calls proc_get_jit_entitled, which 8796's pthread_callbacks_s does not define.",
   "GitHub Actions are disabled for this repository: both workflows moved to .github/workflows-disabled (owner request); the record check no longer runs on pushes until they are restored.",
+  "Ownership backfill: .gitignore belongs to this area (historical baseline check).",
+  "Ownership backfill: artifacts/nx741j-stage2-2026-11-08.zip belongs to this area (historical baseline check).",
+  "Ownership backfill: loader/build-p2.sh belongs to this area (historical baseline check).",
+  "Ownership backfill: loader/build-p2c.sh belongs to this area (historical baseline check).",
+  "Ownership backfill: loader/build-p3.sh belongs to this area (historical baseline check).",
+  "Ownership backfill: loader/build-p3n.sh belongs to this area (historical baseline check).",
+  "Ownership backfill: loader/build-p4.sh belongs to this area (historical baseline check).",
+  "Ownership backfill: loader/build-p5.sh belongs to this area (historical baseline check).",
+  "Ownership backfill: loader/build-p6.sh belongs to this area (historical baseline check).",
+  "Ownership backfill: loader/images/efisp-p3n.img belongs to this area (historical baseline check).",
+  "Ownership backfill: loader/images/efisp-p5.img belongs to this area (historical baseline check).",
+  "Ownership backfill: loader/p2.c belongs to this area (historical baseline check).",
+  "Ownership backfill: loader/p2_fdt_test.c belongs to this area (historical baseline check).",
+  "Ownership backfill: loader/p2c.c belongs to this area (historical baseline check).",
+  "Ownership backfill: loader/p3.c belongs to this area (historical baseline check).",
+  "Ownership backfill: loader/p3n.c belongs to this area (historical baseline check).",
+  "Ownership backfill: loader/p4.c belongs to this area (historical baseline check).",
+  "Ownership backfill: loader/p5.c belongs to this area (historical baseline check).",
+  "Ownership backfill: loader/p6.c belongs to this area (historical baseline check).",
+  "Ownership backfill: loader/test-fdt.sh belongs to this area (historical baseline check).",
+  "Ownership backfill: local.toml.example belongs to this area (historical baseline check).",
+  "Ownership backfill: patches/firmware/2026-11-07-efisp-loader-platform.patch belongs to this area (historical baseline check).",
 ]
 completion = [
   "status --json resolves device, OS profile, configuration, module sources and output directory",
@@ -487,6 +537,7 @@ paths = [
   "docs/HANDOFF-2026-11-07.md",
   ".github/workflows-disabled/package.yml",
   ".github/workflows-disabled/porting-record.yml",
+  "scripts/apply-firmware-overlay.py",
 ]
 inputs = [
   "Self-built XNU kernel (8796.141.3) and the original kernelcache matching the profile pin (2ec297ba)",
@@ -513,6 +564,7 @@ findings = [
   "The 1.37 MB boot image written to boot_a reads back bit-identical, but the firmware volume it carries (db122c8a) did not reach the menu, while the earlier 2f8bc430 image did.",
   "GitHub Actions are disabled for this repository: both workflows moved to .github/workflows-disabled (owner request), so the record check no longer runs on pushes until they are moved back.",
   "board.toml changed in this range: the platform ADT inputs (psci_method/dram_size/owned_memory_size/cpu_regs) and the payload trust cache list were made explicit; see docs/STEP6-PLATFORM.md.",
+  "Ownership backfill: scripts/apply-firmware-overlay.py belongs to this area (historical baseline check).",
 ]
 completion = [
   "package.sh produces kernel.macho, payload.img, boot.img and package.manifest.json with matching hashes",
