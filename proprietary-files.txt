@@ -8,7 +8,10 @@
 #
 # sha256 values are filled the first time a file is imported into .cache/firmware.
 # A "pending" entry is a missing input recorded in docs/HARDWARE-INVENTORY.md.
+# Verified from local dumps: boot_a (3d988255…) and vendor_boot_a (fabb1a67…).
 
+# Remaining pending entries need a 9008 dump of the stock partition (no absolute paths).
+#
 xbl_a.img          xbl_a          sha256=pending
 xbl_config_a.img   xbl_config_a   sha256=pending
 abl_a.img          abl_a          sha256=pending
@@ -16,6 +19,6 @@ uefi_a.img         uefi_a         sha256=pending
 uefisecapp_a.img   uefisecapp_a   sha256=pending
 tz_a.img           tz_a           sha256=pending
 hyp_a.img          hyp_a          sha256=pending
-vendor_boot_a.img  vendor_boot_a  sha256=pending
-boot_a.img         boot_a         sha256=pending
+vendor_boot_a.img  vendor_boot_a  sha256=fabb1a67ce9781b6c0cf8929c414914daa6d9068ec915e363b0883a8076e6178
+boot_a.img         boot_a         sha256=3d988255d51fdaf7d6ae46fc3a36373d37e88bf52e8b437557d12b0148a90cf7
 dtbo_a.img         dtbo_a         sha256=pending

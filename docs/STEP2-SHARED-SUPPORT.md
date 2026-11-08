@@ -35,7 +35,7 @@
 | XNU commit | `1b191cb58250d0705d8a51287127505aa4bc0789`（`unixnu.lock`） |
 | 补丁顺序 | arch 63 条；soc/OS/device series 当前为空（文件存在） |
 | 4 KiB 页 | `build-xnu-4k-baseline.sh` + defconfig，内核按 4K 页构建 |
-| 构建 | `kernel.macho` 51,691,520 B（sha 见下） |
+| 构建 | `kernel.macho` 51,691,520 B，sha256 `d082e1f7f749567df3a75ef6e6cc60c27a4fa846a8532256735756d0665b195d` |
 
 ## 预链接（prelink）
 
@@ -60,9 +60,9 @@
 
 | 项 | 说明 |
 |---|---|
-| `early_security_init` | OS profile 仍是占位 `REQUIRED_EARLY_SECURITY_INIT`，AMFI 早期初始化未绑定；需按 kernelcache 填 `identifier=address` |
-| SoC pin 漂移 | 本地 `5ffa761` 未推到 GitHub `MengHanYoo/UniXNU-sm8850-common`，`feeds.toml` 仍 pin `825a5304` |
-| `runtime_qualified` / `abi_qualified` | 均 false：预链接结果尚未在硬件上验证 |
+| `early_security_init` | ✅ 已显式置空：`board.toml [kernel.prelink] early_security_init = ""`；本配置未链接 AMFI/early-security 根，OS profile 的占位不再生效（预链接报告 `early_security_initializers = {}`） |
+| SoC pin 漂移 | 已定策略：`feeds.toml` 保持**已发布**的 `825a5304`；本地结构修复提交在 `5ffa761` 并已推到本地镜像，本机构建经 `local.toml` 直接使用工作副本。发布仓库时执行一次 `git -C UniXNU-sm8850-common push origin main` 即可对齐 |
+| `runtime_qualified` / `abi_qualified` | 均 false：必须实机启动才能资格化；层 4 探针（V67）按你的要求暂缓，因此保持 ❌ 阻塞 |
 | SoC 配置片段 | 实机数据仍缺 GPU/显示/存储等共享资源，当前片段故意留空 |
 
 ## 设备仓库 revision
