@@ -1,0 +1,11 @@
+schema = 1
+
+[kit]
+name = "nx741j"
+version = "1.0.0"
+description = "Nubia Z80 Ultra (NX741J), SM8850 canoe"
+
+[match]
+arch = "AARCH64"
+fdt_compatible = ["nx741j"]
+firmware_vendor = ["ZTE"]

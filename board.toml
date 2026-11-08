@@ -11,7 +11,7 @@ kit = "nx741j"
 [components]
 # SoftwareAES：arch profile 的 [kernel].archives 里写了 component:SoftwareAES，
 # 且 common.config 打开 CONFIG_XNU_NATIVE_AES，必须选中才能在归档阶段解析到它。
-include = ["ArmDTPlatform", "ArmCpu", "SoftwareAES", "XnuPrelink", "DarwinBoot", "GopFramebuffer", "ShengUfs"]
+include = ["ArmDTPlatform", "ArmCpu", "SoftwareAES", "XnuPrelink", "DarwinBoot", "GopFramebuffer", "ShengUfs", "VirtioMmioBlock", "VerifiedRoot"]
 
 [kernel]
 defconfig = "nx741j_defconfig"
@@ -34,6 +34,7 @@ patch_series = ["arch:patches/xnu/series", "soc:patches/xnu/series", "os:patches
 [kernel.prelink]
 # 板级只补 profile 里留作占位的输入：tool / kernelcache_sha256 / slide 来自 OS profile。
 # 原生内核即本仓库自编的链接产物。
+tool = "kits/XnuPrelink/emit_prelink.py"
 kernel = "build/xnu/ios-obj/DEVELOPMENT_ARM64_BCM2837/mach.development.bcm2837"
 # 保留原始 kernelcache 中的组件树；匹配器再按依赖补全其余组件。
 roots = ["com.apple.driver.AppleARMPlatform", "com.apple.filesystems.apfs"]
@@ -51,6 +52,9 @@ include_dirs = ["soc:dts"]
 config = "nx741j"
 dsc = "Platforms/ZTE/nx741jPkg/nx741j.dsc"
 fd = "Build/nx741jPkg/{target}_CLANGPDB/FV/SILICIUM_UEFI.fd"
+preflight = []
+submodules = []
+patches = []
 packages = ["{uefi}", "{uefi}/Mu_Basecore", "{uefi}/Common/Mu", "{uefi}/Common/Mu_OEM_Sample", "{uefi}/Silicon/Qualcomm", "{uefi}/Silicon/Silicium", "{uefi}/Platforms/ZTE", "{tree}/package", "{tree}/drivers/DarwinBoot", "{edk2}"]
 
 [firmware.defines]

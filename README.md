@@ -15,11 +15,11 @@ port, so the iPadOS 17 / 10063 line is not a valid substitute.
 
 | Layer | State |
 |---|---|
-| 1 boot image / loader | ✅ efisp loader (phase 5) reads the payload and FD from `rawdump`, copies the FD to `0xFF300000` and enters SEC with the DT in `x0` |
-| 2 UEFI firmware | ✅ minimal FV reaches BDS; `DarwinBoot.efi` dispatches through `APRIORI` before `BdsDxe` and installs the loader protocol (`loader v2 installed EL1`); vendor SCM/RFS notice is verbose only |
-| 3 UniXNU boot manager | ✅ menu shows the `NX741J` entry and `UNIXNU: Boot0000 registered`; the payload volume is published from the x0 DT (`initrd block device … Success`, `Installed Fat filesystem`) |
-| 4 DarwinBoot | ❌ after the menu countdown the machine enters `ZTE MemoryDump Mode`; `DARWINBOOT: Boot called` never appears, so UniXNU stops between the menu return and the loader call (`docs/OPEN-ITEMS.md` §2) |
-| 5 kernel | XNU 8796.141.3 links from this repository's series; prelink `runtime_qualified=false`, payload/boot-image regeneration reproducible |
+| 1 boot image / loader | ✅ efisp loader **phase 6** reads the payload and FD from `rawdump`, validates the FD header/payload/read-back, copies the FD to `0xFF300000` and enters SEC with the DT in `x0` |
+| 2 UEFI firmware | 🟡 FV reaches BDS; `DarwinBoot.efi` installs the loader protocol, but the UniXNU app is not registered/started (`UniXNUDxe` Boot#### write path is under test, V68 adds a direct-start fallback) |
+| 3 UniXNU boot manager | 🟡 previously reached the `NX741J` menu; the current V67 image stops in BDS (no `UniXNUDxe` load, TLMM key probe) and needs V68 retest |
+| 4 DarwinBoot | ❌ never reached in V67 (`DARWINBOOT: Boot called` absent); blocked by the stage-2/3 BDS issue above |
+| 5 kernel | ✅ XNU 8796.141.3 links with ShengUfs/VirtioMmioBlock/VerifiedRoot; prelink `runtime_qualified=false`; payload `74aeb467…` / boot `f7a342da…` |
 | 6 user land | not started |
 
 Known open items: the UEFI keypad (vendor PMIC stack needs RPMH/SCM, the TLMM window read path is under test)
