@@ -13,6 +13,7 @@
  */
 
 /include/ "sm8850.dtsi"
+/include/ "nx741j-hw.dtsi"
 
 / {
     model = "Nubia Z80 Ultra (NX741J)";

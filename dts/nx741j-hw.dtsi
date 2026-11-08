@@ -25,7 +25,8 @@
                0x0 0x1da4000 0x0 0x10>;
         reg-names = "ufs_mem", "ice", "mcq_sqd", "mcq_vs";
         interrupts = <0x0 0x109 0x4>;
-        status = "disabled";
+        unixnu,adt-name = "ufshc";
+        status = "okay";
     };
 
     ufsphy_mem@1d80000 {

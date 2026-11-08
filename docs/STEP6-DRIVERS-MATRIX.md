@@ -8,7 +8,7 @@
 | 顺序 | 能力 | 官方组件 | 本机状态 | 说明 |
 |---|---|---|---|---|
 | 1 | CPU/中断/定时器/RAM/DMA | ArmDTPlatform、ArmCpu、ArmSmmu4K | 🟡 部分 | 前两者已选并按 arch profile 归档；ArmSmmu4K 未选；平台输入见 `STEP6-PLATFORM.md` |
-| 2 | 存储/根卷/持久 Data | ShengUfs、RamBlock、VirtioMmioBlock、VerifiedRoot | 🔴 阻塞 | UFS 型号/容量/LUN、`[userdata]`、`gcc-canoe` 分支偏移均已取得；`ShengUfs` 源码覆盖就绪，链接缺 storage ABI 归档 |
+| 2 | 存储/根卷/持久 Data | ShengUfs、RamBlock、VirtioMmioBlock、VerifiedRoot | 🟡 构建通过 | 已选中并链接（`libShengUfs.a` 含 ABI 参考对象 + 真实 VerifiedRoot）；UFS 节点已导出到 ADT（`ufshc`）；运行时仍 fail-closed（无策略包） |
 | 3 | 帧缓冲/刷新/亮度 | GopFramebuffer、DisplayTimingProbe、AppleARMBacklight、GeniI2c | 🟡 部分 | 面板 `bf375`+`rm692h5`、GOP 1216×2688 已确认；仅 `GopFramebuffer` 已选 |
 | 4 | 触控与按键 | QcomGeniSpi、ShengHidInput、ButtonProbe（+自建 Synaptics TCM） | ⬜ 未开始 | 触控为 Synaptics TCM（`syna_firmware.img` 已提取），`ShengNovatekTouch` 不适用；UEFI 按键仍受 TLMM 映射阻塞 |
 | 5 | GPU/Metal | Adreno740、AdrenoMetal、Sm8550Platform、AdrenoFirmware、AdrenoPM4、AirNir | ⬜ 未开始 | 实机 DTB `Adreno840v2`（gen8-2-1，chipid `0x44050a01`）；目录 A740 需新实现 |
@@ -85,3 +85,33 @@ llvm-ar t build/software-aes/libSoftwareAES.a       # NativeAES.o + original-bin
 ```
 
 设备仓库 revision `4d28c6089e0fc4e60c973278747b3f5ba142a646`。
+
+## 本轮修复（按驱动顺序的配置/构建层）
+
+| 问题 | 影响 | 修复 |
+|---|---|---|
+| `dts/nx741j.dts` 的 `nx741j-hw.dtsi` include 落在注释块内 | UFS/PCIe/cnss/dwc3/GPU/SPI 触摸节点**从未进入编译后的 DTB** | include 移到注释块之后；`hardware.dtb` 现含 7 个驱动节点（ufshc、pcie、cnss-peach、dwc3、kgsl、spi/synaptics_tcm 等） |
+| UFS 节点 `status="disabled"` 且无 ADT 名 | 存储驱动拿不到 `/arm-io/ufshc` | 改为 `status="okay"` + `unixnu,adt-name="ufshc"`；ADT 重新生成后包含 `ufshc` |
+| 驱动矩阵状态过时 | 存储仍标 🔴 | 更新为 🟡（已选中并链接，运行时 fail-closed）；平台 ✅ |
+
+验证：
+
+```sh
+./unixnu payload   # dtc 通过；hardware.dtb 含驱动节点
+make-adt.py …      # /arm-io 内含 intc、arm-timer、ufshc
+```
+
+产物：payload `7ac7776f…`、boot `14596c1c…`、FD `c7cafaa6…`。
+
+## 仍未实现的驱动（需要源码，不是配置）
+
+| 顺序 | 能力 | 现状 | 需要的输入 |
+|---|---|---|---|
+| 3 | 显示/背光 | 仅 GopFramebuffer | DPU/DSI + backlight 组件 |
+| 4 | 触摸/按键 | 无驱动（keys 探针已禁用） | Synaptics TCM 协议实现、TLMM 可映射方案 |
+| 5 | GPU/Metal | 无 | Adreno840v2 新实现（目录仅 A740） |
+| 6 | Wi-Fi/BT/USB | 无 | WCN7880 适配、dwc3 组件 |
+| 6a | 基带 | 无 | QcomBaseband 输入 |
+| 7 | DSP/音频/电源 | 无 | WSA884x/ADSP 组件 |
+
+这些属于第六步的“实现驱动”部分，需逐个子系统提交源码与实机验证；当前仓库已把它们的 DTB 节点、固件、参数全部准备好。
