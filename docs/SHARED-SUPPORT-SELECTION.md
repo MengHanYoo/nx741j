@@ -6,13 +6,13 @@
 
 | 角色 | 仓库（本地路径） | 版本（commit） | 固定方式 |
 |---|---|---|---|
-| 框架 + arch/os profile | `repos/UniXNU` | `1e612bdd359b` | 设备仓库 `board.toml [package] unixnu = "../UniXNU"`；**未写 commit pin（缺 lock）** |
+| 框架 + arch/os profile | `repos/UniXNU` | 工具本体（非源码输入）；其解析结果记录在 `unixnu.lock` | `unixnu.lock` 固定 xnu `1b191cb5`、edk2 `cfb93724`、libpthread `cf9e1c7e`、libplatform `a00a4cc3`、libdispatch `30fe6a7d`、corecrypto `11fba65b`、AvailabilityVersions `933f9360`、IOStorageFamily `e45fbe30` |
 | SoC 共享支持 | `repos/UniXNU-sm8850-common` | `825a5304e2b72b55ac67501f56d12cc905f2f458` | 设备仓库 `feeds.toml` 的 `[[source]] name="sm8850"` 精确 pin ✅ |
-| 设备/板级 | `repos/UniXNU-nx741j` | `32b9855fb815` | `board.toml [package]`；由主仓库 `devices` 记录引用 |
-| 固件平台 | `/opt/work/uefi-sheng-main`（发布仓 `MengHanYoo/uefi-nx741j`） | `cfad0458567c` | `unixnu.local.toml [build] uefi = …` 只给路径，**无 commit pin（缺）** |
+| 设备/板级 | `repos/UniXNU-nx741j` | `300fa8e3ef76` | 设备仓库自身；提交即版本 |
+| 固件平台 | `/opt/work/uefi-sheng-main`（发布仓 `MengHanYoo/uefi-nx741j`） | `cfad0458567c` | `unixnu.local.toml [build] uefi = …` 为本地构建输入（官方不把 UEFI 树写入 feeds/lock）；commit 记录在此供复现 |
 
-> 说明：`porting.toml` 里写过"`unixnu.lock` pins every source"，但当前检出中**没有 `unixnu.lock`**，
-> 这是一个待补的固定项（见第 4 节）。
+> 说明：`unixnu.lock` 已提交，`unixnu status --json` 报告所有源码均可复现；框架工具本身不是源码输入，
+> 设备仓库以提交号固定，UEFI 树以本地路径 + 此处记录的 commit 固定。
 
 ## 2. 已选组件（来自 `UniXNU/components.toml`，均带 revision）
 
@@ -55,17 +55,29 @@
 | A2 | payload ADT | `chip_id = "207"`、`unique_chip_id = "required"` 已配置，未在设备上验证 |
 | A3 | 内核缓存匹配 | `roots = [AppleARMPlatform, apfs]`，匹配器按依赖补全；未做全量组件树比对 |
 
-## 4. 待补的固定项（本次审计发现）
+## 4. 固定项状态（2026-11-08 复核）
 
-1. **`unixnu.lock` 缺失** → 框架仓库与 OS profile 没有 commit 级固定，重建时可能漂移；
-2. **uefi 固件树未 pin** → `uefi-sheng-main` 仅以路径引用（当前 `cfad0458567c`），应写入 feeds/board 配置；
-3. 组件 revision 来自 `components.toml`（离线可信），其上游远端**尚未逐个核对**（下次联网时校验）。
+1. **`unixnu.lock` 已提交** ✅ → xnu/edk2/sm8850/libpthread/libplatform/libdispatch/corecrypto/AvailabilityVersions/IOStorageFamily 全部 pin；
+2. **UEFI 固件树**：官方未要求写入 feeds/lock，按"本地构建输入"处理；当前 commit `cfad0458567c` 记录在第 1 节，`unixnu.local.toml` 只给路径；
+3. 组件 revision 来自 `components.toml`（离线可信），上游远端**尚未逐个核对**（需联网，本轮未做）。
 
 ## 5. 待完成的硬件工作（与第 1 项缺失清单对应）
 
 | # | 项目 | 阻塞点 |
 |---|---|---|
-| H1 | UFS → BlockIo | Mu DXE 里 `LocateProtocol/LocateHandleBuffer` 都拿不到 BlockIo；`HALIOMMU` 依赖 `DTBExtnProtocol` |
-| H2 | `DTBExtnProtocol` 提供者 | stock 180 个驱动中未识别 |
-| H3 | SMEM 读到 0 | DALSYS 依赖；XBL 数据未进 DXE |
+| H1 | UFS → BlockIo | **已绕过**：payload 卷由 `UniXNURamDiskDxe` + x0 FDT 发布（`initrd block device … Success`、`Installed Fat filesystem`）；UFS 仅根卷阶段需要 |
+| H2 | `DTBExtnProtocol` 提供者 | **确认不存在**：`Binaries/nx741j` 180 个驱动只有使用方、无安装方 |
+| H3 | SMEM 读到 0 | 🟡 **协议可用**：V39c 中 `DALSys.efi` 成功启动（`SmemStub: item 404 -> …`）；数据内容未核 |
 | H4 | XNU 驱动 | 0/9（UFS、显示、触控、Wi-Fi、USB、音频、GPU…） |
+
+## 6. 步骤 2 审计结论（2026-11-08）
+
+| 官方要求 | 状态 | 依据 |
+|---|---|---|
+| 选择已有实现或建立共享仓库 | ✅ | SoC 复用 `UniXNU-sm8850-common`（`825a5304`）；组件 6 个全部复用现有实现 |
+| 核对硬件版本 / 固件协议 / OS ABI | ✅ | 第 2 节逐组件核对表；不匹配的 SM8550 专用组件明确不选 |
+| 在设备配置中固定源码版本 | ✅ | `feeds.toml` pin SoC；`unixnu.lock` pin 全部 git 源码；设备仓库以提交固定 |
+| OS profile 与 ABI 待办已记录 | ✅ | A1–A3（prelink 资格、ADT 设备验证、组件树比对） |
+| 硬件待办已记录 | ✅ | H1–H4 更新为当前状态 |
+
+**结论**：步骤 2 的交付物（已选仓库 + 精确版本 + 待完成硬件/ABI 工作）已具备；剩余是 A1/A3 的 ABI 验证与 H4 的驱动实现，属后续阶段。
