@@ -43,11 +43,18 @@ for src in overlay.rglob('*'):
     shutil.copy2(src, dst)
     copied += 1
 
-upstream = pkg / 'upstream/UniXNUPkg/Driver/UniXNUDxe/UniXNUDxe.c'
-target = tree / 'package/UniXNUPkg/Driver/UniXNUDxe/UniXNUDxe.c'
-if upstream.is_file() and target.parent.is_dir():
-    shutil.copy2(upstream, target)
-    print(f'preflight: vendored UniXNUDxe.c -> {target}')
+upstream = pkg / 'upstream'
+vendored_files = 0
+if upstream.is_dir():
+    for src in upstream.rglob('*'):
+        if not src.is_file():
+            continue
+        target = tree / 'package' / src.relative_to(upstream)
+        if target.parent.is_dir():
+            shutil.copy2(src, target)
+            vendored_files += 1
+if vendored_files:
+    print(f'preflight: vendored {vendored_files} package file(s)')
 
 # Guard the FDF/DXE.inc duplicate that makes GenFv fail with "same file GUID".
 import collections

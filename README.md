@@ -17,8 +17,8 @@ port, so the iPadOS 17 / 10063 line is not a valid substitute.
 |---|---|
 | 1 boot image / loader | ✅ efisp loader **phase 6** reads the payload and FD from `rawdump`, validates the FD header/payload/read-back, copies the FD to `0xFF300000` and enters SEC with the DT in `x0` |
 | 2 UEFI firmware | 🟡 FV reaches BDS; `DarwinBoot.efi` installs the loader protocol, but the UniXNU app is not registered/started (`UniXNUDxe` Boot#### write path is under test, V68 adds a direct-start fallback) |
-| 3 UniXNU boot manager | 🟡 previously reached the `NX741J` menu; the current V67 image stops in BDS (no `UniXNUDxe` load, TLMM key probe) and needs V68 retest |
-| 4 DarwinBoot | ❌ never reached in V67 (`DARWINBOOT: Boot called` absent); blocked by the stage-2/3 BDS issue above |
+| 3 UniXNU boot manager | ✅ V75 reaches the `NX741J` menu; `UniXNUDxe` direct-start covers the unavailable Boot#### variables |
+| 4 DarwinBoot | ✅ `DARWINBOOT: entry called` / `Boot called` on hardware (see `docs/LAYER4-FIXED.md`) |
 | 5 kernel | ✅ XNU 8796.141.3 links with ShengUfs/VirtioMmioBlock/VerifiedRoot; prelink `runtime_qualified=false`; payload `74aeb467…` / boot `f7a342da…` |
 | 6 user land | not started |
 
