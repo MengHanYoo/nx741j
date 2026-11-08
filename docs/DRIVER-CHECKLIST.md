@@ -1,115 +1,103 @@
-# NX741J 驱动适配清单
+# NX741J 驱动适配清单（按官方 drivers 页）
 
-依据 <https://unixnu.com/zh/porting/drivers>：每个子系统要链接**接口**、**源码参考**和**构建接入**，
-并把设备 package 内的服务计入。本表以 NX741J（SM8850 / canoe / Kaanapali）实机固件与 DT 为准。
+依据 <https://unixnu.com/zh/porting/drivers> 的 8 级硬件依赖顺序与"接口五要素"
+（硬件 / 传输 / 内存 / OS / 构建）。设备：SM8850 "canoe"，数据来自实机 DTB、vendor_boot ramdisk
+与 Android 运行态（见 `HARDWARE-INVENTORY.md`）。设备仓库 revision `638b6517ea3ec4f2a75f8f06552332e0a17b120c`。
 
-- 固件侧驱动库存：`/opt/work/uefi-sheng-main/Platforms/ZTE/nx741jPkg/Include/DXE.inc`（85 个 INF）
-- 主仓库可用组件：`UniXNU/components.toml`（27 个）
-- 固件侧自建驱动记录：`firmware/DRIVERS.md`（SmemStubDxe、KernelStubDxe）
+## 总表
 
-## 1. 显示（Display / DSI / Panel）
-
-| 项 | 内容 |
-|---|---|
-| UEFI 驱动 | `DisplayDxe`（厂商二进制，FV 内）+ `SimpleFbDxe`（我们源码，`SiliciumPkg/Drivers`） |
-| 接口 | `EFI_GRAPHICS_OUTPUT_PROTOCOL`；模式 **1216×2688**（垂直+水平居中），32 bpp |
-| DT 节点 | `mdss` / `dsi` / `panel`（panel = `bf375_rm692h5_6p8_dev0_dsc_cmd`）、`splash_region@FC800000`（43 MB） |
-| XNU 组件 | `GopFramebuffer`（27 个组件之一） |
-| 源码参考 | Linux `drivers/gpu/drm/msm/dsi/`；面板驱动 `panel-bf375-rm692h5` |
-| 构建接入 | UEFI：`DXE.inc` + `APRIORI.inc` + DSC `[Components]`；XNU：`board.toml [components] include = ["GopFramebuffer"]` |
-| 状态 | ✅ UEFI 侧已验证（GOP 1216×2688 出图）；XNU 侧未开始 |
-| 下一步 | XNU 起 `GopFramebuffer` 并核对 framebuffer 基址与 DT `splash_region` 一致 |
-
-## 2. 存储（UFS）
-
-| 项 | 内容 |
-|---|---|
-| UEFI 驱动 | `UFSDxe`（厂商二进制）+ `SdccDxe`（SD 卡，未用） |
-| 接口 | UEFI `EFI_BLOCK_IO_PROTOCOL` / `EFI_DISK_IO_PROTOCOL`；分区 LBA：`boot_a=119078`、`uefi_a=6`、`efisp=748894` |
-| DT 节点 | `ufshc@1d84000`（UFS host controller）、`ufsphy`、`icc` / `rpmh` 供电 |
-| XNU 组件 | `ShengUfs`（`NativeUfs.cpp`，SM8550 UFS 传输 + sheng 持久化存储） |
-| 源码参考 | Linux `drivers/ufs/host/ufs-qcom.c`；`UniXNU/ShengUfs` |
-| 构建接入 | UEFI：FV；XNU：`include = ["ShengUfs"]`，产物 `build/sheng-ufs/libShengUfs.a` 进 `[kernel] archives` |
-| 依赖 | `Sm8550Platform`（时钟/SMMU）→ 需移植为 SM8850 版本；`ArmSmmu4K` |
-| 状态 | ✅ UEFI 侧 `UFSDxe` 可枚举分区；XNU 侧未开始 |
-| 下一步 | SM8850 UFS host 版本/PHY 序列差异核对；`ShengUfs` 的 clock 表换 SM8850 |
-
-## 3. 触控（Touch）
-
-| 项 | 内容 |
-|---|---|
-| UEFI 驱动 | **无**（厂商 UEFI 不含触控驱动，FV 里只有 `SPIDxe` / `GpiDxe` / `I2CDxe` 总线） |
-| DT 节点 | `synaptics_tcm`（SPI）；`reset_gpio = <0x33 0x42 0x00>`；中断 GPIO 待补 |
-| XNU 组件 | `ShengNovatekTouch`（**Novatek NT36532**，不适配本机）+ `ShengHidInput`（IOHIDDevice 通路）+ `QcomGeniSpi`（SPI 传输） |
-| 源码参考 | Linux `drivers/input/touchscreen/synaptics_tcm*`；`UniXNU/ShengHidInput`、`ShengNovatekTouch` |
-| 构建接入 | XNU：`include = ["ShengHidInput", "QcomGeniSpi"]`；触控协议层需新建 `nx741j` 组件或改 Novatek 为 Synaptics TCM |
-| 状态 | ⚠️ 未验证（UEFI 无驱动，XNU 组件不匹配） |
-| 下一步 | 新建 Synaptics TCM 组件（或移植 `synaptics_tcm.h` 协议），复用 `ShengHidInput` 的 IOHIDDevice 接口 |
-
-## 4. 无线（WiFi / BT）
-
-| 项 | 内容 |
-|---|---|
-| UEFI 驱动 | **无**（FV 内无 WLAN/BT 驱动） |
-| 芯片/总线 | WCN7850/7851（`qcom,cnss-peach@b0000000`）；PCIe `pcie@1c00000`，domain 0，BAR 0x40200000 |
-| DT 节点 | `qcom,cnss-peach`、`cnss_wlan_region`（32 MB DMA）、`qcom,wcn-bt` |
-| XNU 组件 | `Ath12kWifi`（ath12k 支持 WCN7850）、`QcaBluetooth` |
-| 源码参考 | Linux `drivers/net/wireless/ath/ath12k/`；`UniXNU/Ath12kWifi`、`QcaBluetooth` |
-| 构建接入 | XNU：`include = ["Ath12kWifi", "QcaBluetooth"]`；PCIe host 需 `Sm8850Platform` 提供 |
-| 状态 | ❌ 未开始（不阻塞启动链） |
-| 下一步 | 先确认 `Ath12kWifi` 的 WCN7850 PCI ID 表是否含本机 ID（读 `qcom,cnss-peach` 的 `qcom,board_id`） |
-
-## 5. 电源 / PMIC / RPMh
-
-| 项 | 内容 |
-|---|---|
-| UEFI 驱动 | `RpmhDxe`、`SPMIDxe`、`PmicDxe`、`VcsDxe`、`ClockDxe`、`ICBDxe` |
-| 接口 | `EFI_RPMH_PROTOCOL`、`EFI_SPMI_PROTOCOL`、`EFI_PMIC_PROTOCOL` |
-| DT 节点 | `rsc@18900000`、`spmi-bus@c400000`、`pmk8850@0` |
-| XNU 组件 | `Sm8550Platform`（需 SM8850 版） |
-| 状态 | ❌ 固件侧当前卡在 `RpmhDxe`（见归档 §18） |
-| 下一步 | 换根（ABL 正常加载）后由 XBL 提供 RPMh 环境，可删掉相关桩 |
-
-## 6. 按钮 / 输入
-
-| 项 | 内容 |
-|---|---|
-| UEFI 驱动 | `ButtonsDxe`（厂商二进制） |
-| 接口 | `EFI_SIMPLE_TEXT_INPUT_EX_PROTOCOL`（经 `ConSplitter`） |
-| 状态 | ⚠️ 未验证 |
-| 下一步 | BDS 起来后验证音量键/电源键导航 |
-
-## 7. GPU
-
-| 项 | 内容 |
-|---|---|
-| UEFI 驱动 | 无（`Binaries/` 里没有 GPU DXE） |
-| 硬件 | Adreno 840（gen80200），`gpu_microcode_region@9959A000` |
-| XNU 组件 | `Adreno740`（Adreno 740 / SM8550）→ **需移植到 840**；`AdrenoPM4`、`AdrenoFirmware`、`AdrenoMetal`、`ArmSmmu4K` |
-| 源码参考 | Linux `drivers/gpu/drm/msm/adreno/a8xx_gpu.c`（`chip_ids = 0x44050a01`，`ADRENO_8XX_GEN2`） |
-| 状态 | ⚠️ 内核侧曾验证（vktest PASS ×35）；UEFI 侧未到 |
-| 下一步 | `Adreno740` 的 chip id/固件名（`gen80200_*`）替换；GMEM 18 MiB、`max_slices=3` |
-
-## 8. USB / 音频 / Modem（低优先级）
-
-| 子系统 | UEFI | XNU | 状态 |
-|---|---|---|---|
-| USB | `XhciDxe` + `Usb*Dxe`（6 个） | 未选组件 | ❌ 未开始 |
-| 音频 | `AudioDxe`？（FV 未见） | 未选组件 | ❌ 未开始 |
-| Modem | 无（由 XBL 加载） | `QcomBaseband` | ❌ 未开始（`mpss_region` 235 MB） |
-
-## 9. 汇总
-
-| 子系统 | UEFI | XNU 组件 | 可复用 | 状态 |
+| 顺序 | 能力 | 官方依赖组件 | 本机实现 | 状态 |
 |---|---|---|---|---|
-| 显示 | ✅ | `GopFramebuffer` | 是 | UEFI ✅ / XNU ❌ |
-| UFS | ✅ | `ShengUfs` | 需改 SM8850 | UEFI ✅ / XNU ❌ |
-| 触控 | 无 | `ShengHidInput` + `QcomGeniSpi` | 协议层需新建 | ⚠️ |
-| 无线 | 无 | `Ath12kWifi` + `QcaBluetooth` | 可能可复用 | ❌ |
-| 电源 | ⚠️ 卡 Rpmh | `Sm8550Platform` | 需改 SM8850 | ❌ |
-| 按钮 | ✅ | — | — | ⚠️ |
-| GPU | 无 | `Adreno740` 等 4 个 | 需改 840 | ⚠️ |
-| USB/音频/Modem | 部分 | 未选 | — | ❌ |
+| 1 | CPU/中断/定时器/RAM/DMA | ArmDTPlatform、ArmCpu、ArmSmmu4K | ArmDTPlatform + ArmCpu（已选/归档） | 🟡 组件就绪；SMMU 未选 |
+| 2 | 存储/根卷/持久 Data | ShengUfs、RamBlock、VirtioMmioBlock、VerifiedRoot | ShengUfs 源码+canoe 偏移已备，未选中 | 🔴 缺 storage ABI 归档 |
+| 3 | 帧缓冲/刷新/亮度 | GopFramebuffer、DisplayTimingProbe、AppleARMBacklight、GeniI2c | 仅 GopFramebuffer | 🟡 |
+| 4 | 触控与按键 | QcomGeniSpi、ShengHidInput、ShengNovatekTouch、ButtonProbe | 型号已确认（Synaptics TCM），驱动未写 | ⬜ |
+| 5 | GPU/Metal | Adreno740、AdrenoMetal、Sm8550Platform、AdrenoFirmware、AdrenoPM4、AirNir | 未开始 | ⬜ |
+| 6 | Wi-Fi/蓝牙/USB | Ath12kWifi、QcaBluetooth、QcomDwc3 | WCN7880 已确认，组件待适配 | ⬜ |
+| 6a | 基带 | QcomBaseband | 未开始 | ⬜ |
+| 7 | DSP/音频/电池/调频/电源 | AdspProbe、AudioProbe、ShengBattery、CpuFreqProbe、ShengPlatformPower | 未开始（codec WSA884x 已识别） | ⬜ |
+| 8 | OS 服务与打包 | SoftwareAES、AppleKeyStoreState、XnuPrelink、DarwinBoot、ShengPreflight | 前四者中三个已选 | 🟡 |
 
-**结论**：显示与 UFS 的 UEFI 侧已就绪，XNU 侧只差组件选择与 SM8850 适配；
-触控与无线需要新组件或协议层改写；电源受固件侧 Rpmh 阻塞，建议与"换根"一起解决。
+## 1. 平台与内存（已选）
+
+| 接口 | 内容 |
+|---|---|
+| 硬件 | 8 核 MPIDR、PSCI `smc`、GICv3 dist `0x17000000+0x10000` / redist `0x17080000+0x200000` stride `0x40000`、19.2 MHz timer |
+| 传输 | 无请求队列；启核/IPI 走 PSCI |
+| 内存 | RAM 21 段合计 15.24 GiB；ADT 单段 `0x8C0000000+5 GiB`；`dram_size=0x140000000` |
+| OS | `ArmDTPlatform`（arm-io 平台专家）+ `ArmCpu`；`CONFIG_XNU_ARM_DT_PLATFORM/ARMCPU` |
+| 构建 | arch profile 的 `[kernel].archives` 含 `component:ArmDTPlatform`、`component:ArmCpu`；已用 `llvm-ar`/`llvm-nm` 验证 |
+
+## 2. 存储 UFS（阻塞）
+
+| 接口 | 内容 |
+|---|---|
+| 硬件 | `ufshc@1d84000`（`reg` 含 ice/mcq 区）、`ufsphy_mem@1d80000`（`qmp-v4-canoe`）、GCC `0x100000`、SMMU `apps-smmu@15000000` stream `0x60`、SPI `0x109` |
+| 传输 | UFS 请求队列 + MCQ 区（实机 DTB 提供 `mcq_sqd/mcq_vs`） |
+| 内存 | `dma-coherent`、`iommu-dma="fastmap"`、ICE 区 |
+| OS | `ShengUfs`（`NativeUfs`，类 `NativeUfsBlock : IOBlockStorageDevice`） |
+| 构建 | 本地覆盖 `ShengUfs-canoe` 已改 `GccUfs.h`：AHB `0x77028`、UNIPRO `0x7706c`、ICE `0x7707c`、PHY_AUX `0x770bc`、RX0 `0x77030`、RX1 `0x770d8`、TX0 `0x7702c`、AGGRE `0x770f0`；缺 `IOBlockStorageDevice` 基类与 `_vr_*`/`_boot_progress_poll` 归档 |
+
+板级输入：UFS `SAMSUNG KLUGG8NHKB-F0H1` FW `0500`，`0xED4F800` 块（≈1 TB），LUN 掩码 `0x3f`；
+`[userdata]` 已按 GPT 填 `first_lba=4875048 / last_lba=248838138 / lba_bytes=4096`。
+
+## 3. 显示（部分）
+
+| 接口 | 内容 |
+|---|---|
+| 硬件 | 面板 `bf375` + DDIC `rm692h5`；GOP 1216×2688 32bpp |
+| 传输 | DSI（内核侧需 DPU/DSI 驱动，尚未适配） |
+| 内存 | `splash_region` 43 MB（实机 DTB） |
+| OS | `GopFramebuffer`（已选）；亮度未选 `AppleARMBacklight` |
+| 构建 | `GopFramebuffer` 为 embedded 阶段，已随组件解析 |
+
+## 4. 触控与按键（未开始）
+
+| 接口 | 内容 |
+|---|---|
+| 硬件 | **Synaptics TCM**（`synaptics_tcm_touch`，10 指，ABS 0–12159 / 0–26879）；SPI + reset GPIO |
+| 传输 | SPI（`QcomGeniSpi` 提供 GENI SPI 传输）；TCM 报告协议待实现 |
+| 内存 | 无 DMA 窗口需求（SPI 小缓冲） |
+| OS | 复用 `ShengHidInput` 的 IOHIDDevice；`ShengNovatekTouch` 不适用 |
+| 构建 | 需新建 Synaptics TCM 组件或板级 package 驱动；`QcomGeniSpi`/`ShengHidInput` 加入 include 后再接 archives |
+
+板级输入：`syna_firmware.img`（`/vendor/firmware`，241,578 B，sha256 `f6a68725…`）；
+指纹 `goodix_fp`、接近/ALS `vi530x`（`VI5300-M40…bin`）。UEFI 按键另有 TLMM 映射阻塞。
+
+## 5. GPU / 6. 无线 / 6a. 基带 / 7. 音频与电源
+
+| 顺序 | 已确认输入 | 状态 |
+|---|---|---|
+| GPU | 目录实现面向 SM8550/A740；SM8850 为 Adreno 840 级，需新实现 | ⬜ |
+| Wi-Fi/BT | **WCN7880**；BT 固件 `BTFW.BRAHMA.2.0.1-00181` / `BTFW.GANGES.2.0.1-00184`；WLAN board data `/IMAGE/PEACH/BDWLAN.E01…E49`；`WCNSS_qcom_cfg.ini`；MAC `5C:7D:AE:43:D9:F8` | ⬜ |
+| 基带 | modem 镜像内 `MODEM_OE/KAANAPAL` 构建；baseband `EN_PACK-2.124266.53` | ⬜ |
+| 音频 | codec `wsa884x`（`canoe-mtp-wsa884x-snd-card`）；`mixer_paths_canoe_mtp_wsa884x.xml` | ⬜ |
+
+## 8. OS 服务
+
+| 组件 | 状态 |
+|---|---|
+| `SoftwareAES` | ✅ 已选并归档（`libSoftwareAES.a`） |
+| `XnuPrelink` | ✅ 已跑通（11 组件 / 23,833 bindings，`runtime_qualified=false`） |
+| `DarwinBoot` | ✅ 固件内 loader（EL1） |
+| `AppleKeyStoreState` | ⬜ 未选（用户态/安全阶段再启用） |
+| `ShengPreflight` | ⬜ 未选（参考实现面向小米平板） |
+
+## 构建接入核对（官方第 3 节）
+
+```sh
+./unixnu status --json -D ../UniXNU-nx741j   # components 6, modules 20, patches 63
+./unixnu kernel -D ../UniXNU-nx741j          # kernel.macho sha256 d082e1f7…
+./unixnu payload -D ../UniXNU-nx741j         # payload.img 64 MiB
+./unixnu bootimg -D ../UniXNU-nx741j         # boot.img 68,677,632 B
+llvm-ar t build/armcpu/libArmCpu.a            # 归档内容核对
+```
+
+## 存疑
+
+| 项 | 说明 |
+|---|---|
+| storage ABI | 需 iOS 16 storage policy 脚本或 xnu-8796 storage patch（见 STEP6-UFS） |
+| 触摸/Wi-Fi 驱动 | 只有型号与固件，协议层未实现 |
+| UEFI 按键 | TLMM 仅映射 64 KiB，按键引脚不可读 |
+| 预链接资格 | `runtime_qualified/abi_qualified=false`，需实机启动 |
