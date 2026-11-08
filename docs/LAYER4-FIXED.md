@@ -44,3 +44,10 @@ DARWINBOOT: Boot called, req … fdt … ramdisk …
 ## 下一步
 
 DarwinBoot 已接管，需继续确认：内核解析/trust cache/ADT、EL1 跳转、XNU 早期日志。
+
+## V76 / V77（DarwinBoot 内部）
+
+- V76：UniXNU 对 XNU 条目不再传 DeviceTree（改用 payload 的 `.adt` sidecar），DarwinBoot 内部
+  10 s Stall 降为 1 s；实机已见 `DARWINBOOT: kernel … bytes` 与 `DARWINBOOT: adt … window …`。
+- V77：在 DarwinBoot 的 video/window/copy/map/ExitBootServices 之间加入打印，FD
+  `d49993ff2e914ae95dacbf271dc4d432a881d511ad9d4f4c71dd83294b7db2f7`；待下次 9008 验证。

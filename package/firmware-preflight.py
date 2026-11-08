@@ -53,8 +53,17 @@ if upstream.is_dir():
         if target.parent.is_dir():
             shutil.copy2(src, target)
             vendored_files += 1
+drivers_up = pkg / 'upstream/drivers'
+if drivers_up.is_dir():
+    for src in drivers_up.rglob('*'):
+        if not src.is_file():
+            continue
+        target = tree / 'drivers' / src.relative_to(drivers_up)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(src, target)
+        vendored_files += 1
 if vendored_files:
-    print(f'preflight: vendored {vendored_files} package file(s)')
+    print(f'preflight: vendored {vendored_files} package/driver file(s)')
 
 # Guard the FDF/DXE.inc duplicate that makes GenFv fail with "same file GUID".
 import collections

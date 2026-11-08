@@ -109,8 +109,8 @@ RunXnu (
   Request.Volume         = Entry->Volume;
   Request.KernelPath     = Entry->Path;
   Request.BootArgs       = Entry->Args;
-  Request.DeviceTree     = Fdt;
-  Request.DeviceTreeSize = FdtSize;
+  Request.DeviceTree     = (Entry->Type == UniXNUEntryXnu) ? NULL : Fdt;
+  Request.DeviceTreeSize = (Entry->Type == UniXNUEntryXnu) ? 0 : FdtSize;
   Request.Ramdisk        = Ramdisk;
   Request.RamdiskSize    = RamdiskSize;
   Request.Kexts          = Kexts;
