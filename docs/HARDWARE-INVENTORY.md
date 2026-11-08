@@ -108,9 +108,58 @@
 | 3 | SMEM 内容读 0 | 🟡 | DALSYSDxe 在 V39c 已成功启动，说明 **SMEM 协议可用**；SMEM 数据内容仍需单独核对 |
 | 4 | WCN7850 IMEM board_id | 🟡 | PCI id `0x110e` 已确认；board_id 需运行时读 IMEM |
 | 5 | FD 版本 bisect | ✅ 已淘汰 | 改为分阶段最小 FV（V15…V41），问题定位不再依赖 FD 盲测 |
-| 6 | 音频 codec / DSP 固件 | ❌ 未登记 | 步骤 1 清单未覆盖；需补 `wcd939x` 等节点与固件文件 |
-| 7 | USB 控制器与 PHY 参数 | ❌ 未登记 | 官方步骤 1 未强制，但步骤 6 需要（DWC3/XHCI 基址、PHY、角色切换） |
-| 8 | 基带/调制解调器 | ❌ 未登记 | 与 iOS 基带栈相关，后续再补 |
+| 6 | 音频 codec / DSP 固件 | ✅ 已登记 | 见第 6 节（WCD939x、LPASS CDC v7、ADSP `adsp.mdt`） |
+| 7 | USB 控制器与 PHY 参数 | ✅ 已登记 | 见第 6.2 节（ssusb@a600000、eUSB2/SS PHY、repeater） |
+| 8 | 基带/调制解调器 | ✅ 已登记 | 见第 6.3 节（modem/cdsp/spss/soccp、固件名） |
 
 **结论**：步骤 1 的交付物（清单 + 缺失列表 + 工具 + 记录入口）已具备；仍缺的输入集中在
 "厂商协议 provider（DTBExtn）"与"音频/USB/基带登记"，不影响当前阶段 2/3 的推进。
+
+## 6. 音频 / USB / 基带登记（关闭 §5.2 第 6 项，2026-11-08）
+
+来源均为本机 stock DTS（`Platforms/ZTE/nx741jPkg/FdtBlob/kaanapali-zte-nx741j.dtb`，
+反编译 42,697 行）与运行中 Android 的节点路径；未引用其它机型。
+
+### 6.1 音频
+
+| 项目 | 值 | DTS 位置 |
+|---|---|---|
+| 音频 codec | **WCD939x**（`qcom,wcd939x-i2c`，I2C 地址 `0x0e`，含 USB-C/模式切换 `mode-switch`） | `wcd939x_i2c@e` |
+| codec 中断 | PMIC 侧 `interrupts = <0x00 0xb6 0x01 0x03>`，`interrupt-names = "usb_wcd"` | 同上 |
+| LPASS CDC | `qcom,lpass-cdc`，**version 7**，含 clock RSC manager | `lpass-cdc` |
+| WSA 宏（扬声器） | `wsa-macro@6B00000`，SWR `swr0` | `lpass-cdc` |
+| WSA2 宏（第二路） | `wsa2-macro@6AA0000`，SWR `swr3` | 同上 |
+| VA 宏（语音） | `va-macro@7660000`，SWR `swr2` | 同上 |
+| RX/TX 宏 | `rx-macro@6AC0000`（`swr1`）、`tx-macro@6AD0000` | 同上 |
+| 蓝牙 SWR | `lpass_bt_swr@6CA0000`（`swr4`） | 同上 |
+| ADSP | `remoteproc-adsp@03000000`（`qcom,canoe-adsp-pas`），reg `0x03000000/0x10000`，固件 **`adsp.mdt` + `adsp_dtb.mdt`** | `remoteproc-adsp@03000000` |
+| ADSP 辅助 | `qcom,msm-adsp-loader`、`qcom,adsp-notify`、`adsp-sleepmon`、smp2p-adsp | 对应节点 |
+
+### 6.2 USB
+
+| 项目 | 值 | DTS 位置 |
+|---|---|---|
+| 控制器 | `ssusb@a600000`（`qcom,dwc-usb3-msm`），`core_base 0xA600000/0x100000`，`tcsr_dyn_en_dis 0x1FC6000/0x4` | `ssusb@a600000` |
+| 角色 | `usb-role-switch`、`qcom,use-eusb2-phy`、PDC 中断 | 同上 |
+| 时钟 | core `200 MHz`（`0xbebc200`）、HS `~66.6 MHz`（`0x3f940ab`）、disconnected `~133.3 MHz`（`0x7f28155`） | 同上 |
+| 中断 | `pwr_event_irq` GIC `0x82` SPI；`dp_hs_phy_irq`/`dm_hs_phy_irq`/`ss_phy_irq` 走 PDC | 同上 |
+| eUSB2 PHY | `hsphy@88e3000`（`qcom,usb-m31-eusb2-phy`），`0x88E3000/0x29C`；EUD `0x88E2000/4`、`0xC278000/4` | `hsphy@88e3000` |
+| SS/DP PHY | `ssphy@88e8000`（`qcom,usb-ssphy-qmp-dp-combo`），`0x88E8000/0x3000` | `ssphy@88e8000` |
+| eUSB2 repeater | `eusb2-repeater@fd00`（PMIC 侧 `qcom,pmic-eusb2-repeater`） | PMIC 节点内 |
+
+### 6.3 基带 / 协处理器
+
+| 项目 | 值 | DTS 位置 |
+|---|---|---|
+| Modem | `remoteproc-mss@04080000`（`qcom,canoe-modem-pas`），reg `0x04080000/0x10000`，固件 **`modem.mdt` + `modem_dtb.mdt`** | `remoteproc-mss@04080000` |
+| MPSS 保留区 | `mpss_region@8aa00000`（内存保留）、`q6_mpss_dtb_region@99500000` | 同名节点 |
+| CDSP | `remoteproc-cdsp@32300000`，固件 `cdsp.mdt` + `cdsp_dtb.mdt` | 同名节点 |
+| SPSS | `remoteproc-spss@1880000`（`qcom,canoe-spss-pas`） | 同名节点 |
+| SOCCP | `remoteproc-soccp@a3380000`，固件 `soccp.mbn` + `soccp_dtb.mbn` | 同名节点 |
+| 通信 | `qcom,smp2p-modem`、`qcom,glink-label = "mpss"`、`qcom,qrtr-mhi-cnss` | 对应节点 |
+
+### 6.4 状态更新
+
+- §5.2 第 6 项（音频 codec/DSP、USB 控制器与 PHY、基带）→ **✅ 已登记**；
+- 本节只登记"输入"，不含驱动实现：音频/USB/基带分别按官方步骤 6 的 DSP/音频/电源与 USB 章节推进；
+- 固件文件（`adsp.mdt`、`modem.mdt` 等）需在 `proprietary-files.txt` 中补对应来源，属步骤 3 收尾项。
