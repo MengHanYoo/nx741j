@@ -73,3 +73,44 @@
   `input`/`gpu`/`network`/`audio`/`power`/`packaging`/`diagnostics`/`security`）；
 - 驱动适配清单：`docs/DRIVER-CHECKLIST.md`（子系统接口、源码参考、构建接入步骤、设备 package 内服务）；
 - 本文件补齐"硬件清单 + 缺失输入列表"这一交付物，缺失项会随测量逐条划掉。
+
+## 5. 步骤 1 复核（2026-11-08，对照官方 porting/steps）
+
+官方交付物 = 主机工具 + 硬件清单 + 缺失输入列表 + 移植记录入口。当前状态：
+
+| 官方要求 | 状态 | 证据/缺口 |
+|---|---|---|
+| 主机工具就绪 | ✅ | 第 3 节（adb/fastboot、dtc、9008 工具、clang/lld） |
+| SoC / CPU 拓扑 / RAM 保留区 / 中断控制器 | ✅ | 第 1 节；51 个保留区见 `porting.toml`；GIC 全布局见 2.1 |
+| 存储 / 面板 / 触控 / 无线 / 固件版本 | ✅ | 第 1 节；触控 Synaptics TCM（SPI19），WCN7850（PCIe） |
+| 寄存器地址与分区布局取自目标设备 | ✅ | stock DT + 9008 rawprogram + 设备 GPT |
+| 缺失输入列表 | ✅ | 第 2 节，含每项"下一步测量" |
+| 移植记录入口 | ✅ | `porting.toml`（14 个 area）+ `docs/PORTING-RECORD.md` + `docs/DRIVER-CHECKLIST.md` |
+
+### 5.1 本轮新增/修正的输入
+
+| 项目 | 值 | 来源 |
+|---|---|---|
+| 实体按键（VOL+） | TLMM GPIO 101，active-low，pull-up | stock DTS `gpio_keys/vol_up` |
+| 实体按键（FOCUS / SHOOT） | TLMM GPIO 179 / 95，active-low，bias-disable | stock DTS `focus_key`/`shoot_key` |
+| 实体按键（VOL−） | PMIC `pmk8350-pon / resin`（linux,code 0x72），非 GPIO | stock DTS |
+| TLMM 控制器 | `qcom,canoe-tlmm`，base `0x0F000000`，DTB 声明 **0x202000** | stock DTS `pinctrl@f000000` |
+| TLMM 固件映射 | `MemoryMapLib.c` 声明 `{"TLMM",0x0F000000,0x01000000,AddDev,MMAP_IO,UNCACHEABLE,MmIO,NS_DEVICE}`（16 MiB） | 平台源码 |
+| TLMM 实际可读性 | 读 `0x0F010000` 触发异常；`0x65000/0xB3000/0x5F000` 读取结果以 V41 探针为准 | 实机（V22/V31/V41） |
+| 按键厂商栈 | `SPMIDxe/TLMMDxe/PmicDxeLa/ButtonsDxe/KeypadDxe` 在 Binaries 中齐全，但 `PmicDxeLa` 需要 RPMH→RSC/SCM，而 SCM 提供者 `ScmDxeCompat` 与 `TzDxeLA` 是同一二进制，恢复即触发 `TzLoaderDxe.c:1150` 断言 | 实机 V38b/V39c + 源码/字符串 |
+
+### 5.2 仍缺的输入（更新）
+
+| # | 缺失项 | 状态 | 说明 |
+|---|---|---|---|
+| 1 | `DTBExtnProtocol` 提供者 | ❌ | 影响 `DALTLMM`、`PmicDxe`、`RngDxe`、`UCDxe`、`HALIOMMU` 等；Binaries 中无 provider |
+| 2 | Mu DXE 的 UFS→BlockIo | ❌ | 已用 **RAM initrd（payload 卷）** 绕过，官方启动链不依赖 UFS |
+| 3 | SMEM 内容读 0 | 🟡 | DALSYSDxe 在 V39c 已成功启动，说明 **SMEM 协议可用**；SMEM 数据内容仍需单独核对 |
+| 4 | WCN7850 IMEM board_id | 🟡 | PCI id `0x110e` 已确认；board_id 需运行时读 IMEM |
+| 5 | FD 版本 bisect | ✅ 已淘汰 | 改为分阶段最小 FV（V15…V41），问题定位不再依赖 FD 盲测 |
+| 6 | 音频 codec / DSP 固件 | ❌ 未登记 | 步骤 1 清单未覆盖；需补 `wcd939x` 等节点与固件文件 |
+| 7 | USB 控制器与 PHY 参数 | ❌ 未登记 | 官方步骤 1 未强制，但步骤 6 需要（DWC3/XHCI 基址、PHY、角色切换） |
+| 8 | 基带/调制解调器 | ❌ 未登记 | 与 iOS 基带栈相关，后续再补 |
+
+**结论**：步骤 1 的交付物（清单 + 缺失列表 + 工具 + 记录入口）已具备；仍缺的输入集中在
+"厂商协议 provider（DTBExtn）"与"音频/USB/基带登记"，不影响当前阶段 2/3 的推进。
