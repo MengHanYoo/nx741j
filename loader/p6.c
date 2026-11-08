@@ -1,4 +1,4 @@
-// UniXNU efisp loader - phase 3 (ARM64 PE32+).
+// UniXNU efisp loader - phase 6 (ARM64 PE32+).
 //
 //   1. GPT: find "rawdump" (payload at +0, firmware volume at +64 MiB)
 //   2. read 64 MiB payload and 4 MiB firmware volume into page memory
@@ -199,7 +199,6 @@ static void sync_caches(UINT64 start, UINT64 size)
 }
 
 static void jump_to_fd(UINT64 fd, UINT64 fdt) __attribute__((noreturn));
-static void jump_to_stub(UINT64 fdt) __attribute__((noreturn, noinline));
 static void jump_to_fd(UINT64 fd, UINT64 fdt)
 {
     __asm__ volatile(
@@ -300,7 +299,7 @@ EFI_STATUS EFIAPI EfiMain(EFI_HANDLE image, EFI_SYSTEM_TABLE *st)
 {
     (void)image;
     gST = st;
-    out_ascii("\r\n[UNIXNU] efisp loader phase 3\r\n");
+    out_ascii("\r\n[UNIXNU] efisp loader phase 6\r\n");
     if (!st || !st->BootServices) { out_ascii("no boot services\r\n"); for (;;) { } }
 
     EFI_BOOT_SERVICES *bs = st->BootServices;
@@ -329,6 +328,11 @@ EFI_STATUS EFIAPI EfiMain(EFI_HANDLE image, EFI_SYSTEM_TABLE *st)
         done += chunk;
     }
     out_ascii("payload bytes "); out_hex(done); out_ascii("\r\n");
+    if (done != PAYLOAD_MAX) {
+        out_ascii("payload incomplete, returning to ABL\r\n");
+        stall(2000000);
+        return 1;
+    }
 
     // firmware volume (4 MiB) at rawdump + 64 MiB
     UINT64 fv_addr = 0;
@@ -339,7 +343,19 @@ EFI_STATUS EFIAPI EfiMain(EFI_HANDLE image, EFI_SYSTEM_TABLE *st)
     if (gIo->ReadBlocks(gIo, gIo->Media->MediaId, base + PAYLOAD_MAX / gBlockSize, (UINTN)FD_MAX, (void *)fv_addr)) {
         out_ascii("fv read failed\r\n"); for (;;) { stall(1000000); }
     }
-    out_ascii("fv first "); out_hex(*(UINT32 *)fv_addr); out_ascii(" fvh "); out_hex(*(UINT32 *)(fv_addr + 0x28)); out_ascii("\r\n");
+    {
+        UINT32 first = *(UINT32 *)fv_addr;
+        UINT32 fvh = *(UINT32 *)(fv_addr + 0x28);
+        UINT64 fv_len = *(UINT64 *)(fv_addr + 0x20);
+        out_ascii("fv first "); out_hex(first); out_ascii(" fvh "); out_hex(fvh);
+        out_ascii(" len "); out_hex(fv_len); out_ascii("\r\n");
+        // EFI_FIRMWARE_VOLUME_HEADER: signature "_FVH" at 0x28, plausible length.
+        if (fvh != 0x4856465fU || fv_len < 0x1000ULL || fv_len > FD_MAX) {
+            out_ascii("invalid firmware volume, returning to ABL\r\n");
+            stall(2000000);
+            return 1;
+        }
+    }
 
     UINT64 fdt_size = 0;
     UINT8 *fdt = fdt_build(payload_addr, payload_addr + done, &fdt_size);
@@ -351,6 +367,16 @@ EFI_STATUS EFIAPI EfiMain(EFI_HANDLE image, EFI_SYSTEM_TABLE *st)
     for (UINTN k = 0; k < FD_MAX / 8; k++) dst[k] = src[k];
     sync_caches(FD_BASE, FD_MAX);
     out_ascii("copy first "); out_hex(*(UINT32 *)FD_BASE); out_ascii(" fvh "); out_hex(*(UINT32 *)(FD_BASE + 0x28)); out_ascii("\r\n");
+    {
+        UINT64 diff = 0;
+        for (UINTN k = 0; k < FD_MAX / 8; k++) if (dst[k] != src[k]) diff++;
+        out_ascii("copy diff "); out_hex(diff); out_ascii("\r\n");
+        if (diff) {
+            out_ascii("firmware copy mismatch, returning to ABL\r\n");
+            stall(2000000);
+            return 1;
+        }
+    }
 
     out_ascii("el "); out_hex(current_el()); out_ascii(" sctlr "); out_hex(read_sctlr()); out_ascii("\r\n");
 
@@ -367,15 +393,5 @@ EFI_STATUS EFIAPI EfiMain(EFI_HANDLE image, EFI_SYSTEM_TABLE *st)
     __asm__ volatile("mov sp, %0" :: "r"(sp_top) : "memory");
     for (int i = 0; i < 100000; i++) __asm__ volatile("" ::: "memory");
     disable_mmu_caches();
-    jump_to_stub((UINT64)fdt);
-}
-
-// Target of the MMU-off jump: proves that control transfer and console output still work
-// once the MMU and caches are off, without involving the firmware volume at all.
-static void jump_to_stub(UINT64 fdt) __attribute__((noreturn, noinline));
-static void jump_to_stub(UINT64 fdt)
-{
-    out_ascii("STUB: alive after mmu off\r\n");
-    out_ascii("STUB: fdt "); out_hex(fdt); out_ascii("\r\n");
-    for (;;) { }
+    jump_to_fd(FD_BASE, (UINT64)fdt);
 }

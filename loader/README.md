@@ -13,7 +13,7 @@ branch to `0xFF300000` with `x0 = FDT`.
 | `p3n.c` | no-jump variant used to verify the copy (`copy diff words 0x0`) |
 | `p3.c`, `p4.c` | earlier probes (memory map, MMU-off jump) |
 | `p2.c`, `p2c.c`, `probe.c`, `probe2.c` | device/GT probing and execution probes |
-| `build-*.sh` | `clang --target=aarch64-unknown-windows-msvc` + `lld-link /subsystem:efi_application` |
+| `build-*.sh` | `clang --target=aarch64-unknown-windows-msvc` + `lld-link /subsystem:efi_application`（`build-p6.sh` 为当前构建） |
 | `images/efisp-p5.img` | 3 MiB efisp image (sha256 `1e8bdf04…`), write to LBA 748894 |
 
 Write order (9008): payload (64 MiB) → `rawdump`+0, FD (4 MiB) → `rawdump`+16,384 sectors,

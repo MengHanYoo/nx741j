@@ -100,3 +100,19 @@ ABL（签名、AVB、反回滚）
 - `docs/BOOT-CHAIN.md`（五阶段交接与验证状态）
 - `loader/README.md`（写盘顺序、镜像 sha256、回滚方法）
 - `docs/STORAGE-BRINGUP.md`、`docs/STEP6-UFS.md`（efisp 之后的固件内阶段）
+
+## 8. 已实施的加固（loader p6）
+
+| 问题 | p5 | p6（当前） |
+|---|---|---|
+| FD 头无效仍跳转 | 只打印 `fv first/fvh` | 校验 `_FVH` 与 FvLength（0x1000…4 MiB），失败 **返回 EFI 错误** |
+| payload 读失败 | `break` 后用残缺数据继续 | 校验 `done == 64 MiB`，失败返回错误 |
+| 拷贝不可见 | 打印拷贝后头 | 逐 8 字节回读比较，`copy diff` 非零则返回错误 |
+| 写坏 efisp 后行为 | 死循环 stall | 打印原因并返回，ABL 可回退 fastboot（待实机确认） |
+
+镜像：`loader/images/efisp-p6.img`，3 MiB，sha256
+`a867866849b0ce943111523d5615d422857595e9b6761e1758dab584bee97bca`；PE 7,168 B，
+`subsystem 10`、`machine 0xaa64`，含 `.reloc`。
+
+仍未解决的固有限制：efisp 单槽无 A/B、无签名/回滚保护、rawdump/FD 写入依赖 9008
+（p6 只能缩短"坏镜像导致死机"的窗口，不能替代备份与恢复流程）。
