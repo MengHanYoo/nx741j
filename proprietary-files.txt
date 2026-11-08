@@ -1,11 +1,21 @@
-# proprietary-files for NX741J (from stock dump)
-xbl_a.img         E:/Nubia_Flash_Brick/backup/ZTEToolBoxParBak_2026.10.24_22.38.43.421/images/xbl_a.img
-xbl_config_a.img  E:/Nubia_Flash_Brick/backup/ZTEToolBoxParBak_2026.10.24_22.38.43.421/images/xbl_config_a.img
-abl_a.img         E:/Nubia_Flash_Brick/backup/ZTEToolBoxParBak_2026.10.24_22.38.43.421/images/abl_a.img
-uefi_a.img        E:/Nubia_Flash_Brick/backup/ZTEToolBoxParBak_2026.10.24_22.38.43.421/images/uefi_a.img
-uefisecapp_a.img  E:/Nubia_Flash_Brick/backup/ZTEToolBoxParBak_2026.10.24_22.38.43.421/images/uefisecapp_a.img
-tz_a.img          E:/Nubia_Flash_Brick/backup/ZTEToolBoxParBak_2026.10.24_22.38.43.421/images/tz_a.img
-hyp_a.img         E:/Nubia_Flash_Brick/backup/ZTEToolBoxParBak_2026.10.24_22.38.43.421/images/hyp_a.img
-vendor_boot_a.img E:/Nubia_Flash_Brick/backup/ZTEToolBoxParBak_2026.10.24_22.38.43.421/images/vendor_boot_a.img
-boot_a.img        E:/Nubia_Flash_Brick/backup/ZTEToolBoxParBak_2026.10.24_22.38.43.421/images/boot_a.img
-dtbo_a.img        E:/Nubia_Flash_Brick/backup/ZTEToolBoxParBak_2026.10.24_22.38.43.421/images/dtbo_a.img
+# proprietary-files for NX741J (Nubia Z80 Ultra, SM8850 canoe)
+#
+# Format: <file>  <partition/source label>  sha256=<hash>
+# Source: the stock dump taken with the vendor toolbox on 2026-10-24
+# (ZTEToolBoxParBak_2026.10.24_22.38.43.421). Local absolute paths are never
+# committed; the build reads the files from .cache/firmware, populated from that
+# dump, and verifies the hash below.
+#
+# sha256 values are filled the first time a file is imported into .cache/firmware.
+# A "pending" entry is a missing input recorded in docs/HARDWARE-INVENTORY.md.
+
+xbl_a.img          xbl_a          sha256=pending
+xbl_config_a.img   xbl_config_a   sha256=pending
+abl_a.img          abl_a          sha256=pending
+uefi_a.img         uefi_a         sha256=pending
+uefisecapp_a.img   uefisecapp_a   sha256=pending
+tz_a.img           tz_a           sha256=pending
+hyp_a.img          hyp_a          sha256=pending
+vendor_boot_a.img  vendor_boot_a  sha256=pending
+boot_a.img         boot_a         sha256=pending
+dtbo_a.img         dtbo_a         sha256=pending

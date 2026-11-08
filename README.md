@@ -11,12 +11,16 @@ port, so the iPadOS 17 / 10063 line is not a valid substitute.
 
 | Layer | State |
 |---|---|
-| 1 boot image | flashed and verified (gzip shim + FV, `FD_BASE=0xFF300000`, no DT/ramdisk) |
-| 2 UEFI firmware | builds `SILICIUM_UEFI.fd`; stops at `RpmhDxe`/`TzDxeLA` — ABL environment inputs missing (SMEM contents, DTB extension, tzapps) |
-| 3 UniXNU boot manager | built, not booted |
-| 4 DarwinBoot | built, not booted |
-| 5 kernel | XNU 8796.141.3 compiles and links (857 objects) from this repository's patch series; prelink, payload and boot-image regeneration are not reproducible yet |
+| 1 boot image / loader | ✅ efisp loader (phase 5) reads the payload and FD from `rawdump`, copies the FD to `0xFF300000` and enters SEC with the DT in `x0` |
+| 2 UEFI firmware | ✅ minimal 32-driver FV reaches BDS; `SEC: TLMM MMIO HOB` published; firmware log clean of the former HALIOMMU/DTBExtn/SCM asserts |
+| 3 UniXNU boot manager | ✅ menu shows the `NX741J` payload entry; the payload volume is published from the x0 DT (`initrd block device … Success`, `Installed Fat filesystem`) |
+| 4 DarwinBoot | ❌ the payload entry ends in a black screen and `ZTE MemoryDump Mode` before any kernel output; `panic_screen` produced no visible panic |
+| 5 kernel | XNU 8796.141.3 links from this repository's series; prelink `runtime_qualified=false`, payload/boot-image regeneration reproducible |
 | 6 user land | not started |
+
+Known open items: the UEFI keypad (vendor PMIC stack needs RPMH/SCM, the TLMM window read path is under test)
+and the stage-4 handoff crash. Details: `docs/STAGE2-CONFORMANCE.md`, `docs/ANALYSIS-EFISP-VENDORBOOT.md`,
+`docs/HARDWARE-INVENTORY.md`.
 
 Per-area evidence, findings and remaining inputs live in [porting.toml](porting.toml); the long-form
 record is [docs/PORTING-RECORD.md](docs/PORTING-RECORD.md).
