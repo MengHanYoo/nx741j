@@ -60,7 +60,7 @@ evidence = [
 # ---------------------------------------------------------------------------
 [[area]]
 id = "firmware"
-status = "implemented"
+status = "device-verified"
 components = ["DarwinBoot"]
 paths = ["board.toml", "proprietary-files.txt", "docs/FIRMWARE-DRIVERS.md", "docs/PORTING-RECORD.md"]
 inputs = [
@@ -81,26 +81,31 @@ procedure = [
   "inspect the FV with the firmware build log and the FFS directory under Build/nx741jPkg",
 ]
 findings = [
-  "UniXNURamDiskDxe was listed in the DSC but missing from the FDF, so the payload volume never got a block device; the FDF entry was added and the firmware rebuilds with it.",
-  "AdvancedLogDxe is packed: the DSC maps AssertLib, AdvancedLoggerAccessLib, AdvancedLoggerHdwPortLib and QrEncoderLib plus DebugLib=BaseDebugLibAdvancedLogger, and the FDF carries the driver, so Tools -> Advanced Logger pages the firmware log as QR frames.",
-  "The SEC phase keeps BaseDebugLibSerialPort because SiliciumPkg/Sec/Sec.c calls BaseDebugLibSerialPortConstructor() directly; PEI and DXE use the Advanced Logger, which mirrors to the same SerialPortLib so the panel still shows the log.",
-  "The layer 1 boot image that reached the panel carried firmware volume 2f8bc430; the later build db122c8a did not come up, so the FD version is a variable that has to be bisected. The current build is 7d820bcb.",
+  "Stage 2 is complete on device: the minimal 32-driver FV reaches BDS, UniXNUDxe registers its Boot#### option and the menu lists the NX741J payload entry.",
+  "APRIORI DXE { INF ... } only sets dispatch precedence and does not add a file to the FV; UniXNURamDiskDxe and the board probe had to be listed in DXE.inc as well before they appeared in FVMAIN.inf.",
+  "UniXNURamDiskDxe publishes the loader initrd from the x0 entry-argument HOB: the device log shows 'initrd block device 0xDFF7000 size 0x4000000 Success' followed by 'Installed Fat filesystem'.",
+  "BdsDxe warns 'Connect ConIn failed - Not Found' because the minimal FV has no input device; the official fallback_timeout path still boots the default entry.",
+  "Booting the payload entry produces a black screen followed by ZTE MemoryDump Mode, i.e. the failure is before any kernel output; panic_screen was enabled without a visible panic.",
 ]
 completion = [
   "SILICIUM_UEFI.fd builds and contains UniXNU, DarwinBoot, the ramdisk block driver and the log exporter",
   "firmware reaches the UniXNU menu, the payload volume is visible as a block device, and Tools -> Advanced Logger exports the log as QR frames",
 ]
 limits = [
-  "Layer 2 stops at RpmhDxe FAR=0x58 and a TzDxeLA assertion: SMEM contents, the DTB extension and tzapps are missing ABL environment inputs",
-  "SMEM reads back as zeros, so the DXE chain cannot be validated past the RPMh stage",
+  "Stage 4 (DarwinBoot -> XNU) is not passing: the payload entry ends in a black screen and MemoryDump before kernel output",
+  "The UEFI keyboard/keypad path is unsolved: vendor PmicDxeLa asserts in pm_rpmh.c:659 because RPMH->RSC/SCM is absent, and ScmDxeCompat is the same binary as TzDxeLA",
+  "The DTBExtnProtocol provider does not exist anywhere in Binaries/nx741j, so every DAL/PMIC consumer that needs it is limited",
 ]
 next_action = [
-  "Rebuild the FD with UniXNURamDiskDxe, flash the layer 1 image and capture the menu log; then bisect the FD build between 2f8bc430 and db122c8a",
+  "Add logging around the EFI_DARWIN_BOOT_REQUEST build, the ADT parse and the Mach-O verification to find the last step before the black screen",
+  "Read the V41 read-only probe output for TLMM pins 101/179/95 and decide between a hardcoded mapping and a page-table change",
 ]
 evidence = [
   { kind = "source", reference = "proprietary-files.txt", result = "Firmware files and their stock backup sources" },
   { kind = "source", reference = "docs/FIRMWARE-DRIVERS.md", result = "SmemStubDxe and KernelStubDxe responsibilities in the DXE chain" },
   { kind = "source", reference = "docs/PORTING-RECORD.md", result = "Section 18 DXE bring-up notes and memory map" },
+  { kind = "device", reference = "docs/STAGE2-CONFORMANCE.md", result = "UniXNU menu with the NX741J entry; ramdisk block device and FAT mount in the firmware log", command = "flash FD to rawdump LBA 4760360 (LUN0) and efisp loader, boot, capture the panel log", revision = "f2584c81ca5ddcf3c9e58a6d15b6866e85e11f85" },
+  { kind = "device", reference = "docs/ANALYSIS-EFISP-VENDORBOOT.md", result = "PmicDxeLa assert pm_rpmh.c:659 and the TzDxeLA/ScmDxeCompat identity", command = "flash V39c FD, boot, capture the DXE log", revision = "f2584c81ca5ddcf3c9e58a6d15b6866e85e11f85" },
 ]
 
 # ---------------------------------------------------------------------------
@@ -191,7 +196,7 @@ evidence = [
 # ---------------------------------------------------------------------------
 [[area]]
 id = "storage"
-status = "implemented"
+status = "planned"
 components = []
 paths = ["board.toml", "docs/PORTING-RECORD.md"]
 inputs = [
@@ -209,22 +214,24 @@ procedure = [
   "write and read back a boot image through the Android root path (dd to /dev/block/by-name/boot_a) and compare SHA-256",
 ]
 findings = [
-  "The 9008 firehose of the current XBL rejects the generic programmer with 'Tool doesn't come from ZTE', so the working write path is Android root dd; the official 9008 rescue package carries its own programmer for full recovery.",
-  "boot_a accepts a 1.37 MB boot image (335 x 4096) and reads back bit-identical.",
+  "UFS is not required for the official stage 2 path: the payload volume is a RAM initrd published by UniXNURamDiskDxe, and DiskIoDxe/Fat mount it successfully on device.",
+  "The vendor UFS stack cannot run in this firmware because HALIOMMU needs DTBExtnProtocol and UFSDxe needs the RPMH/SCM chain; both providers are absent.",
 ]
 completion = [
   "SCSI capacity, GPT and known blocks read correctly",
   "The configured volume mounts and launchd starts; writes survive reboot",
 ]
 limits = [
-  "No XNU UFS driver yet: ShengUfs targets SM8550 and needs an SM8850 clock table plus ArmSmmu4K",
+  "No Mu-side UFS BlockIo: UFSDxe/HALIOMMU cannot be enabled without DTBExtn, NPA and RPMH providers",
+  "No XNU UFS driver yet: ShengUfs targets SM8550 and needs an SM8850 clock/reset table plus ArmSmmu4K",
 ]
 next_action = [
-  "Port the UFS driver to the SM8850 clock and reset set once layer 2 produces a menu",
+  "Keep the payload-volume path for stage 2/3 verification and revisit UFS only for the root volume after stage 4 passes",
 ]
 evidence = [
   { kind = "source", reference = "board.toml", result = "hardware.storage LBAs, UFS model and payload size" },
   { kind = "source", reference = "docs/PORTING-RECORD.md", result = "GPT inventory and partition strategy" },
+  { kind = "device", reference = "docs/STAGE2-CONFORMANCE.md", result = "Payload volume mounted from the initrd (Fat) without any UFS BlockIo", command = "boot the minimal FV and read the UNIXNURAMDISK/Fat lines", revision = "f2584c81ca5ddcf3c9e58a6d15b6866e85e11f85" },
 ]
 
 # ---------------------------------------------------------------------------
@@ -287,18 +294,25 @@ procedure = [
   "verify pointer events in the menu and in the kernel",
 ]
 findings = [
-  "ShengNovatekTouch implements Novatek NT36532, not the Synaptics TCM protocol this panel uses.",
+  "Stock DTS maps the keys to TLMM: VOL+ = gpio 101 (active low, pull-up), FOCUS = gpio 179, SHOOT = gpio 95; VOL- is the PMIC pmk8350-pon resin line.",
+  "MemoryMapLib declares the TLMM window as 0x0F000000/0x01000000 MMIO, but reading 0x0F010000 faults and per-pin reads at 0x65000/0xB3000/0x5F000 have not yet returned data.",
+  "Vendor ButtonsDxe needs PmicGpio/TLMM/PmicPON; PmicDxeLa cannot start (RPMH assert), and KeypadDxe alone cannot produce input.",
+  "The board package now carries all attempts: Nx741jKeysDxe (calibration/mapping variants) and the read-only TlmmProbeDxe.",
 ]
 completion = [
   "Touch coordinates map to the 1216x2688 menu and to the kernel input device",
 ]
 limits = [
+  "No working UEFI input device: neither the vendor stack nor a board TLMM driver has produced SimpleTextInput on device",
   "No touch protocol driver exists for this panel yet",
 ]
 next_action = [
-  "Write the TCM protocol layer and wire it into ShengHidInput",
+  "Boot V41 and read the KEYS: dump for the three pin blocks, then either hardcode the mapping or fix the MMU mapping for the TLMM window",
+  "After keys, port the Synaptics TCM protocol layer and wire it into ShengHidInput",
 ]
-evidence = []
+evidence = [
+  { kind = "device", reference = "docs/ANALYSIS-EFISP-VENDORBOOT.md", result = "TLMM probe faults at 0x0F010000; key calibration reports NOT DETECTED for the scanned window", command = "flash V22/V31/V34/V36 and capture the TLMMPROBE/KEYS lines", revision = "f2584c81ca5ddcf3c9e58a6d15b6866e85e11f85" },
+]
 
 # ---------------------------------------------------------------------------
 # gpu (planned)
