@@ -7,7 +7,7 @@
 | 1 | 固件集成可复现 | [UEBI 固件](/zh/porting/uefi-firmware) | 完成（本次） | `package/firmware-overlay/` 已收录 DSC/FDF/incs/驱动；构建前运行 `scripts/apply-firmware-overlay.py <uefi-tree>` |
 | 2 | 菜单 → DarwinBoot 交接 | [启动链](/zh/concepts/boot-chain)、[Payload](/zh/concepts/payload) | 阻塞 | 菜单倒计时结束后直接 MemoryDump，`DARWINBOOT: Boot called` 未出现；下一步在 `Menu.c` 超时返回与 `UniXNUBootEntry` 入口加 `DEBUG` 并逐行确认 |
 | 3 | UEFI 按键 | [触控与按键](/zh/porting/input) | 阻塞 | TLMM 读探测：GCD `type 3 len 0x500000`，`0x0F000000`/`0x0F00FFF0` 可读，`0x0F010000` 起读崩；需 DxeCore/ArmMmuLib 建映射或改 PMIC/SPMI |
-| 4 | 存储（UFS） | [UFS 存储](/zh/porting/ufs) | 未开始 | 目录 `ShengUfs` 标注 SM8550 控制器；先核对 SM8850 UFS 寄存器差异再选组件 |
+| 4 | 存储（UFS） | [UFS 存储](/zh/porting/ufs) | 进行中 | 目录 `ShengUfs` 标注 SM8550 控制器；先核对 SM8850 UFS 寄存器差异再选组件 |
 | 5 | 显示/亮度 | [显示](/zh/porting/display) | 未开始 | `GopFramebuffer` 已选；内核侧显示与亮度驱动待适配 |
 | 6 | 触摸 | [触控与按键](/zh/porting/input) | 未开始 | 确认面板是否 Novatek NT36532；`QcomGeniSpi` + `ShengNovatekTouch` 需板级接入 |
 | 7 | GPU/Metal | [GPU 与 Metal](/zh/porting/gpu) | 未开始 | 目录 `Adreno740`/`AdrenoMetal` 面向 SM8550/A740，SM8850 需对应实现 |
@@ -19,6 +19,8 @@
 | 13 | 打包脚本 | [设备打包脚本](/zh/porting/packaging) | 进行中 | `scripts/package.sh` 需在干净检出跑通并记录产物 |
 | 14 | 发布 | [设备仓库 §发布](/zh/porting/device-repository#publish) | 阻塞 | 需要 `unixnu` topic、`Porting record` CI 通过、设备页收录 |
 | 15 | 固件日志导出（QR） | [日志抓取](/zh/porting/log-capture) | 进行中 | AdvancedLogDxe 已驻留且 PCD/库已映射；需启用 Advanced Logger 采集模块（会切换 DxeCore 调试通道） |
+
+驱动矩阵与构建接入核对见 [STEP6-DRIVERS-MATRIX.md](STEP6-DRIVERS-MATRIX.md)。
 
 ## 本次已完成的配置收口
 
