@@ -113,7 +113,7 @@ evidence = [
 # ---------------------------------------------------------------------------
 [[area]]
 id = "firmware"
-status = "device-verified"
+status = "implemented"
 components = ["DarwinBoot"]
 paths = [
   "board.toml",
@@ -148,6 +148,7 @@ findings = [
   "board.toml changed in this range: [payload.adt] platform inputs and the trusted cache list are now explicit; the firmware layered behavior itself is unchanged.",
   "device-verified evidence for this area predates the menu-run regression: layer 1/2 checks pass, but layer 3/4 (menu to DarwinBoot) currently ends in ZTE MemoryDump mode, so the level must be re-validated on the next successful boot.",
   "Layer 4 remains blocked: the menu countdown ends in MemoryDump and the DARWINBOOT Boot called line never appears (docs/OPEN-ITEMS.md item 2).",
+  "V67 regression: UniXNUDxe writes no Boot#### (the BDS never loads UniXNU) and the TLMM key probe faults; V68 adds a direct-start fallback and removes the keys driver from the FV. Current firmware is implemented, not device-verified for the menu path.",
 ]
 completion = [
   "SILICIUM_UEFI.fd builds and contains UniXNU, DarwinBoot, the ramdisk block driver and the log exporter",
@@ -161,6 +162,7 @@ limits = [
 next_action = [
   "Add logging around the EFI_DARWIN_BOOT_REQUEST build, the ADT parse and the Mach-O verification to find the last step before the black screen",
   "Read the V41 read-only probe output for TLMM pins 101/179/95 and decide between a hardcoded mapping and a page-table change",
+  "Flash the V68 FD (c7cafaa6) with payload 7ac7776f, confirm UniXNUDxe direct-start reaches the UniXNU menu, then re-record the device evidence.",
 ]
 evidence = [
   { kind = "source", reference = "proprietary-files.txt", result = "Firmware files and their stock backup sources" },
@@ -296,6 +298,7 @@ findings = [
   "UFS is not required for the official stage 2 path: the payload volume is a RAM initrd published by UniXNURamDiskDxe, and DiskIoDxe/Fat mount it successfully on device.",
   "The vendor UFS stack cannot run in this firmware because HALIOMMU needs DTBExtnProtocol and UFSDxe needs the RPMH/SCM chain; both providers are absent.",
   "board.toml changed in this range: the platform ADT inputs (psci_method/dram_size/owned_memory_size/cpu_regs) and the payload trust cache list were made explicit; see docs/STEP6-PLATFORM.md.",
+  "ShengUfs is selected and links; the ADT now exports /arm-io/ufshc and the UFS GCC offsets are the measured canoe values. Runtime stays fail-closed because no verified-root policy bundle is compiled in.",
 ]
 completion = [
   "SCSI capacity, GPT and known blocks read correctly",
@@ -309,6 +312,7 @@ limits = [
 next_action = [
   "Keep the payload-volume path for stage 2/3 verification and revisit UFS only for the root volume after stage 4 passes",
   "Read the UFS model through fh_loader --getstorageinfo in 9008 (or root sysfs) and record it here.",
+  "Generate the iOS 16 storage policy bundle (or port source-storage-runtime.patch to xnu-8796) to replace the empty verified-root policy table, then flash and verify capacity/GPT/mount.",
 ]
 evidence = [
   { kind = "source", reference = "board.toml", result = "hardware.storage LBAs, UFS model and payload size" },
@@ -343,6 +347,7 @@ procedure = [
 findings = [
   "The 10-26 CI line carried a panel geometry fix (1216x2688); that geometry must not regress to 1220x2656.",
   "UEFI side output is confirmed; the XNU side has not been started.",
+  "UEFI GOP gives the 1216x2688 menu; the XNU display driver is not implemented yet, so kernel-time geometry/backlight remain unverified.",
 ]
 completion = [
   "The panel shows the menu at 1216x2688 and the kernel keeps the same geometry",
@@ -387,6 +392,7 @@ findings = [
   "MemoryMapLib declares the TLMM window as 0x0F000000/0x01000000 MMIO, but reading 0x0F010000 faults and per-pin reads at 0x65000/0xB3000/0x5F000 have not yet returned data.",
   "Vendor ButtonsDxe needs PmicGpio/TLMM/PmicPON; PmicDxeLa cannot start (RPMH assert), and KeypadDxe alone cannot produce input.",
   "The board package now carries all attempts: Nx741jKeysDxe (calibration/mapping variants) and the read-only TlmmProbeDxe.",
+  "The touch controller is a Synaptics TCM (firmware and DTB parameters captured); the keys probe was disabled because TLMM only maps 64 KiB. No input driver exists yet.",
 ]
 completion = [
   "Touch coordinates map to the 1216x2688 menu and to the kernel input device",
@@ -427,6 +433,7 @@ procedure = [
 ]
 findings = [
   "The kernel side was verified on the earlier CI lineage, but only with wallpaper black and 13-30 fps; that is not a device-qualified state.",
+  "The DTB reports Adreno840v2 (gen8-2-1, chipid 0x44050a01); catalog implementations target A740, so nothing is selected.",
 ]
 completion = [
   "GPU firmware loads, submissions complete and fences retire, then Metal presents a frame",
@@ -467,6 +474,7 @@ procedure = [
 ]
 findings = [
   "ath12k supports wcn7850, so the driver choice is correct; the missing part is the PCIe host on this board.",
+  "The module is WCN7880, not the catalog WCN7850; BT BRAHMA/GANGES firmware, PEACH BDWLAN data and the persist MAC are captured. No driver is selected.",
 ]
 completion = [
   "Firmware download succeeds, the interface associates and packets move",
@@ -504,6 +512,7 @@ procedure = [
 ]
 findings = [
   "Audio depends on the DSP and power framework, which both come after the RPMh and platform work.",
+  "The codec is WSA884x (canoe-mtp-wsa884x sound card); DSP/audio components are not selected yet.",
 ]
 completion = [
   "Playback and capture work through the selected codec and DSP routes",

@@ -11,14 +11,14 @@
 | 顺序 | 能力 | 官方依赖组件 | 本机实现 | 状态 |
 |---|---|---|---|---|
 | 1 | CPU/中断/定时器/RAM/DMA | ArmDTPlatform、ArmCpu、ArmSmmu4K | ArmDTPlatform + ArmCpu（已选/归档） | 🟡 组件就绪；SMMU 未选 |
-| 2 | 存储/根卷/持久 Data | ShengUfs、RamBlock、VirtioMmioBlock、VerifiedRoot | ShengUfs 源码+canoe 偏移已备，未选中 | 🔴 缺 storage ABI 归档 |
+| 2 | 存储/根卷/持久 Data | ShengUfs、RamBlock、VirtioMmioBlock、VerifiedRoot | 已选中并链接；ADT 导出 ufshc | 🟡 运行时 fail-closed |
 | 3 | 帧缓冲/刷新/亮度 | GopFramebuffer、DisplayTimingProbe、AppleARMBacklight、GeniI2c | 仅 GopFramebuffer | 🟡 |
 | 4 | 触控与按键 | QcomGeniSpi、ShengHidInput、ShengNovatekTouch、ButtonProbe | 型号已确认（Synaptics TCM），驱动未写 | ⬜ |
 | 5 | GPU/Metal | Adreno740、AdrenoMetal、Sm8550Platform、AdrenoFirmware、AdrenoPM4、AirNir | 未开始 | ⬜ |
 | 6 | Wi-Fi/蓝牙/USB | Ath12kWifi、QcaBluetooth、QcomDwc3 | WCN7880 已确认，组件待适配 | ⬜ |
 | 6a | 基带 | QcomBaseband | 未开始 | ⬜ |
 | 7 | DSP/音频/电池/调频/电源 | AdspProbe、AudioProbe、ShengBattery、CpuFreqProbe、ShengPlatformPower | 未开始（codec WSA884x 已识别） | ⬜ |
-| 8 | OS 服务与打包 | SoftwareAES、AppleKeyStoreState、XnuPrelink、DarwinBoot、ShengPreflight | 前四者中三个已选 | 🟡 |
+| 8 | OS 服务与打包 | SoftwareAES、AppleKeyStoreState、XnuPrelink、DarwinBoot、ShengPreflight | SoftwareAES/XnuPrelink/DarwinBoot 已选 | 🟡 |
 
 ## 1. 平台与内存（已选）
 
