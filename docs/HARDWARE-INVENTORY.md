@@ -215,3 +215,17 @@
 | 触摸 TCM | `sdc_code_tcm.bin`、`sdc_data_tcm.bin` 名称出现在 modem 镜像字符串中，但不在其 FAT 树内 | 待 super/vendor 提取 |
 
 提取命令：`read-9008.ps1` dump `bluetooth_a`(LBA 95238,2048) / `modem_a`(LBA 5638,89600)，再用 FAT12/FAT16 解析脚本读取。
+
+## vendor_boot ramdisk 模块（9008 提取，3ad4178）
+
+`vendor_boot_a`（LBA 302310，96 MiB）解包后为 31,204,732 B 的 cpio（LZ4 legacy），含 336 个
+`lib/modules/*.ko`，与本设备相关的有：
+
+| 模块 | 用途 |
+|---|---|
+| `gcc-canoe.ko` | GCC 时钟，含 UFS 分支偏移（见 STEP6-UFS.md 表） |
+| `phy-qcom-ufs-qmp-v4-canoe.ko` | UFS PHY（canoe 变体） |
+| `ufs-qcom.ko` / `ufshcd-crypto-qti.ko` | UFS 控制器与 ICE |
+| `gcc-alor.ko`、`camcc-canoe.ko`、`dispcc-canoe.ko`、`gpucc-canoe.ko`、`qnoc-canoe.ko`、`pinctrl-canoe.ko` | 其余 GCC/互联/引脚控制器 |
+
+触摸 TCM 固件（`sdc_code_tcm.bin`/`sdc_data_tcm.bin`）不在该 ramdisk 中，需 vendor 镜像。

@@ -24,24 +24,34 @@
 
 ## 与 ShengUfs（SM8550 常量）的差异
 
-`ShengUfs` 的 `GccUfs.h` 把 SM8550 事实写死：
+**已从实机 vendor_boot ramdisk 取出 `gcc-canoe.ko`（133,496 B）并用其符号表读出每个 UFS clock 的
+`hwcg_reg`/`halt_reg`**：
 
-```
-GCC_BASE 0x00100000, UFS_HC_BASE 0x01d84000, UFS_HC_SIZE 0x3000
-GCC_UFS_PHY_GDSCR 0x77004, GCC_UFS_PHY_AXI_ENABLE 0x77018, ... GCC_AGGRE_UFS_PHY_AXI_ENABLE 0x770e4
-```
+| 时钟 | SM8550 `GccUfs.h` | canoe 实测 |
+|---|---|---|
+| `gcc_ufs_phy_gdscr` | `0x77004` | `0x77004` |
+| `gcc_ufs_mem_phy_gdscr` | `0x9e000` | `0x9e000` |
+| `gcc_ufs_phy_axi_clk` | `0x77018` | `0x77018` |
+| `gcc_ufs_phy_ahb_clk` | `0x77024` | `0x77028` |
+| `gcc_ufs_phy_unipro_core_clk` | `0x77068` | `0x7706c` |
+| `gcc_ufs_phy_ice_core_clk` | `0x77074` | `0x7707c` |
+| `gcc_ufs_phy_phy_aux_clk` | `0x770b0` | `0x770bc` |
+| `gcc_ufs_phy_rx_symbol_0_clk` | `0x7702c` | `0x77030` |
+| `gcc_ufs_phy_rx_symbol_1_clk` | `0x770cc` | `0x770d8` |
+| `gcc_ufs_phy_tx_symbol_0_clk` | `0x77028` | `0x7702c` |
+| `gcc_aggre_ufs_phy_axi_clk` | `0x770e4` | `0x770f0` |
 
-实机确认 **控制器与 GCC 基址一致**，但：
+结论：**GDSCR 与 AXI 分支相同，其余分支全部偏移不同**（AHB/UNIPRO/ICE/PHY_AUX/RX_SYM0/RX_SYM1/TX_SYM0/AGGRE）。
+`ShengUfs` 现有 `GccUfs.h` 不能直接用于 nx741j，需按上表覆盖。
 
-1. GCC 是 `canoe-gcc`，UFS 分支/复位在寄存器表中的偏移需按 SM8850 时钟驱动重新推导（不能沿用 0x77004 等）；
-2. PHY 为 `qmp-v4-canoe`，PHY 初始化/调优序列与 SM8550 不同；
-3. 实机存在 **MCQ** 寄存器区（`mcq_sqd`/`mcq_vs`）与 ICE 配置，SM8550 参考实现只覆盖传统队列；
-4. 时钟/复位 ID 与 SM8550 不同（见上表）。
+vendor_boot ramdisk 同时提供 `phy-qcom-ufs-qmp-v4-canoe.ko`、`ufs-qcom.ko`、`ufshcd-crypto-qti.ko`，
+可用于核对 PHY 初始化与 ICE 路径。
 
 ## 结论（本阶段）
 
 - **硬件清单已完成**（控制器/PHY/GCC/SMMU/stream/中断/电源/ICE/MCQ）；
-- **暂不选中 `ShengUfs`**：沿用 SM8550 常量会导致 GCC 偏移与 PHY 序列错误。按官方要求先做适配：
+- **canoe GCC UFS 偏移已取得**（上表），可用 `local.toml` 覆盖 `ShengUfs` 的 `GccUfs.h` 后选中；
+  PHY 序列仍需按 `phy-qcom-ufs-qmp-v4-canoe.ko` 核对。按官方要求先做适配：
   1. 取得 canoe GCC 的 UFS 分支/复位偏移（从 stock 内核 `gcc-canoe` 时钟驱动或运行时读取）；
   2. 用 `local.toml` 覆盖 `ShengUfs` 源码，替换 `GccUfs.h` 常量并补 MCQ/ICE 分支；
   3. 在 `board.toml` 选中 `ShengUfs`、`[kernel] archives` 加 `component:ShengUfs`、defconfig 开 `CONFIG_XNU_NATIVE_UFS=y`，内核参数加 `native-ufs-root=1`；

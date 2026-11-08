@@ -275,6 +275,7 @@ inputs = [
   "Payload volume 64 MiB and the efisp / userdata fallbacks",
   "Boot device is soc/1d84000.ufshc with PHY 1d80000.ufsphy_mem; UFS part KLUGG8NHKB per the stock record.",
   "dumpsys diskstats reports about 975,850,316 KiB usable (1 TB part); the exact UFS model string is hidden from the shell.",
+  "vendor_boot ramdisk provides gcc-canoe.ko (per-branch UFS offsets), phy-qcom-ufs-qmp-v4-canoe.ko, ufs-qcom.ko and ufshcd-crypto-qti.ko; the canoe UFS branch offsets differ from SM8550 except GDSCR and AXI.",
 ]
 configuration = [
   "board.toml [hardware.storage] records the UFS identity and the partition LBAs",
