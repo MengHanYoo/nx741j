@@ -20,8 +20,13 @@
     #size-cells = <2>;
     interrupt-parent = <&intc>;
 
-    memory@8c0000000 {
+    memory {
         device_type = "memory";
+        /*
+         * 官方 ADT 生成器要求单一连续 DRAM 范围，这里取实机 DTB 中最大的连续区
+         * （0x8C0000000 + 5 GiB）。实机共 21 段、合计 0x3CF4F8000（15.24 GiB），
+         * 完整布局见 docs/STEP6-PLATFORM.md，内核启动后按实际映射再调整。
+         */
         reg = <0x8 0xc0000000 0x1 0x40000000>;
     };
 

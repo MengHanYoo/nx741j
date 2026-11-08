@@ -23,11 +23,27 @@ dtc -I dts -O dtb -i /opt/work/nx741j-build/UniXNU-sm8850-common/dts \
 
 ## 内存与 DMA
 
+实机 DTB（`stock/dt/live_fdt.dtb`，SM8850 canoe）的 `memory` 节点共 **21 段**、合计
+`0x3CF4F8000`（15.24 GiB，与 `MemTotal 15600240 kB` 一致）。主要区段：
+
+| 区段 | 大小 |
+|---|---|
+| `0x8C0000000` + `0x140000000` | 5.00 GiB（当前 DTS 选用） |
+| `0xA00000000` + `0x200000000` | 8.00 GiB |
+| `0x880000000` + `0x2F6FD000` | 0.74 GiB |
+| `0x8B0000000` + `0x8500000` | 0.13 GiB |
+| `0xDFDA0000` + `0x1FA60000` | 0.49 GiB |
+| 其余 16 段（低地址空洞/共享区） | 共 0.87 GiB |
+
+官方 ADT 生成器要求**单一连续 DRAM 范围**（`ADT handoff requires one contiguous DRAM range`），
+因此 DTS 必须只保留一段。当前取最大的连续区 `0x8C0000000 + 5 GiB`，`dram_size = 0x140000000`；
+完整 21 段布局保留在此，等内核启动、内存映射可用后再按实际交接范围调整。
+
 | 项 | 当前值 | 状态 |
 |---|---|---|
-| DTS memory 节点 | `reg = <0x8 0xc0000000 0x1 0x40000000>`（0x8C0000000 + 5 GiB） | **存疑**：需与 UEFI 内存映射/实际 DRAM 核对 |
-| `[payload.adt] dram_size` | `0x140000000`（同 DTS） | 与上表同源，待启动后核对 |
-| `[payload.adt] owned_memory_size` | `0x10000000` | 加载器自有内存窗口，待与 Mu SEC 保留区核对 |
+| DTS memory 节点 | 单段 `0x8C0000000 + 5 GiB` | 满足 ADT 约束 |
+| `[payload.adt] dram_size` | `0x140000000` | 与该段一致 |
+| `[payload.adt] owned_memory_size` | `0x10000000` | 加载器自有窗口，待与 Mu SEC 保留区核对 |
 | `[payload.adt] psci_method` | `smc` | 与 DTS 一致 |
 | `[payload.adt] cpu_regs` | `0,0x100` | 启动核 MPIDR |
 | SMMU / DMA 宽度 | `ArmSmmu4K` 未选 | 先完成存储/显示后再按官方读取上下文 |

@@ -3,6 +3,12 @@
 本文件对应 `reference/` 第 1 项"收集设备输入"。每条都注明来源；寄存器地址与分区布局均取自**目标设备**
 （stock DT、9008 rawprogram、运行中的 Android），不引用其它机型。
 
+## 内存（实机实测）
+
+`MemTotal: 15600240 kB`（约 14.88 GiB，16 GB 物料）；实机 DTB 的 `memory` 节点为 21 段、
+合计 `0x3CF4F8000`，最大连续段 `0x8C0000000 + 5 GiB`。完整区段表见
+[STEP6-PLATFORM.md](STEP6-PLATFORM.md#内存与-dma)。
+
 ## 1. 硬件清单
 
 | 项目 | 取值 | 来源 |
