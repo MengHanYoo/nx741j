@@ -352,8 +352,9 @@ limits = [
 next_action = [
   "Start from the Adreno740 interface and add the gen80200 firmware and GMEM layout",
 ]
+evidence = [
   { kind = "source", reference = "docs/STEP6-DRIVERS-MATRIX.md", result = "STEP6-MATRIX: driver order, selected/planned components and build integration checked" },
-evidence = []
+]
 
 # ---------------------------------------------------------------------------
 # network (planned)
@@ -386,8 +387,9 @@ limits = [
 next_action = [
   "Add the PCIe host node and platform clocks after layer 2 produces a menu",
 ]
+evidence = [
   { kind = "source", reference = "docs/STEP6-DRIVERS-MATRIX.md", result = "STEP6-MATRIX: driver order, selected/planned components and build integration checked" },
-evidence = []
+]
 
 # ---------------------------------------------------------------------------
 # audio (planned)
@@ -419,8 +421,9 @@ limits = [
 next_action = [
   "Read the ADSP firmware version from the stock image and pick the component",
 ]
+evidence = [
   { kind = "source", reference = "docs/STEP6-DRIVERS-MATRIX.md", result = "STEP6-MATRIX: driver order, selected/planned components and build integration checked" },
-evidence = []
+]
 
 # ---------------------------------------------------------------------------
 # power (planned)
@@ -453,8 +456,9 @@ limits = [
 next_action = [
   "Provide the SMEM contents and finish the RPMh driver, then start the SM8850 platform port",
 ]
+evidence = [
   { kind = "source", reference = "docs/STEP6-DRIVERS-MATRIX.md", result = "STEP6-MATRIX: driver order, selected/planned components and build integration checked" },
-evidence = []
+]
 
 # ---------------------------------------------------------------------------
 # packaging
