@@ -5,8 +5,14 @@ set -eu
 ADB=${ADB:-adb}
 SERIAL=$($ADB shell getprop ro.boot.unique_chip_id | tr -d '\r')
 if [ -z "$SERIAL" ]; then
-  echo "ro.boot.unique_chip_id is empty; check USB debugging and that the device booted Android" >&2
-  exit 1
+  # This ROM leaves ro.boot.unique_chip_id empty; the QFPROM-backed SoC serial is the next source.
+  SERIAL=$($ADB shell cat /sys/devices/soc0/serial_number | tr -d '\r')
+  if [ -z "$SERIAL" ]; then
+    echo "no unique_chip_id and no soc serial; check USB debugging and that the device booted Android" >&2
+    exit 1
+  fi
+  printf 'soc_serial_decimal=%s\n' "$SERIAL"
+  SERIAL=$(printf '%016x' "$SERIAL")
 fi
-echo "ro.boot.unique_chip_id=$SERIAL"
+echo "unique_chip_id=$SERIAL"
 echo "Update unixnu.local.toml: unique_chip_id = \"$SERIAL\""

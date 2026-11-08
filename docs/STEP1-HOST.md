@@ -37,7 +37,7 @@ scripts/linux/setup-toolchain.py --check
 | `build.kernelcache` | `/opt/work/ipsw/kernelcache.arm64` | OK（预链接输入） |
 | `build.trust_cache` | `ipsw/087-86593-047.dmg.trustcache` | OK |
 | `build.jobs` / `target` / `kernel_args` | 16 / DEBUG / `-v serial=3` | OK |
-| `build.unique_chip_id` | `0000000000000001` | **存疑**：占位值，必须替换为真机 fuse 值 |
+| `build.unique_chip_id` | 本机真机值（不入库） | ✅ 已解析：`/sys/devices/soc0/serial_number = 160370627`（`0x098EE0C3`）零扩展为 16 位十六进制；payload 的 `kernel.macho.adt` 已含 `unique-chip-id = 0x098EE0C3` |
 | `build.ipsw` | 未配置 | 只有解压后的 kernelcache，无 .ipsw 原包 |
 
 ## 验证
@@ -51,6 +51,6 @@ scripts/linux/setup-toolchain.py --check
 
 | 项 | 下一步 |
 |---|---|
-| `unique_chip_id` 占位 | 设备在线时 `adb shell getprop ro.boot.unique_chip_id` 取真机值后替换 |
+| `unique_chip_id` | 本 ROM 的 `ro.boot.unique_chip_id` 为空；改用 QFPROM 派生的 socinfo 序列号（`160370627`）。若后续能在 bootloader 侧读到 QFPROM 原始 fuse，应交叉核对 |
 | 无 `.ipsw` 原包 | 若要 `unixnu ipsw fetch` 需配置 `[ipsw] url` 或 `UNIXNU_IPSW` |
 | macOS 步骤 | 本机不执行 `--skip-setup`/`seed-data-grow`；如需要走 GitHub macOS runner |
