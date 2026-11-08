@@ -53,6 +53,7 @@ evidence = [
   { kind = "source", reference = "board.toml", result = "Board, component, kernel, firmware, payload and boot image inputs" },
   { kind = "source", reference = "unixnu.lock", result = "Resolved source commits including sm8850 825a5304 and libpthread cf9e1c7e" },
   { kind = "source", reference = "configs/nx741j_defconfig", result = "Kernel CONFIG_XNU_* values consumed by the kernel build script" },
+  { kind = "host", reference = "docs/STEP4-BUILD-RESOLUTION.md", result = "defconfig/fetch/status/tree resolve 20 modules and 63 patches with no local overrides", command = "./unixnu defconfig nx741j_defconfig && ./unixnu fetch && ./unixnu status --json && ./unixnu tree", revision = "7cdf2738b8ee007a65fca59f1a36232fac520656" },
 ]
 
 # ---------------------------------------------------------------------------

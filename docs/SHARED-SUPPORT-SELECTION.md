@@ -21,12 +21,12 @@
 
 | 组件 | 仓库 | revision |
 |---|---|---|
-| `ArmCpu` | `UniXNU/ArmCpu` | `9066b53bbc82` |
+| `ArmCpu` | `UniXNU/ArmCpu` | `93a5030c5d98` |
 | `ArmDTPlatform` | `UniXNU/ArmDTPlatform` | `417ff95d6a6e` |
 | `SoftwareAES` | `UniXNU/SoftwareAES` | `4a45326da5c2` |
-| `XnuPrelink` | `UniXNU/XnuPrelink` | `f876e3ee62e1` |
-| `DarwinBoot` | `UniXNU/DarwinBoot` | `3325e352d7df` |
-| `GopFramebuffer` | `UniXNU/GopFramebuffer` | `cf3b42979a9c` |
+| `XnuPrelink` | `UniXNU/XnuPrelink` | `c645d76bb0ab` |
+| `DarwinBoot` | `UniXNU/DarwinBoot` | `3c75734014cd` |
+| `GopFramebuffer` | `UniXNU/GopFramebuffer` | `e47c1b8de169` |
 
 候选实现核对（硬件版本 / 固件协议 / OS ABI）：
 
