@@ -84,3 +84,13 @@ FV 成员必须出现在 `DXE.inc` 这类普通 `INF` 列表中（GenFv 的 `FVM
 | 构造菜单（含 `NX741J`） | ✅ |
 
 **阶段 2 完成。** 剩余：实体按键（非阻塞）、阶段 3 的启动崩溃定位。
+
+## 最新状态（2026-11-08 10:40）
+
+- 阶段 2 的全部官方条目已闭环（含 payload 卷与 `NX741J` 菜单）；
+- 阶段 4（DarwinBoot→XNU）在菜单启动 `xnu` 后**黑屏 → MemoryDump**，崩溃发生在内核之前，
+  `panic_screen` 未产生输出；
+- 厂商按键栈（`SPMIDxe/TLMMDxe/PmicDxeLa/ButtonsDxe/KeypadDxe`）已实测：`PmicDxeLa` 崩于
+  `pm_rpmh.c:659`（RPMH→RSC/SCM 链缺失，SCM 与 TzDxeLA 同二进制）；
+- 按键改为 TLMM-only 方案，V41 只读探针用于确认 `0x65000/0xB3000/0x5F000` 是否可读；
+- 文档一致性：`TASKS.md` 已重写，`PORTING-RECORD.md` 加过时提示，本文件保留历史记录。

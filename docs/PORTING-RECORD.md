@@ -1,3 +1,7 @@
+> **状态提示（2026-11-08）**：本文是 11-06 的工作区快照，"层 2 卡在 Rpmh/TzDxeLA""层 3/4 未上机"
+> 等结论已过时。当前实际状态以 `TASKS.md`（11-08 快照）、`STAGE2-CONFORMANCE.md`、
+> `HARDWARE-INVENTORY.md` §5–6、`ANALYSIS-EFISP-VENDORBOOT.md` §20–24 为准。
+
 # NX741J 工作区整合与归档（对齐 UniXNU 技术参考）
 
 来源：<https://unixnu.com/zh/reference/>（技术参考索引）。本文把当前工作区、已完成的工作、各目录内容，

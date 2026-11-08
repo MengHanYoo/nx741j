@@ -103,9 +103,9 @@
 
 | # | 缺失项 | 状态 | 说明 |
 |---|---|---|---|
-| 1 | `DTBExtnProtocol` 提供者 | ❌ | 影响 `DALTLMM`、`PmicDxe`、`RngDxe`、`UCDxe`、`HALIOMMU` 等；Binaries 中无 provider |
-| 2 | Mu DXE 的 UFS→BlockIo | ❌ | 已用 **RAM initrd（payload 卷）** 绕过，官方启动链不依赖 UFS |
-| 3 | SMEM 内容读 0 | 🟡 | DALSYSDxe 在 V39c 已成功启动，说明 **SMEM 协议可用**；SMEM 数据内容仍需单独核对 |
+| 1 | `DTBExtnProtocol` 提供者 | ❌ 确认不存在 | 已扫 `Binaries/nx741j` 180 个驱动：只有使用方、无安装方；影响 `DALTLMM`/`PmicDxe`/`RngDxe`/`UCDxe`/`HALIOMMU` |
+| 2 | Mu DXE 的 UFS→BlockIo | ❌（已绕过） | payload 卷走 `UniXNURamDiskDxe` + x0 FDT，官方链不依赖 UFS；UFS 仅影响固件内日志导出等可选功能 |
+| 3 | SMEM 内容读 0 | 🟡 | V39c 中 `DALSys.efi` 已启动（`SmemStub: item 404 -> …`），协议可用；数据内容未核对 |
 | 4 | WCN7850 IMEM board_id | 🟡 | PCI id `0x110e` 已确认；board_id 需运行时读 IMEM |
 | 5 | FD 版本 bisect | ✅ 已淘汰 | 改为分阶段最小 FV（V15…V41），问题定位不再依赖 FD 盲测 |
 | 6 | 音频 codec / DSP 固件 | ✅ 已登记 | 见第 6 节（WCD939x、LPASS CDC v7、ADSP `adsp.mdt`） |
