@@ -500,6 +500,7 @@ findings = [
   "The bootimg values must be TOML integers; quoted hex strings fail in verify with a TypeError, and local.toml ramdisk=\"none\" silently drops the payload.",
   "The 1.37 MB boot image written to boot_a reads back bit-identical, but the firmware volume it carries (db122c8a) did not reach the menu, while the earlier 2f8bc430 image did.",
   "GitHub Actions are disabled for this repository: both workflows moved to .github/workflows-disabled (owner request), so the record check no longer runs on pushes until they are moved back.",
+  "board.toml changed in this range: the platform ADT inputs (psci_method/dram_size/owned_memory_size/cpu_regs) and the payload trust cache list were made explicit; see docs/STEP6-PLATFORM.md.",
 ]
 completion = [
   "package.sh produces kernel.macho, payload.img, boot.img and package.manifest.json with matching hashes",
