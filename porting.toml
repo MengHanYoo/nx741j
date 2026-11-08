@@ -277,6 +277,7 @@ inputs = [
   "dumpsys diskstats reports about 975,850,316 KiB usable (1 TB part); the exact UFS model string is hidden from the shell.",
   "vendor_boot ramdisk provides gcc-canoe.ko (per-branch UFS offsets), phy-qcom-ufs-qmp-v4-canoe.ko, ufs-qcom.ko and ufshcd-crypto-qti.ko; the canoe UFS branch offsets differ from SM8550 except GDSCR and AXI.",
   "UFS part is SAMSUNG KLUGG8NHKB-F0H1 firmware 0500, 0xED4F800 logical blocks (~1 TB), LUN enable mask 0x3f (fh_loader getstorageinfo).",
+  "board.toml [userdata] is filled from the dumped LUN0 GPT: first_lba 4875048, last_lba 248838138, lba_bytes 4096.",
 ]
 configuration = [
   "board.toml [hardware.storage] records the UFS identity and the partition LBAs",
@@ -448,6 +449,7 @@ inputs = [
   "Wireless module is WCN7861 (ro.vendor.feature.board_wlan_bt_chip), PCI 0000:01:00.0; the catalog Ath12kWifi/QcaBluetooth implementations target WCN7850 and need a WCN7861 check.",
   "Vendor build BQ2A.250705.001-BP2A.250605.031.A3; Wi-Fi config /vendor/etc/wifi/peach_v2/WCNSS_qcom_cfg.ini; modules cnss2/icnss2/wlan_firmware_service/qbt_handler/qti_btl.",
   "Wireless is WCN7880 (phyAni*_wcn7880 symbols in modem_a); BT firmware BTFW.BRAHMA.2.0.1-00181 and BTFW.GANGES.2.0.1-00184 live in bluetooth_a FAT; Wi-Fi board data is /IMAGE/PEACH/BDWLAN.E01..E49 plus BDWLAN.ELF in modem_a.",
+  "Wi-Fi config /vendor/etc/wifi/peach_v2/WCNSS_qcom_cfg.ini is extracted; wlan_mac.bin lives in /mnt/vendor/persist and wlanmdsp.mbn is runtime-extracted (no image entity).",
 ]
 configuration = [
   "board.toml [hardware.wireless] records the chip and the PCIe identity",
@@ -466,6 +468,7 @@ limits = [
   "Blocked behind the platform and PCIe host work; does not block the boot chain",
   "WCN7861 firmware image names and Bluetooth UART routing need root access to /vendor/firmware_mnt.",
   "The catalog Ath12kWifi/QcaBluetooth implementations reference WCN7850, so the WCN7880 firmware/board-data pairing still needs an adaptation.",
+  "wlanmdsp.mbn and the persist MAC file are runtime-only; dump the persist partition in 9008 if they are needed.",
 ]
 next_action = [
   "Add the PCIe host node and platform clocks after layer 2 produces a menu",

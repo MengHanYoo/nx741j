@@ -239,3 +239,16 @@
 | Synaptics TCM 固件 | `/vendor/firmware/syna_firmware.img`，241,578 B，sha256 `f6a687255be5bf13dc0bb0f35d28569a1a62c9c20ad0635534732d2f3c24737b`，头部 `BOOT_CONFIG` + `#SYNA CFG$]` |
 | 接近/ALS 固件 | `/vendor/firmware_mnt/image/VI5300-M40_G10_R03_V1.18_20231102.bin` |
 | 提取方式 | 9008 dump `super_a` → 解析 liblp → 截取 `vendor_a`（EROFS，偏移扇区 12935168）→ mount 后复制 |
+
+## Wi-Fi/BT 固件布局（vendor EROFS 提取，69363db）
+
+| 路径 | 说明 |
+|---|---|
+| `/vendor/firmware/wlan/qca_cld/peach_v2/WCNSS_qcom_cfg.ini` | 实际文件在 `/vendor/etc/wifi/peach_v2/`，固件目录下是绝对符号链接 |
+| `/vendor/etc/wifi/peach_v2/WCNSS_qcom_cfg.ini` | ZTE 定制的 WLAN 配置（已提取，含 `gEnableLpassSupport` 等） |
+| `/vendor/firmware/wlan/qca_cld/peach_v2/wlan_mac.bin` | 符号链接到 `/mnt/vendor/persist/peach_v2/wlan_mac.bin`（persist 分区，需 9008 dump persist 提取） |
+| `/vendor/firmware/wlanmdsp.otaupdate` | 符号链接到 `/data/vendor/firmware/wlanmdsp.mbn`（运行时生成，boot 镜像内无实体） |
+| `modem_a` `/IMAGE/PEACH/BDWLAN.E01…E49` | WLAN board data（72 个，125,420 B） |
+| `bluetooth_a` `/IMAGE/*.MBN` | BT 固件 BRAHMA/GANGES |
+
+即：MAC 固件 `wlanmdsp.mbn` 只在设备运行期存在，persist 里的 MAC 需单独 dump persist 分区。

@@ -87,6 +87,13 @@ dram_size = "0x140000000"
 owned_memory_size = "0x10000000"
 cpu_regs = "0,0x100"
 
+[userdata]
+# From the dumped LUN0 GPT (The device uses 4096-byte logical sectors):
+# userdata starts at LBA 4875048 with 243963091 sectors.
+first_lba = 4875048
+last_lba = 248838138
+lba_bytes = 4096
+
 [bootimg.image]
 # 必须是 TOML 整数：unixnu 的 verify() 直接用这些值做整数加法（字符串会 TypeError）。
 base = 0x80000000
