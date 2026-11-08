@@ -266,7 +266,11 @@ evidence = [
 [[area]]
 id = "storage"
 status = "planned"
-components = []
+components = [
+  "ShengUfs",
+  "VirtioMmioBlock",
+  "VerifiedRoot",
+]
 paths = ["board.toml", "docs/PORTING-RECORD.md"]
 inputs = [
   "UFS model KLUGG8NHKB-F0H1, vendor Samsung, revision 0500, boot LUN 4",
