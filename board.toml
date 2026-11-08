@@ -79,6 +79,13 @@ console = "auto"
 [payload.adt]
 chip_id = "207"
 unique_chip_id = "required"
+# 平台输入：SM8850 的 PSCI 走 SMC（dts sm8850.dtsi 的 /psci method = "smc"）。
+psci_method = "smc"
+# 加载器（efisp loader + Mu SEC）交给内核的连续 RAM 范围；取自板级 DTS memory 节点，
+# 与固件内存映射的一致性待内核启动后核对（docs/STEP6-PLATFORM.md 存疑项）。
+dram_size = "0x140000000"
+owned_memory_size = "0x10000000"
+cpu_regs = "0,0x100"
 
 [bootimg.image]
 # 必须是 TOML 整数：unixnu 的 verify() 直接用这些值做整数加法（字符串会 TypeError）。

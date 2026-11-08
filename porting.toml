@@ -150,6 +150,7 @@ next_action = [
 evidence = [
   { kind = "source", reference = "dts/board.dts", result = "CPU topology, mpidr and capacity values for both clusters" },
   { kind = "source", reference = "board.toml", result = "hardware.cpu section with MIDR, frequencies and cache layout" },
+  { kind = "source", reference = "docs/STEP6-PLATFORM.md", result = "STEP6-PLATFORM cpu: inputs from the compiled board DTS" },
 ]
 
 # ---------------------------------------------------------------------------
@@ -191,6 +192,7 @@ next_action = [
 evidence = [
   { kind = "source", reference = "docs/PORTING-RECORD.md", result = "Reserved region inventory and the layer 2 memory map notes" },
   { kind = "source", reference = "board.toml", result = "hardware.memory and hardware.reserved entries" },
+  { kind = "source", reference = "docs/STEP6-PLATFORM.md", result = "STEP6-PLATFORM memory: inputs from the compiled board DTS" },
 ]
 
 # ---------------------------------------------------------------------------
