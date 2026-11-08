@@ -36,6 +36,7 @@ findings = [
   "The arch profile's [kernel].archives lists component:SoftwareAES, so the board has to select that component or the archive plan aborts with 'component SoftwareAES is not selected'.",
   "A local sm8850 override in local.toml keeps the source unpinned and makes status report 'not reproducible'; the repository is mirrored into the host source cache and fetched through feeds.toml instead.",
   "The libpthread reference must match the 8796 kernel generation: 519.120.4 calls proc_get_jit_entitled, which 8796's pthread_callbacks_s does not define.",
+  "GitHub Actions are disabled for this repository: both workflows moved to .github/workflows-disabled (owner request); the record check no longer runs on pushes until they are restored.",
 ]
 completion = [
   "status --json resolves device, OS profile, configuration, module sources and output directory",
