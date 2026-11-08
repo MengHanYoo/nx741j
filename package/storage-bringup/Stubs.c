@@ -1,19 +1,17 @@
 // SPDX-License-Identifier: BSD-2-Clause-Patent
-// Link-time bring-up stubs for the source-built UFS adapter.
+// Bring-up anchors for the source-built UFS adapter.
 //
-// The ABI reference object (IOStorageFamily / IOBlockStorageDevice) is built by the
-// official audit step. These stubs satisfy only the remaining symbols of the sheng
-// storage stack (verified-root policy handoff and the optional board diagnostic) so a
-// bring-up kernel can link before the private storage-policy kit is available.
-// Runtime is gated: SourceStorage only starts with native-source-storage=1.
+// The real verification code comes from kits/VerifiedRoot (verified_root.c +
+// adapters/xnu_crypto.c). These definitions only anchor the owner key and the policy
+// table: no policy bundle is compiled in yet, verified_root_policy_count stays 0 and
+// verification fails closed. The optional board diagnostic is a no-op until its
+// component is built in.
 #include <stdint.h>
+
+#define VR_KEY_BYTES 395u
 
 void boot_progress_poll(void) {}
 
-void vr_open(void) {}
-void vr_verify_block(void) {}
-
-uint8_t vr_xnu_crypto[256];
-uint8_t verified_root_key[32];
+uint8_t verified_root_key[VR_KEY_BYTES];
 uint64_t verified_root_policy_count;
 void *verified_root_policies[16];
