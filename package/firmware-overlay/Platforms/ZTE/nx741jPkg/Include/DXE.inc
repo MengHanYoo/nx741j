@@ -114,6 +114,6 @@
 # V15 pruned: INF Binaries/nx741j/QcomPkg/Drivers/SPSSDxe/SPSSDxe.inf
 # V27 disabled: INF nx741jPkg/Drivers/TlmmProbeDxe/TlmmProbeDxe.inf
   INF UniXNUPkg/Driver/UniXNURamDiskDxe/UniXNURamDiskDxe.inf
-  INF nx741jPkg/Drivers/Nx741jKeysDxe/Nx741jKeysDxe.inf
+#   INF nx741jPkg/Drivers/Nx741jKeysDxe/Nx741jKeysDxe.inf
 # V41 disabled: INF SiliciumPkg/Drivers/KeypadDxe/KeypadDxe.inf
   INF DarwinBootPkg/Driver/DarwinBoot.inf

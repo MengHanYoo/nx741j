@@ -66,7 +66,8 @@ python3 scripts/porting-record.py check --device ../UniXNU-nx741j   # 14 areas
 | 项 | 说明 |
 |---|---|
 | OS patch series | `os:patches/xnu/series` 为空；iOS 16 所需的 63 条补丁全部在 arch profile，设备层无补丁 |
-| `[ipsw]` | 未配置，`unixnu ipsw` 不可用；用本地 kernelcache/trustcache 固定 |
-| `[firmware].preflight` | 空；板级 overlay 手动执行 |
-| 固件侧 V68 改动 | 在 UniXNU 框架检出内，尚未纳入设备仓库 |
+| `[ipsw]` | ✅ 已配置：Apple CDN URL、iPhone10,3/16.7.16/20H392、`d221ap`、chip `0x8015`、board 14；成员 sha256 已按本机 IPSW 实测（kernelcache `2d6a13d0…`、DeviceTree `889e8383…`、两个 trustcache `9cc478fe…`/`63e01c03…`）；`unixnu ipsw info` 验证通过 |
+| `[firmware].preflight` | ✅ 已生效：`kits/nx741j/firmware-preflight.py` 自动应用 overlay + vendored `UniXNUDxe.c`；`unixnu build firmware` rc 0（FD sha256 `f931527c…`，keys 驱动已移除） |
+| 固件侧 V68 改动 | ✅ 已入仓库：`package/upstream/UniXNUPkg/Driver/UniXNUDxe/UniXNUDxe.c`（直启兜底）+ overlay 中的 keys-disabled DSC/FDF/INC |
+| SoC pin | ✅ 已对齐：`feeds.toml` pin `5ffa7619c0ffd968e3b7295b4c65bb8505c0b992`，构建树克隆 reset 到同一提交（GitHub 私有仓库仍需你推送，但本机构建与 pin 一致） |
 | 运行资格 | `runtime_qualified/abi_qualified=false`，需实机启动 |

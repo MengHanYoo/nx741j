@@ -118,7 +118,7 @@ APRIORI DXE {
   INF MdeModulePkg/Universal/Console/ConPlatformDxe/ConPlatformDxe.inf
   INF MdeModulePkg/Universal/Console/ConSplitterDxe/ConSplitterDxe.inf
   INF MdeModulePkg/Universal/Console/GraphicsConsoleDxe/GraphicsConsoleDxe.inf
-  INF nx741jPkg/Drivers/Nx741jKeysDxe/Nx741jKeysDxe.inf
+#   INF nx741jPkg/Drivers/Nx741jKeysDxe/Nx741jKeysDxe.inf
 # V27 disabled: INF nx741jPkg/Drivers/TlmmProbeDxe/TlmmProbeDxe.inf
 # V23 disabled (probe removed): INF nx741jPkg/Drivers/TlmmProbeDxe/TlmmProbeDxe.inf
 
