@@ -236,6 +236,7 @@ evidence = [
   { kind = "source", reference = "board.toml", result = "hardware.storage LBAs, UFS model and payload size" },
   { kind = "source", reference = "docs/PORTING-RECORD.md", result = "GPT inventory and partition strategy" },
   { kind = "device", reference = "docs/STAGE2-CONFORMANCE.md", result = "Payload volume mounted from the initrd (Fat) without any UFS BlockIo", command = "boot the minimal FV and read the UNIXNURAMDISK/Fat lines", revision = "f2584c81ca5ddcf3c9e58a6d15b6866e85e11f85" },
+  { kind = "source", reference = "docs/STEP6-UFS.md", result = "UFS controller/PHY/GCC/SMMU checklist read from the device live DTB; ShengUfs SM8550 constants differ" },
 ]
 
 # ---------------------------------------------------------------------------
