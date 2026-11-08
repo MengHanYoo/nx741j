@@ -86,8 +86,32 @@ nx741j 还需为 iOS 16 profile 提供对应策略目录（`scripts/policies/ios
 
 **当前状态**：已回退组件选中（保持内核可构建），源码覆盖与记录保留。
 
-官方公开仓库只提供 `scripts/build-boot-progress.py`，它依赖 **私有 sheng 仓库**的
-`kits/sheng/BootProgress.c`、`BootFaultProbe.c`、`BootDiagExport.c`、`BootWatchdogPolicy.c`、
-`BootLatencyTrace.c`、`AdspFirmware.c`；`scripts/build-sheng-source-storage.py` 在上游返回 404。
-因此 nx741j 无法直接复用这套 ABI：需要为 iOS 16 自行实现 storage policy/VerifiedRoot 归档与
-boot-progress 符号，或取得官方私有仓库的对应源码。
+### 私有仓库检查结果（UniXNU-sheng.zip）
+
+| 内容 | 结果 |
+|---|---|
+| `package/BootProgress.c`、`BootFaultProbe.c`、`BootWatchdogPolicy.c`、`BootDiagExport.c`、`BootLatencyTrace.c`、`AdspFirmware.c` | ✅ 在 `package/`（不是脚本期望的 `kits/sheng/`），可复制后编译 |
+| `scripts/build-boot-progress.py` | ✅ 存在，但硬编码读取 `kits/sheng/*.c` |
+| `scripts/build-sheng-source-storage.py` | ❌ **zip 内没有**（公开仓库 404） |
+| `scripts/policies/` | 只有 `ipados-26.5.2-23F84`、`ipados-27.0.1-24A446`，**没有 iOS 16** |
+| `kits/sheng/` | ❌ 空（`kits` 为 submodule，zip 未包含） |
+| `patches/xnu-12377/source-storage-runtime.patch` | ✅ 存在，但目标为 xnu-12377，**无 xnu-8796 版本** |
+
+### 通用 ABI 路径尝试
+
+`scripts/audit-storage-interface.py` 期望 Apple 公开 Darwin 23 源码：
+
+- 已克隆 `apple-oss-distributions/IOStorageFamily` 并切到脚本要求的
+  `e45fbe30a7879e0b16e26dddb78538f1b00e0bff`；
+- 在组装树执行 `python3 scripts/audit-storage-interface.py`，参考对象
+  `IOBlockStorageDevice.cpp` 编译失败（15 处错误，`KALLOC_TYPE_DEFINE` 等宏与 xnu-8796 头文件不兼容）。
+
+结论：通用审计路径要求 **Darwin 23** 的 IOStorageFamily 与对应 XNU 头文件；本机是 xnu-8796
+（iOS 16 / Darwin 21），版本不匹配。
+
+### 解除阻塞所需输入（三选一）
+
+1. 官方 **iOS 16 的 storage policy 归档脚本**（`build-sheng-source-storage.py`）与
+   `scripts/policies/ios-16.7.16-20H392`；
+2. `source-storage-runtime.patch` 的 **xnu-8796 版本**（当前只有 xnu-12377）；
+3. 与 xnu-8796 匹配的公开 IOStorageFamily 源码版本（用于重新生成 `storage-abi` 审计与绑定）。
