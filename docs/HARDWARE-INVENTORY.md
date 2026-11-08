@@ -182,3 +182,23 @@
 | 存储 | UFS `KLUGG8NHKB`，boot device `soc/1d84000.ufshc`，PHY `1d80000.ufsphy_mem` | stock 记录 + `getprop ro.boot.boot_devices` |
 | 固件 | build `CP2A.260605.016`，baseband `EN_PACK-2.124266.53`，fingerprint `Xiaomi/nezha/nezha:17/...` | `adb shell getprop` |
 | SoC 序列 | `160370627`（`0x098EE0C3`，QFPROM） | `/sys/devices/soc0/serial_number` |
+
+## vendor 构建与固件输入（5d07caa）
+
+| 项 | 值 | 来源 |
+|---|---|---|
+| vendor build | `BQ2A.250705.001-BP2A.250605.031.A3` | `getprop ro.vendor.build.id` |
+| vendor fingerprint | `Xiaomi/mivendor/mivendor:16/...` | `getprop ro.vendor.build.fingerprint` |
+| Wi-Fi 配置 | `/vendor/etc/wifi/peach_v2/WCNSS_qcom_cfg.ini`（ZTE 定制注释） | `adb shell ls/head` |
+| Wi-Fi/BT 模块 | `cnss2.ko`、`icnss2.ko`、`wlan_firmware_service.ko`、`qbt_handler.ko`、`qti_btl.ko`、`lpass_bt_swr_dlkm.ko` | `/vendor/lib/modules` |
+| 显示校准 | `/vendor/etc/display/backlight_calib_*vtdr6130*`、`qdcm_calib_data_*` | `adb shell find /vendor/etc/display` |
+| 存储容量 | `dumpsys diskstats` 约 975,850,316 KiB（≈930 GiB 可用，1 TB 物料） | `adb shell dumpsys diskstats` |
+| 触摸/传感器节点 | `synaptics_tcm_touch`、`goodix_fp`、`vi530x` | `getevent -pl` |
+
+## 仍缺（root / 9008 才能取）
+
+| 项 | 原因 | 下一步 |
+|---|---|---|
+| UFS 具体型号字符串 | `/sys/block/*/device/model`、`/proc/partitions` 被 SELinux 拒绝 | 9008 下 `fh_loader --getstorageinfo` 或 root 读取 |
+| Synaptics TCM 固件与配置 | `/vendor/firmware_mnt`、`/odm` 无对应公开文件 | root 读 `/vendor/firmware_mnt/image` 或 vendor 分区 |
+| WCN7861 固件文件名/蓝牙 UART | `/vendor/firmware_mnt` 拒绝访问 | root 或 vendor 分区提取 |

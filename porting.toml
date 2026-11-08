@@ -274,6 +274,7 @@ inputs = [
   "boot_a is 96 MiB (100663296 bytes)",
   "Payload volume 64 MiB and the efisp / userdata fallbacks",
   "Boot device is soc/1d84000.ufshc with PHY 1d80000.ufsphy_mem; UFS part KLUGG8NHKB per the stock record.",
+  "dumpsys diskstats reports about 975,850,316 KiB usable (1 TB part); the exact UFS model string is hidden from the shell.",
 ]
 configuration = [
   "board.toml [hardware.storage] records the UFS identity and the partition LBAs",
@@ -298,6 +299,7 @@ limits = [
 ]
 next_action = [
   "Keep the payload-volume path for stage 2/3 verification and revisit UFS only for the root volume after stage 4 passes",
+  "Read the UFS model through fh_loader --getstorageinfo in 9008 (or root sysfs) and record it here.",
 ]
 evidence = [
   { kind = "source", reference = "board.toml", result = "hardware.storage LBAs, UFS model and payload size" },
@@ -319,6 +321,7 @@ inputs = [
   "UEFI GOP must be 1216x2688; the framebuffer region is 0xFC800000 / 0x2B00000",
   "ZTE private dimming commands (zte,mdss-dsi-dim-on-commands)",
   "Panel is bf375 with rm692h5 controller (msm_drm.dsi_display0=qcom,mdss_dsi_bf375_rm692h5_6p8_dev0_dsc_cmd in the stock DTB bootargs); GOP framebuffer is 1216x2688.",
+  "Vendor display calibration files include backlight_calib and qdcm_calib entries for the vtdr6130 Visionox panel; GOP framebuffer is 1216x2688.",
 ]
 configuration = [
   "board.toml [hardware.display] pins panel name, resolution and GOP geometry",
@@ -380,6 +383,7 @@ completion = [
 limits = [
   "No working UEFI input device: neither the vendor stack nor a board TLMM driver has produced SimpleTextInput on device",
   "No touch protocol driver exists for this panel yet",
+  "Synaptics TCM firmware/config is not exposed to the shell; read /vendor/firmware_mnt/image with root.",
 ]
 next_action = [
   "Boot V41 and read the KEYS: dump for the three pin blocks, then either hardcode the mapping or fix the MMU mapping for the TLMM window",
@@ -437,6 +441,7 @@ inputs = [
   "WCN7850 over PCIe (17cb:110e), PCIe SM registers at 0x1D07000",
   "No WLAN or BT driver exists in the firmware tree",
   "Wireless module is WCN7861 (ro.vendor.feature.board_wlan_bt_chip), PCI 0000:01:00.0; the catalog Ath12kWifi/QcaBluetooth implementations target WCN7850 and need a WCN7861 check.",
+  "Vendor build BQ2A.250705.001-BP2A.250605.031.A3; Wi-Fi config /vendor/etc/wifi/peach_v2/WCNSS_qcom_cfg.ini; modules cnss2/icnss2/wlan_firmware_service/qbt_handler/qti_btl.",
 ]
 configuration = [
   "board.toml [hardware.wireless] records the chip and the PCIe identity",
@@ -453,6 +458,7 @@ completion = [
 ]
 limits = [
   "Blocked behind the platform and PCIe host work; does not block the boot chain",
+  "WCN7861 firmware image names and Bluetooth UART routing need root access to /vendor/firmware_mnt.",
 ]
 next_action = [
   "Add the PCIe host node and platform clocks after layer 2 produces a menu",
