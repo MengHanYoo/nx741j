@@ -265,3 +265,12 @@
 
 `/vendor/firmware/wlan/qca_cld/peach_v2/wlan_mac.bin` 的符号链接目标
 `/mnt/vendor/persist/peach_v2/wlan_mac.bin` 在本机不存在，MAC 实际存放在根目录 `wifimac.dat`。
+
+## 保留内存与 IOMMU（实机 DTB）
+
+- `reserved-memory` 共 **51 段、合计 836.6 MiB**（含 `mpss 0x8aa00000+0xeb00000`、`dsm1 85 MiB`、
+  `splash 43 MiB`、`qdss 32 MiB`、`smem 2 MiB`、`ramoops 2 MiB` 等）；完整表见
+  [DTB-PARAMETERS.md](DTB-PARAMETERS.md#保留内存reserved-memory实机-dtb-共-51-段合计-8366-mib)。
+- IOMMU（`apps-smmu@15000000`）stream：UFS `0x60`、USB `0x40`、qcedev `0xc0/0xc1/0xc3`、
+  qpace `0x2020/0x2024/0x2028/0x202c`、coresight `0x4e0`；GPU 使用独立 `kgsl-smmu@3da0000`。
+- 板级 ID：`qcom,board-id = <0x08 0x00>`，`qcom,msm-id` 含 `0x294/0x295`（soc_id 660/661）。

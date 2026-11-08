@@ -79,3 +79,48 @@
 ## 编译验证
 
 `dts/nx741j-hw.dtsi` 由 `dts/nx741j.dts` 引入；`./unixnu payload` 的 dtc 步骤会编译它。
+
+## 保留内存（reserved-memory，实机 DTB 共 51 段、合计 836.6 MiB）
+
+| 节点 | 基址 | 大小 | 属性 | compatible |
+|---|---|---|---|---|
+| `mpss_region@8aa00000` | `0x8aa00000` | 235.0 MiB | no-map | - |
+| `lcp_dare_region` | `0x880000000` | 96.0 MiB | reusable | shared-dma-pool |
+| `dsm_partition_1_region@84a00000` | `0x84a00000` | 85.0 MiB | no-map | - |
+| `oem_vm_region@f7c00000` | `0xf7c00000` | 76.0 MiB | reusable | shared-dma-pool |
+| `adspslpi_region@a1400000` | `0xa1400000` | 70.0 MiB | no-map | - |
+| `trust_ui_vm_region@f3800000` | `0xf3800000` | 64.0 MiB | reusable | shared-dma-pool |
+| `splash_region` | `0xfc800000` | 43.0 MiB | reusable | - |
+| `qdss_apps_region@82800000` | `0x82800000` | 32.0 MiB | reusable | shared-dma-pool |
+| `cdsp_region@9b500000` | `0x9b500000` | 25.0 MiB | no-map | - |
+| `gunyah_hyp_region@80000000` | `0x80000000` | 14.0 MiB | no-map | - |
+| `dsm_partition_2_region@89f00000` | `0x89f00000` | 10.5 MiB | no-map | - |
+| `camera_region@99600000` | `0x99600000` | 8.0 MiB | no-map | - |
+| `camera_2_region@99e00000` | `0x99e00000` | 8.0 MiB | no-map | - |
+| `video_region@9a600000` | `0x9a600000` | 8.0 MiB | no-map | - |
+| `tz_merged_region@d8000000` | `0xd8000000` | 8.0 MiB | no-map | - |
+| `llcc_lpi_region@ff800000` | `0xff800000` | 8.0 MiB | no-map | - |
+| `cvp_region@9ae00000` | `0x9ae00000` | 7.0 MiB | no-map | - |
+| `soccp_region@a03d0000` | `0xa03d0000` | 5.0 MiB | no-map | - |
+| `hypervisor_extended_heap_region@80e00000` | `0x80e00000` | 4.0 MiB | no-map | - |
+| `cpucp_scandump_region@82000000` | `0x82000000` | 3.5 MiB | no-map | - |
+
+其余 31 段为 <1 MiB 的日志/共享区。完整列表由 `stock/dt/live_fdt.dtb` 反编译得到。
+
+## IOMMU stream（apps-smmu@15000000）
+
+| 设备 | stream / mask |
+|---|---|
+| UFS | `0x60` |
+| USB dwc3 | `0x40` |
+| qcedev | `0xc0`/`0xc1`/`0xc3` |
+| qpace | `0x2020`/`0x2024`/`0x2028`/`0x202c` |
+| coresight TMC | `0x4e0` |
+| GPU | 独立 `kgsl-smmu@3da0000`（`qcom,qsmmu-v500`） |
+
+## 板级 ID
+
+| 参数 | 值 |
+|---|---|
+| `qcom,board-id` | `<0x08 0x00>` |
+| `qcom,msm-id` | `0x294/0x295` 及 `0x1000294/0x1000295`（soc_id 660/661） |
