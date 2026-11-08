@@ -66,7 +66,67 @@
 板级输入：`syna_firmware.img`（`/vendor/firmware`，241,578 B，sha256 `f6a68725…`）；
 指纹 `goodix_fp`、接近/ALS `vi530x`（`VI5300-M40…bin`）。UEFI 按键另有 TLMM 映射阻塞。
 
-## 5. GPU / 6. 无线 / 6a. 基带 / 7. 音频与电源
+## 3. 显示（五要素）
+
+| 接口 | 内容 |
+|---|---|
+| 硬件 | `qcom,mdss_mdp@9800000`、DSI、面板 `bf375`+`rm692h5`（bootargs `msm_drm.dsi_display0=…`） |
+| 传输 | DSI 命令/视频模式（面板驱动未实现） |
+| 内存 | `splash_region 0xfc800000+0x2b00000`（43 MiB），GOP 1216×2688 |
+| OS | `GopFramebuffer`（UEFI 阶段）；XNU 显示驱动未实现 |
+| 构建 | 仅 `component:GopFramebuffer`；显示组件（DPU/DSI/backlight）未选 |
+
+状态：🟡 UEFI 出图 ✅，内核显示 ❌。
+
+## 4. 输入（五要素补充）
+
+| 接口 | 内容 |
+|---|---|
+| 硬件 | Synaptics TCM（SPI `0x1a80000`、reset GPIO 66、IRQ GPIO 158）；音量键 GPIO 101、对焦 179、快门 95（`gpio_keys` 节点） |
+| 传输 | SPI 10 MHz + TCM 报告协议（未实现） |
+| 内存 | 无 DMA 窗口 |
+| OS | `ShengHidInput` + `QcomGeniSpi`（均未选） |
+| 构建 | 需新建 Synaptics TCM 组件 |
+
+状态：❌ 驱动未写；keys 探针因 TLMM 只映射 64 KiB 已禁用。
+
+## 5. GPU（五要素）
+
+| 接口 | 内容 |
+|---|---|
+| 硬件 | `qcom,kgsl-3d0@3d00000`，`Adreno840v2`，chipid `0x44050a01`（gen8.2.1），IRQ 300/80 |
+| 传输 | GPU 命令队列（KGSL） |
+| 内存 | `gpu_microcode` 保留区、kgsl-smmu |
+| OS | 目录只有 Adreno740（A740），需新实现 |
+| 构建 | 未选任何 GPU 组件 |
+
+状态：❌。
+
+## 6. 网络（五要素）
+
+| 接口 | 内容 |
+|---|---|
+| 硬件 | WCN7880，PCIe `1c00000`（BAR `0x40200000`），cnss `0xb0000000` |
+| 传输 | PCIe + WLAN/BT 固件下载（MHI） |
+| 内存 | `cnss_wlan_region` 32 MiB DMA 池 |
+| OS | `Ath12kWifi`/`QcaBluetooth` 面向 WCN7850，需适配 |
+| 构建 | 未选 |
+
+状态：❌；固件/board data/MAC 已备。
+
+## 7. 音频/电源（五要素）
+
+| 接口 | 内容 |
+|---|---|
+| 硬件 | WSA884x codec（SoundWire `0x2170220/1`），LPASS/ADSP，PMIC PMK8850 |
+| 传输 | SoundWire + Slimbus/QMI |
+| 内存 | ADSP 保留区（实机 51 段之一） |
+| OS | `AudioProbe`/`AdspProbe`/`ShengPlatformPower` 未选 |
+| 构建 | 未选 |
+
+状态：❌。
+
+## 8. GPU / 无线 / 6a. 基带 / 7. 音频与电源
 
 | 顺序 | 已确认输入 | 状态 |
 |---|---|---|

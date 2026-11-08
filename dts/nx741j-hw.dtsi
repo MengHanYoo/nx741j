@@ -72,6 +72,40 @@
         status = "disabled";
     };
 
+    gpio_keys {
+        compatible = "gpio-keys";
+        label = "gpio-keys";
+        status = "disabled";
+
+        vol_up {
+            label = "volume_up";
+            gpios = <&tlmm 0x65 0x1>;
+            linux,input-type = <0x1>;
+            linux,code = <0x73>;
+            debounce-interval = <0xf>;
+        };
+        focus {
+            label = "focus_key";
+            gpios = <&tlmm 0xb3 0x1>;
+            linux,input-type = <0x1>;
+            linux,code = <0x210>;
+            debounce-interval = <0xf>;
+        };
+        shoot {
+            label = "shoot_key";
+            gpios = <&tlmm 0x5f 0x1>;
+            linux,input-type = <0x1>;
+            linux,code = <0xd4>;
+            debounce-interval = <0xf>;
+        };
+    };
+
+    sound {
+        compatible = "qcom,canoe-asoc-snd";
+        qcom,model = "canoe-mtp-wsa884x-snd-card";
+        status = "disabled";
+    };
+
     qcom,kgsl-3d0@3d00000 {
         compatible = "qcom,adreno-gpu-gen8-2-1";
         reg = <0x0 0x3d00000 0x0 0x40000
