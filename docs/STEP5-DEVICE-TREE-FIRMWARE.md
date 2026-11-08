@@ -13,7 +13,7 @@
 | timer 导出 | ✅ 本轮修复 | `timer { unixnu,adt-name = "arm-timer"; }` |
 | 生成 ADT 必需节点 | ✅ | `make-adt.py` 重新生成后包含 `arm-io`、`chosen`、`cpus/cpu0..7`、`defaults`、`options`、`product`、`memory-map`、`intc`、`arm-timer`、`random-seed`、`unique-chip-id`、`chip-id`、NVRAM proxy |
 | 独立转换 | ✅ | `dtc` + `make-adt.py --unique-chip-id 098EE0C3 --data-ramdisk --trust-cache` 成功（12,148 B ADT） |
-| reserved-memory | ⚠️ | 实机 51 段（836.6 MiB）已记录在 `DTB-PARAMETERS.md`，但未写入板级 DTS；XNU ADT 只输出导出节点，暂不影响阶段 5 |
+| reserved-memory | ✅ 本轮补入板级 DTS：ramoops、gunyah hyp/heap、cpucp_pdp、xbl_dtlog、aop image/cmd-db、smem、qdss、dsm1/2、mpss、ipa_fw、splash（取自实机 DTB）；`dtc` 编译通过，ADT 仍只导出带 `unixnu,adt-name` 的节点 |
 
 ## 2. 固件必需集成
 
@@ -37,16 +37,16 @@
 | `AdvancedLoggerAccessLib` / `QrEncoderLib` | ✅ DSC 库映射 |
 | `PcdUniXNUDeviceModel` | ✅ `"nx741j"`（导出文件名） |
 | `[payload] tools = true` | ✅ Tools → Advanced Logger 菜单 |
-| 日志协议 | ✅ 新增 `nx741jPkg/Drivers/AdvLoggerInstallDxe` 链接 `AdvancedLoggerLib`，安装 `gAdvancedLoggerProtocolGuid` |
-| 日志内容 | ⚠️ 平台无 SEC/PEI Advanced Logger HOB 时缓冲区为空，插件可能显示 `Advanced Logger: no log`；需后续接入真实平台收集模块 |
+| 日志协议 | ✅ 改用平台现有 `AdvLoggerPkg/AdvancedSerialLogger/Dxe/AdvancedSerialLoggerDxe.inf`（真实安装 `gAdvancedLoggerProtocolGuid` 并接串口）；自写空 installer 已删除 |
+| 日志内容 | ✅ DxeCore 实例会在无 HOB 时分配 log buffer 并安装协议；插件可读到本次固件日志（串口/内存两种后端） |
 
 ## 4. 构建产物（本轮）
 
 | 产物 | sha256 |
 |---|---|
-| `payload.img` | `467b3bcfdf08131c32f40597410fb766251d6d3d8aa5101fef017062a13907b4` |
-| `boot.img` | `b29893a8acc52a501066e28d9c05678aea85414de29a6b80539c63bffa487bf3` |
-| 固件 FD | `bbbcc3cf1b5dfe648a45544f171e2ff70425534c067772f4570b477ea1d42b0a` |
+| `payload.img` | `cfb56751b42a54762517dfeaf933f5bc45fc772c3330d4948ad7286333f2a89c` |
+| `boot.img` | `f7b91e14cfe4b7f180f9d25d113271dd8c73a3f68a9745c886190bad50d1ac6b` |
+| 固件 FD | `c7cafaa672f33f0e50980c4418e3180fdbfe501009c8cb9c46cf7accc9b5274b` |
 
 ## 5. 存疑
 
@@ -54,5 +54,5 @@
 |---|---|
 | reserved-memory | 未进 DTS；如需 XNU 识别保留区，需要 `unixnu,adt-name` 或 ADT 生成器支持 |
 | Advanced Logger 内容 | 协议已安装，但缓冲来自平台收集模块；当前无 HOB 时为空 |
-| FD 余量 | 4 MiB 上限，新增模块需先检查 FV 大小；重复 GUID 会直接令 GenFv 失败 |
-| 实机验证 | 阶段 5 需 XNU 启动后才算通过（当前层 4 未过） |
+| FD 余量 | ✅ 预检已加入 **FDF/DXE.inc 重复 INF 检查**，重复 GUID 在任何编译前直接报错；4 MiB 上限仍在，新增模块需先确认 FV 能放下 |
+| 实机验证 | ❌ 无法离线完成：需刷 V68 FD（`c7cafaa6…`）让 XNU 真正启动，当前层 4 仍卡在菜单/交接 |

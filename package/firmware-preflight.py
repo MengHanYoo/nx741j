@@ -49,4 +49,15 @@ if upstream.is_file() and target.parent.is_dir():
     shutil.copy2(upstream, target)
     print(f'preflight: vendored UniXNUDxe.c -> {target}')
 
+# Guard the FDF/DXE.inc duplicate that makes GenFv fail with "same file GUID".
+import collections
+fdf = uefi / 'Platforms/ZTE/nx741jPkg/nx741j.fdf'
+inc = uefi / 'Platforms/ZTE/nx741jPkg/Include/DXE.inc'
+if fdf.is_file() and inc.is_file():
+    lines = [l.strip() for l in (fdf.read_text() + inc.read_text()).splitlines()]
+    infs = [l.split('INF', 1)[1].strip() for l in lines if l.startswith('INF ')]
+    dup = [k for k, v in collections.Counter(infs).items() if v > 1]
+    if dup:
+        sys.exit('preflight: duplicate INF in FDF/DXE.inc: ' + ', '.join(dup))
+
 print(f'preflight: overlay {copied} file(s) -> {uefi}')

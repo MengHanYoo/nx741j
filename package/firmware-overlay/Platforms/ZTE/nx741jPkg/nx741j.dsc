@@ -109,7 +109,7 @@
   UniXNUPkg/Driver/UniXNUDxe/UniXNUDxe.inf
   UniXNUPkg/Driver/UniXNURamDiskDxe/UniXNURamDiskDxe.inf
   UniXNUPkg/Driver/AdvancedLogDxe/AdvancedLogDxe.inf
-  nx741jPkg/Drivers/AdvLoggerInstallDxe/AdvLoggerInstallDxe.inf
+  AdvLoggerPkg/AdvancedSerialLogger/Dxe/AdvancedSerialLoggerDxe.inf
   nx741jPkg/Drivers/LogDumpDxe/LogDumpDxe.inf
   DarwinBootPkg/Driver/DarwinBoot.inf
   #

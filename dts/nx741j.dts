@@ -57,3 +57,29 @@
 &intc {
     unixnu,adt-name = "intc";
 };
+
+/* Reserved regions copied from the stock FDT (DTB-PARAMETERS.md). The shared ADT
+ * generator exports only nodes with unixnu,adt-name, so these stay in the firmware DTB
+ * and document the memory map for the platform/drivers. */
+/ {
+    reserved-memory {
+        #address-cells = <2>;
+        #size-cells = <2>;
+        ranges;
+
+        ramoops@e2000000      { compatible = "ramoops"; reg = <0x0 0xe2000000 0x0 0x200000>; };
+        gunyah_hyp@80000000   { no-map; reg = <0x0 0x80000000 0x0 0xe00000>; };
+        hyp_heap@80e00000     { no-map; reg = <0x0 0x80e00000 0x0 0x400000>; };
+        cpucp_pdp@81200000    { no-map; reg = <0x0 0x81200000 0x0 0x200000>; };
+        xbl_dtlog@81a00000    { no-map; reg = <0x0 0x81a00000 0x0 0x60000>; };
+        aop_image@81c00000    { no-map; reg = <0x0 0x81c00000 0x0 0x60000>; };
+        aop_cmd_db@81c60000   { compatible = "qcom,cmd-db"; no-map; reg = <0x0 0x81c60000 0x0 0x20000>; };
+        smem@81d00000         { compatible = "qcom,smem"; no-map; reg = <0x0 0x81d00000 0x0 0x200000>; };
+        qdss@82800000         { compatible = "shared-dma-pool"; reg = <0x0 0x82800000 0x0 0x2000000>; };
+        dsm1@84a00000         { no-map; reg = <0x0 0x84a00000 0x0 0x5500000>; };
+        dsm2@89f00000         { no-map; reg = <0x0 0x89f00000 0x0 0xa80000>; };
+        mpss@8aa00000         { no-map; reg = <0x0 0x8aa00000 0x0 0xeb00000>; };
+        ipa_fw@99580000       { no-map; reg = <0x0 0x99580000 0x0 0x10000>; };
+        splash@fc800000       { reg = <0x0 0xfc800000 0x0 0x2b00000>; };
+    };
+};
