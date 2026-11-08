@@ -29,6 +29,17 @@ and the stage-4 handoff crash. Details: `docs/STAGE2-CONFORMANCE.md`, `docs/ANAL
 Per-area evidence, findings and remaining inputs live in [porting.toml](porting.toml); the long-form
 record is [docs/PORTING-RECORD.md](docs/PORTING-RECORD.md).
 
+## Local build (no GitHub Actions)
+
+```sh
+scripts/ci-local.sh            # defconfig → fetch → status → tree → record check
+                                # → kernel → payload → bootimg → package → firmware
+scripts/ci-local.sh --check    # resolve + assemble + record check only
+```
+
+The pipeline uses the local WSL UniXNU checkout (`UNIXNU=/path/to/UniXNU`, default `../UniXNU`).
+The repository deliberately has no `.github` workflows.
+
 ## Prerequisites
 
 - Linux (WSL2) root shell with 32 parallel jobs available.

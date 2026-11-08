@@ -55,9 +55,9 @@ CONFIG_XNU_SOURCE_MOCKFS=n
 ./unixnu status --json -D ../UniXNU-nx741j                # configured=true
 ./unixnu tree -D ../UniXNU-nx741j                         # rc 0
 python3 scripts/porting-record.py check --device ../UniXNU-nx741j   # 14 areas
-./unixnu kernel  → kernel.macho   sha256 4b7dd33ba4558d64b0ba1d264b3deb7cd3bec9a7edcfd19c1ac34a2060d0208c
-./unixnu payload → payload.img    sha256 ca19871c5ba147cbcc2323958e7a30223d5020849298376131ec900a75dc0b4b
-./unixnu bootimg → boot.img       sha256 c69bf61dc82b4adc1c232952d2d59f530e08c9c538c287debc1f8b75daf539f3
+./unixnu kernel  → kernel.macho   sha256 512157c10bc1c63b81c1d88106e411a82fc071c55f80c2a46b8609222599ebbe
+./unixnu payload → payload.img    sha256 fc12bdfaece7e8415fd059277a6d1e3445b005a0897a7644126876882ed54124
+./unixnu bootimg → boot.img       sha256 a480d7d8ec56ff76ea0f6047c9929c3795a37ca03985c6fd0f696bbe5d1ca206
 ./unixnu build package            # rc 0，输出 out/.../package/Build/Out
 ```
 
@@ -71,3 +71,16 @@ python3 scripts/porting-record.py check --device ../UniXNU-nx741j   # 14 areas
 | 固件侧 V68 改动 | ✅ 已入仓库：`package/upstream/UniXNUPkg/Driver/UniXNUDxe/UniXNUDxe.c`（直启兜底）+ overlay 中的 keys-disabled DSC/FDF/INC |
 | SoC pin | ✅ 已对齐：`feeds.toml` pin `5ffa7619c0ffd968e3b7295b4c65bb8505c0b992`，构建树克隆 reset 到同一提交（GitHub 私有仓库仍需你推送，但本机构建与 pin 一致） |
 | 运行资格 | `runtime_qualified/abi_qualified=false`，需实机启动 |
+
+## 7. 本地流水线（替代 GitHub Actions）
+
+```sh
+scripts/ci-local.sh            # 全流程：defconfig → fetch → status → tree → 记录检查
+                               #          → kernel → payload → bootimg → package → firmware
+scripts/ci-local.sh --check    # 仅解析、组装与记录检查
+UNIXNU=/path/to/UniXNU scripts/ci-local.sh   # 指定 UniXNU 检出
+```
+
+本轮完整跑通（rc 0）：kernel `512157c1…`、payload `fc12bdfa…`、boot `a480d7d8…`、
+FD `15e12f2c…`；`scripts/prelink-status.py` 输出 `runtime_qualified=false`（需实机启动，
+工具在硬件证据出现前保持 false，不允许伪造）。

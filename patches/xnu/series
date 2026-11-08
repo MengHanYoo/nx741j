@@ -1,1 +1,5 @@
-# Board patch paths, one per line in application order.
+# Device XNU patch series (one patch path per line, applied in order, # starts a comment).
+#
+# Intentionally empty: the xnu-8796 port needs no board-specific delta. The 63 patches that
+# make this XNU build for NX741J live in the ARM64 profile series (arch:patches/xnu/series)
+# and are shared by every device on this profile; SoC/OS series are empty as well.

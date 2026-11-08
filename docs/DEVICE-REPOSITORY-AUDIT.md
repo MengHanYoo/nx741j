@@ -18,7 +18,7 @@
 | `proprietary-files.txt` | ✅ | 10 项全部有实测 sha256 |
 | `package/` | ✅ | `firmware-overlay/`、`storage-bringup/`、`Kit.toml` |
 | `local.toml.example` | ✅ | 源码覆盖示例 |
-| `.github/workflows/*` | ⚠️ | 已按用户要求移到 `workflows-disabled/`；官方发布要求恢复 |
+| `.github/workflows/*` | ✅ 不使用 Actions | 仓库无 `.github`；完整流水线由 `scripts/ci-local.sh` 在本地 WSL 执行 |
 | `[ipsw]` | ✅ | URL/产品/版本/构建/设备类/chip/board + 成员 sha256 已配置 |
 | `[firmware].preflight` | ✅ | `kits/nx741j/firmware-preflight.py` 自动应用 overlay 与 V68 vendored 驱动 |
 
