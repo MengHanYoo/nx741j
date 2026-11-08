@@ -41,8 +41,6 @@ dsc = "Platforms/ZTE/nx741jPkg/nx741j.dsc"
 fd = "Build/nx741jPkg/{target}_CLANGPDB/FV/SILICIUM_UEFI.fd"
 packages = ["{uefi}", "{uefi}/Mu_Basecore", "{uefi}/Common/Mu", "{uefi}/Common/Mu_OEM_Sample", "{uefi}/Silicon/Qualcomm", "{uefi}/Silicon/Silicium", "{uefi}/Platforms/ZTE", "{tree}/package", "{tree}/drivers/DarwinBoot", "{edk2}"]
 
-preflight = ["scripts/apply-firmware-overlay.py"]
-
 [firmware.defines]
 DEVICE_MODEL = "NX741J"
 ENABLE_SECUREBOOT = "0"
