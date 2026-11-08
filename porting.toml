@@ -88,6 +88,7 @@ findings = [
   "UniXNURamDiskDxe publishes the loader initrd from the x0 entry-argument HOB: the device log shows 'initrd block device 0xDFF7000 size 0x4000000 Success' followed by 'Installed Fat filesystem'.",
   "BdsDxe warns 'Connect ConIn failed - Not Found' because the minimal FV has no input device; the official fallback_timeout path still boots the default entry.",
   "Booting the payload entry produces a black screen followed by ZTE MemoryDump Mode, i.e. the failure is before any kernel output; panic_screen was enabled without a visible panic.",
+  "board.toml changed in this range: [payload.adt] platform inputs and the trusted cache list are now explicit; the firmware layered behavior itself is unchanged.",
 ]
 completion = [
   "SILICIUM_UEFI.fd builds and contains UniXNU, DarwinBoot, the ramdisk block driver and the log exporter",
@@ -161,7 +162,12 @@ evidence = [
 id = "memory"
 status = "implemented"
 components = []
-paths = ["dts/board.dts", "board.toml", "docs/PORTING-RECORD.md"]
+paths = [
+  "dts/board.dts",
+  "board.toml",
+  "docs/PORTING-RECORD.md",
+  "dts/nx741j.dts",
+]
 inputs = [
   "DRAM base 0x80000000, SMEM 0x81D00000 / 0x200000 initialized by XBL (xbl_config_a)",
   "DXE heap 0xB00F0000 / 0x131A0000 and the FD window 0xFF300000 / 0x400000",
