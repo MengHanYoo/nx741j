@@ -467,7 +467,13 @@ evidence = [
 id = "packaging"
 status = "host-verified"
 components = ["XnuPrelink"]
-paths = ["scripts/package.sh", "board.toml", "docs/HANDOFF-2026-11-07.md"]
+paths = [
+  "scripts/package.sh",
+  "board.toml",
+  "docs/HANDOFF-2026-11-07.md",
+  ".github/workflows-disabled/package.yml",
+  ".github/workflows-disabled/porting-record.yml",
+]
 inputs = [
   "Self-built XNU kernel (8796.141.3) and the original kernelcache matching the profile pin (2ec297ba)",
   "Trust cache bundle from the IPSW, chip id 207 and a non-zero unique chip id",
@@ -489,8 +495,9 @@ procedure = [
 findings = [
   "unixnu build kernel exits 0 from a freshly cloned tree with all 63 patches applied: 856 compile records, eight archive builders, link and prelink.",
   "kernel.macho is 51,691,520 bytes and the prelink report lists 11 components with 23,833 bindings, but abi_qualified and runtime_qualified are both false, so it is an experimental candidate.",
-  'The bootimg values must be TOML integers; quoted hex strings fail in verify with a TypeError, and local.toml ramdisk="none" silently drops the payload.',
+  "The bootimg values must be TOML integers; quoted hex strings fail in verify with a TypeError, and local.toml ramdisk=\"none\" silently drops the payload.",
   "The 1.37 MB boot image written to boot_a reads back bit-identical, but the firmware volume it carries (db122c8a) did not reach the menu, while the earlier 2f8bc430 image did.",
+  "GitHub Actions are disabled for this repository: both workflows moved to .github/workflows-disabled (owner request), so the record check no longer runs on pushes until they are moved back.",
 ]
 completion = [
   "package.sh produces kernel.macho, payload.img, boot.img and package.manifest.json with matching hashes",
