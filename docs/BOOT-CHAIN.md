@@ -15,6 +15,8 @@
 
 ## 本机差异：第 1 阶段用 efisp 取代 BootShim
 
+> 路线、信任模型、3 MiB/4 MiB 硬约束与失败模式见 [EFISP-ROUTE-ANALYSIS.md](EFISP-ROUTE-ANALYSIS.md)。
+
 本机 ABL 拒绝我们打的 `boot.img`（历史上多次回退 fastboot / 触发 MemoryDump），因此实际引导路径是：
 
 ```
