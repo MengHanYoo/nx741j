@@ -64,7 +64,13 @@ evidence = [
 id = "firmware"
 status = "device-verified"
 components = ["DarwinBoot"]
-paths = ["board.toml", "proprietary-files.txt", "docs/FIRMWARE-DRIVERS.md", "docs/PORTING-RECORD.md"]
+paths = [
+  "board.toml",
+  "proprietary-files.txt",
+  "docs/FIRMWARE-DRIVERS.md",
+  "docs/PORTING-RECORD.md",
+  "package/firmware-overlay/**",
+]
 inputs = [
   "Stock backup ZTEToolBoxParBak_2026.10.24: XBL/ABL, tz, aop, modem, uefi_a and device build strings",
   "Firmware volume window 0xFF300000 / 0x400000 and DXE heap 0xB00F0000 / 0x131A0000",
