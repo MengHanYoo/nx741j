@@ -63,3 +63,25 @@ vendor_boot ramdisk 同时提供 `phy-qcom-ufs-qmp-v4-canoe.ko`、`ufs-qcom.ko`�
 - `dtc -I dtb -O dts stock/dt/live_fdt.dtb`（91 万字节，含 `ufshc@1d84000`、`ufsphy_mem@1d80000`、`apps-smmu@15000000`）；
 - 与 ShengUfs `GccUfs.h`（SM8550 常量）逐项对比见上表；
 - 设备仓库 revision `19bf93e87bfa0e3d61c4790dbaf6456c184bb7f7`。
+
+## 适配进展（ShengUfs 选中尝试）
+
+已完成的准备：
+
+- 从本机 `gcc-canoe.ko` 取得 canoe 分支偏移并生成 `ShengUfs-canoe` 本地覆盖（`GccUfs.h` 已改）；
+- `local.toml` 增加 `[[source]] kind="driver" name="ShengUfs" local="/opt/work/work-local/ShengUfs-canoe"`；
+- 曾临时选中 `ShengUfs` + `VirtioMmioBlock`（组件/archives/defconfig/kernel_args），`status` 解析通过。
+
+内核链接失败（缺设备仓库应当提供的 ABI 归档）：
+
+```
+__ZTV20IOBlockStorageDevice        (IOBlockStorageDevice vtable)
+_boot_progress_poll
+_vr_open / _vr_verify_block / _vr_xnu_crypto / _verified_root_key / _verified_root_policies / _verified_root_policy_count
+```
+
+对照官方 sheng 参考 `board.toml`，这些符号由设备仓库脚本提供：
+`build-sheng-source-storage.py`、`build-boot-progress.py`、`build-virtio-mmio-bindings.py`（RamBlock/VirtioMmioBlock）。
+nx741j 还需为 iOS 16 profile 提供对应策略目录（`scripts/policies/ios-16.7.16-20H392`）。
+
+**当前状态**：已回退组件选中（保持内核可构建），源码覆盖与记录保留；下一步是实现上述两个设备脚本后再选中。
