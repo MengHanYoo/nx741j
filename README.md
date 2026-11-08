@@ -16,9 +16,9 @@ port, so the iPadOS 17 / 10063 line is not a valid substitute.
 | Layer | State |
 |---|---|
 | 1 boot image / loader | ✅ efisp loader (phase 5) reads the payload and FD from `rawdump`, copies the FD to `0xFF300000` and enters SEC with the DT in `x0` |
-| 2 UEFI firmware | ✅ minimal 32-driver FV reaches BDS; `SEC: TLMM MMIO HOB` published; firmware log clean of the former HALIOMMU/DTBExtn/SCM asserts |
-| 3 UniXNU boot manager | ✅ menu shows the `NX741J` payload entry; the payload volume is published from the x0 DT (`initrd block device … Success`, `Installed Fat filesystem`) |
-| 4 DarwinBoot | ❌ the payload entry ends in a black screen and `ZTE MemoryDump Mode` before any kernel output; `panic_screen` produced no visible panic |
+| 2 UEFI firmware | ✅ minimal FV reaches BDS; `DarwinBoot.efi` dispatches through `APRIORI` before `BdsDxe` and installs the loader protocol (`loader v2 installed EL1`); vendor SCM/RFS notice is verbose only |
+| 3 UniXNU boot manager | ✅ menu shows the `NX741J` entry and `UNIXNU: Boot0000 registered`; the payload volume is published from the x0 DT (`initrd block device … Success`, `Installed Fat filesystem`) |
+| 4 DarwinBoot | ❌ after the menu countdown the machine enters `ZTE MemoryDump Mode`; `DARWINBOOT: Boot called` never appears, so UniXNU stops between the menu return and the loader call (`docs/OPEN-ITEMS.md` §2) |
 | 5 kernel | XNU 8796.141.3 links from this repository's series; prelink `runtime_qualified=false`, payload/boot-image regeneration reproducible |
 | 6 user land | not started |
 
@@ -76,7 +76,7 @@ Artifacts land in `out/nx741j/ios-16.7.16-20H392/nx741j/`: `kernel/kernel.macho`
 | `board.toml` | SoC/OS selection, components, kernel fragments and patch series, firmware, payload, boot image, packaging inputs |
 | `porting.toml` | maintainer and agent record: hardware inventory, firmware versions, component plan, per-layer status |
 | `configs/nx741j_defconfig` | `CONFIG_XNU_*` values (`y`/`n` to `XNU_*` for the kernel build) |
-| `dts/board.dts` | board device tree (`soc:dts` include path) |
+| `dts/nx741j.dts` | board device tree (`soc:dts` include path); `dts/board.dts` kept for the old name |
 | `patches/xnu/series` | board-level XNU patches, in application order |
 | `package/` | board packaging; becomes `kits/nx741j` in the build tree |
 | `proprietary-files.txt` | firmware file sources and hashes |

@@ -107,6 +107,7 @@ evidence = [
   { kind = "source", reference = "docs/PORTING-RECORD.md", result = "Section 18 DXE bring-up notes and memory map" },
   { kind = "device", reference = "docs/STAGE2-CONFORMANCE.md", result = "UniXNU menu with the NX741J entry; ramdisk block device and FAT mount in the firmware log", command = "flash FD to rawdump LBA 4760360 (LUN0) and efisp loader, boot, capture the panel log", revision = "f2584c81ca5ddcf3c9e58a6d15b6866e85e11f85" },
   { kind = "device", reference = "docs/ANALYSIS-EFISP-VENDORBOOT.md", result = "PmicDxeLa assert pm_rpmh.c:659 and the TzDxeLA/ScmDxeCompat identity", command = "flash V39c FD, boot, capture the DXE log", revision = "f2584c81ca5ddcf3c9e58a6d15b6866e85e11f85" },
+  { kind = "source", reference = "package/firmware-overlay/README.md", result = "Board DSC/FDF/APRIORI/DXE and drivers are applied by scripts/apply-firmware-overlay.py before ./unixnu build firmware" },
 ]
 
 # ---------------------------------------------------------------------------

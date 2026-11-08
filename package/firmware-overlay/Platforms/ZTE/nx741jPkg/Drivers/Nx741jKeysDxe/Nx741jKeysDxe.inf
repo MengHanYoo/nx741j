@@ -19,13 +19,8 @@
 [LibraryClasses]
   UefiDriverEntryPoint
   UefiBootServicesTableLib
-  UefiRuntimeServicesTableLib
   DxeServicesTableLib
-  MemoryAllocationLib
-  BaseMemoryLib
-  BaseLib
   DebugLib
-  PrintLib
 
 [Guids]
   gEfiGlobalVariableGuid

@@ -1,0 +1,25 @@
+## @file
+#  Dispatch-order probe used to bisect the stage-2 firmware crash.
+##
+
+[Defines]
+  INF_VERSION                    = 0x00010005
+  BASE_NAME                      = StopDxe
+  FILE_GUID                      = 7A1C3E52-9B4D-4F6A-8C21-5D3E7F1A2B44
+  MODULE_TYPE                    = DXE_DRIVER
+  VERSION_STRING                 = 1.0
+  ENTRY_POINT                    = StopDxeEntry
+
+[Sources]
+  StopDxe.c
+
+[Packages]
+  MdePkg/MdePkg.dec
+
+[LibraryClasses]
+  BaseLib
+  UefiBootServicesTableLib
+  UefiDriverEntryPoint
+
+[Depex]
+  TRUE

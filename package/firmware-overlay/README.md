@@ -1,28 +1,16 @@
-# Firmware overlay for the efisp loader work (2026-11-07)
+# nx741j firmware overlay
 
-`Binaries/` is a git submodule (`Project-Silicium/Device-Binaries`) and is ignored by the
-parent repository, so the `AndroidDxe` binary cannot travel inside a diff. Apply it first:
+`scripts/apply-firmware-overlay.py <uefi-tree>` copies this tree over the Mu-Silicium
+checkout before `./unixnu build firmware`. Paths mirror the Mu-Silicium layout, so a file
+here replaces the upstream one:
 
-```sh
-cp -r overlay/Binaries/nx741j/QcomPkg/Drivers/AndroidDxe \
-      <uefi-tree>/Binaries/nx741j/QcomPkg/Drivers/
-```
+- `Platforms/ZTE/nx741jPkg/` — DSC/FDF, the include lists, and the board drivers
+  (`LogDumpDxe`, `SmemStubDxe`, `StopDxe`, `Nx741jKeysDxe`, `TlmmPei`, `TlmmProbeDxe`).
+- `Silicon/Qualcomm/.../RfsProtection.c` — the SCM-missing notice is verbose (BDS keeps running).
+- `Silicon/Silicium/.../KeyCallback.c`, `.../Sec.c` — board boot-manager and SEC changes.
 
-Then apply the platform patch from the device repository root:
-
-```sh
-cd <uefi-tree>
-git apply <device-repo>/patches/firmware/2026-11-07-efisp-loader-platform.patch
-```
-
-The patch touches `Platforms/ZTE/nx741jPkg`:
-
-| File | Change |
-|---|---|
-| `Drivers/LogDumpDxe/{LogDumpDxe.c,LogDumpDxe.inf}` | new: frame-buffer capture to `rawdump` (LocateProtocol based) |
-| `Drivers/SmemStubDxe/{SmemStubDxe.c,SmemStubDxe.inf}` | capture code + `ConnectController` sweep |
-| `Include/DXE.inc`, `Include/APRIORI.inc` | `TzDxeLA` re-enabled, `AndroidDxe` added before `HALIOMMU` |
-| `nx741j.dsc`, `nx741j.fdf` | `LogDumpDxe` and `AndroidDxe` wired in |
-
-Resulting firmware volume: build with `./unixnu build firmware -D <device>`, then write the
-FD to `rawdump` + 64 MiB and the loader image to `efisp` (see `docs/ANALYSIS-EFISP-VENDORBOOT.md`).
+The important integration (reference/uefi-firmware): `DarwinBoot.inf` is dispatched through
+`Include/APRIORI.inc` before `BdsDxe`, because UniXNU looks up the loader protocol when the
+menu boots the `xnu` entry. `nx741j.fdf` no longer repeats it (the APRIORI list adds it to
+the volume) and drops the non-essential `RamManagerDxe`, `SmbiosDxe`, `SmBiosTableDxe` and
+`IortDtDxe` that only logged missing vendor protocols.
