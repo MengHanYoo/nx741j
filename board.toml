@@ -24,9 +24,8 @@ patch_series = ["arch:patches/xnu/series", "soc:patches/xnu/series", "os:patches
 kernel = "build/xnu/ios-obj/DEVELOPMENT_ARM64_BCM2837/mach.development.bcm2837"
 # 保留原始 kernelcache 中的组件树；匹配器再按依赖补全其余组件。
 roots = ["com.apple.driver.AppleARMPlatform", "com.apple.filesystems.apfs"]
-# 待定：本 kernelcache 中 AppleMobileFileIntegrity 早期初始化器的原始 VA。
-# profile 的 REQUIRED_EARLY_SECURITY_INIT 占位会让 emit_prelink 解析失败，故显式置空跳过。
-# 补上真实地址前，AMFI 不会执行早期初始化（见 docs/concepts/security.md）。
+# 本配置的 roots 不含 AppleMobileFileIntegrity，prelink 报告 early_security_initializers={}，
+# 因此显式置空以覆盖 profile 的 REQUIRED_EARLY_SECURITY_INIT 占位；接入 AMFI 时再填 identifier=address。
 early_security_init = ""
 # 注：原始 kernelcache 里的专有函数（如 _vfs_getvfs_with_vfsops）由 ag/ah 系列补丁在
 # 原生内核里补齐，因此不需要 --allow-missing（且它只对 MH_FILESET 输入有效，本 kernelcache 不是）。

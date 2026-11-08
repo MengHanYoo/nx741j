@@ -14,6 +14,7 @@
 | 目录核对 | 28 项逐条审计见 `COMPONENT-SELECTION.md` |
 | 本地覆盖 | `sm8850`（`local.toml`）、`ShengUfs-canoe`（已备，未选中） |
 | 待适配 | `ShengUfs` 需 storage ABI 归档；`ShengNovatekTouch` 不适用（实机 Synaptics TCM）；`Ath12kWifi/QcaBluetooth` 目标 WCN7850 与实机 WCN7880 不符 |
+| `ArmSmmu4K` | 故意不选：catalog 中为 embedded 阶段、无 build/outputs/依赖（仅硬件能力标记），选了不会产生归档或代码；SMMU 由预链接的 IODART/平台代码覆盖 |
 
 ## SoC 共享支持（soc-support）
 
@@ -33,7 +34,7 @@
 | 项 | 状态 |
 |---|---|
 | XNU commit | `1b191cb58250d0705d8a51287127505aa4bc0789`（`unixnu.lock`） |
-| 补丁顺序 | arch 63 条；soc/OS/device series 当前为空（文件存在） |
+| 补丁顺序 | arch 63 条；`soc/OS/device` series 文件存在但为空（官方允许空 series，按顺序保留） |
 | 4 KiB 页 | `build-xnu-4k-baseline.sh` + defconfig，内核按 4K 页构建 |
 | 构建 | `kernel.macho` 51,691,520 B，sha256 `d082e1f7f749567df3a75ef6e6cc60c27a4fa846a8532256735756d0665b195d` |
 
@@ -60,8 +61,8 @@
 
 | 项 | 说明 |
 |---|---|
-| `early_security_init` | ✅ 已显式置空：`board.toml [kernel.prelink] early_security_init = ""`；本配置未链接 AMFI/early-security 根，OS profile 的占位不再生效（预链接报告 `early_security_initializers = {}`） |
-| SoC pin 漂移 | 已定策略：`feeds.toml` 保持**已发布**的 `825a5304`；本地结构修复提交在 `5ffa761` 并已推到本地镜像，本机构建经 `local.toml` 直接使用工作副本。发布仓库时执行一次 `git -C UniXNU-sm8850-common push origin main` 即可对齐 |
+| `early_security_init` | ✅ 已显式置空且注释改为"非待定"：roots 不含 AMFI，预链接报告 `early_security_initializers = {}`；接入 AMFI 时再填 `identifier=address` |
+| SoC pin 漂移 | 已验证 GitHub 仓库需要认证（`ls-remote` 要求用户名，仓库私有/不存在），无法在本机推送。策略：`feeds.toml` 保持 `825a5304`，结构修复在本地 `5ffa761`（已推本地镜像），本机构建走 `local.toml`；公开前需你执行一次 `git push` 到该仓库 |
 | `runtime_qualified` / `abi_qualified` | 均 false：必须实机启动才能资格化；层 4 探针（V67）按你的要求暂缓，因此保持 ❌ 阻塞 |
 | SoC 配置片段 | 实机数据仍缺 GPU/显示/存储等共享资源，当前片段故意留空 |
 
