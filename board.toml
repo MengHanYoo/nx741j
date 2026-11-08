@@ -5,7 +5,7 @@ name = "nx741j"
 soc = "SM8850"
 soc_source = "sm8850"
 os_profile = "ios-16.7.16-20H392"
-description = "Nubia Z80 Ultra (NX741J), SM8850/alor"
+description = "Nubia Z80 Ultra (NX741J), SM8850 canoe (Kaanapali)"
 kit = "nx741j"
 
 [components]
@@ -32,7 +32,7 @@ early_security_init = ""
 # 原生内核里补齐，因此不需要 --allow-missing（且它只对 MH_FILESET 输入有效，本 kernelcache 不是）。
 
 [device_tree]
-source = "device:dts/board.dts"
+source = "device:dts/nx741j.dts"
 include_dirs = ["soc:dts"]
 
 [firmware]
@@ -40,6 +40,8 @@ config = "nx741j"
 dsc = "Platforms/ZTE/nx741jPkg/nx741j.dsc"
 fd = "Build/nx741jPkg/{target}_CLANGPDB/FV/SILICIUM_UEFI.fd"
 packages = ["{uefi}", "{uefi}/Mu_Basecore", "{uefi}/Common/Mu", "{uefi}/Common/Mu_OEM_Sample", "{uefi}/Silicon/Qualcomm", "{uefi}/Silicon/Silicium", "{uefi}/Platforms/ZTE", "{tree}/package", "{tree}/drivers/DarwinBoot", "{edk2}"]
+
+preflight = ["scripts/apply-firmware-overlay.py"]
 
 [firmware.defines]
 DEVICE_MODEL = "NX741J"

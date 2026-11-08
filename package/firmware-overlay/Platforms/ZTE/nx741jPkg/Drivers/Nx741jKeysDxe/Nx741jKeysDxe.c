@@ -70,37 +70,49 @@ STATIC KEY_DEVICE_PATH  mDevicePath = {
 STATIC UINT16  mScanCode[KEY_COUNT] = { SCAN_UP, SCAN_DOWN, 0 };
 
 
-STATIC BOOLEAN  mTlmmMapped = FALSE;
+STATIC BOOLEAN  mPinMapped[KEY_COUNT];
 
 STATIC
 BOOLEAN
-EnsureTlmmMapped (
-  VOID
+EnsureRangeMapped (
+  IN UINT64  Base,
+  IN UINT64  Length
   )
 {
   EFI_STATUS                     Status;
   EFI_GCD_MEMORY_SPACE_DESCRIPTOR Desc;
 
-  Status = gDS->GetMemorySpaceDescriptor ((EFI_PHYSICAL_ADDRESS)TLMM_BASE, &Desc);
+  ZeroMem (&Desc, sizeof (Desc));
+  Status = gDS->GetMemorySpaceDescriptor ((EFI_PHYSICAL_ADDRESS)Base, &Desc);
+  DEBUG ((
+    DEBUG_ERROR,
+    "KEYS: desc 0x%lx type=%u attr=0x%lx len=0x%lx (%r)\n",
+    Base,
+    Status == EFI_SUCCESS ? Desc.GcdMemoryType : 0xFF,
+    Status == EFI_SUCCESS ? Desc.Attributes : 0ULL,
+    Status == EFI_SUCCESS ? Desc.Length : 0ULL,
+    Status
+    ));
+
   if (EFI_ERROR (Status) || (Desc.GcdMemoryType == EfiGcdMemoryTypeNonExistent)) {
     Status = gDS->AddMemorySpace (
                      EfiGcdMemoryTypeMemoryMappedIo,
-                     (EFI_PHYSICAL_ADDRESS)TLMM_BASE,
-                     TLMM_SIZE,
+                     (EFI_PHYSICAL_ADDRESS)Base,
+                     Length,
                      EFI_MEMORY_UC
                      );
-    DEBUG ((DEBUG_ERROR, "KEYS: AddMemorySpace %r\n", Status));
-    if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "KEYS: AddMemorySpace 0x%lx %r\n", Base, Status));
+    if (EFI_ERROR (Status) && (Status != EFI_ACCESS_DENIED) && (Status != EFI_ALREADY_STARTED)) {
       return FALSE;
     }
   }
 
   Status = gDS->SetMemorySpaceAttributes (
-                   (EFI_PHYSICAL_ADDRESS)TLMM_BASE,
-                   TLMM_SIZE,
+                   (EFI_PHYSICAL_ADDRESS)Base,
+                   Length,
                    EFI_MEMORY_UC
                    );
-  DEBUG ((DEBUG_ERROR, "KEYS: SetMemorySpaceAttributes %r\n", Status));
+  DEBUG ((DEBUG_ERROR, "KEYS: SetAttributes 0x%lx %r\n", Base, Status));
   return !EFI_ERROR (Status);
 }
 
@@ -290,6 +302,12 @@ CalibrateKey (
   UINTN    BestBit;
   UINT32   Best;
   UINT32   Base = mKeyPin[Index] * 0x1000;
+
+  mPinMapped[Index] = EnsureRangeMapped (Base, 0x1000);
+  if (!mPinMapped[Index]) {
+    DEBUG ((DEBUG_ERROR, "KEYS: %S pin %u page not mapped, skipped\n", Name, mKeyPin[Index]));
+    return FALSE;
+  }
   DEBUG ((DEBUG_ERROR, "\r\nKEYS: %S: hold the key for 2 seconds, starting now...\r\n", Name));
 
   for (Reg = 0; Reg < KEY_REGS; Reg++) {
@@ -375,12 +393,8 @@ Nx741jKeysDxeEntry (
   LoadCalibration ();
 
   if (!mCal.Valid) {
-    mTlmmMapped = EnsureTlmmMapped ();
-    DEBUG ((DEBUG_ERROR, "KEYS: begin calibration (mapped=%u)\n", mTlmmMapped));
-    if (!mTlmmMapped) {
-      DEBUG ((DEBUG_ERROR, "KEYS: TLMM window not mappable, keys unavailable\n"));
-      mCal.Valid = 0;
-    } else {
+    DEBUG ((DEBUG_ERROR, "KEYS: begin calibration\n"));
+    {
     VolOk   = CalibrateKey (0, L"VOL+");
     FocusOk = CalibrateKey (1, L"FOCUS");
     ShootOk = CalibrateKey (2, L"SHOOT");
@@ -395,7 +409,7 @@ Nx741jKeysDxeEntry (
       DEBUG ((DEBUG_ERROR, "KEYS: SHOOT -> off 0x%x bit %u\n", mCal.Offset[2], mCal.Bit[2]));
       gBS->Stall (1 * 1000 * 1000);
       DEBUG ((DEBUG_ERROR, "KEYS: calibrated and saved\n"));
-      gBS->Stall (4 * 1000 * 1000);
+      gBS->Stall (1 * 1000 * 1000);
     } else {
       DEBUG ((DEBUG_ERROR, "KEYS: calibration failed, menu will use timeout\n"));
       gBS->Stall (3 * 1000 * 1000);

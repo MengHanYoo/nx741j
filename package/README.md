@@ -1,17 +1,17 @@
 # Board package (`kits/nx741j`)
 
 The build tree maps this directory to `kits/nx741j`; `board.toml` sets `kit = "nx741j"`.
-It carries board-level code that has no shared home:
 
-- EFI drivers and `Kit.toml` match rules used by the UniXNU boot manager on this board,
-- board device-tree overlays,
-- kext bundles and the OS ABI inputs they need,
-- board services that only exist for NX741J.
+## Contents
 
-Nothing here yet. The current bring-up keeps every board driver in the vendor UEFI tree
-(`uefi-nx741j`), so this package is intentionally empty; `.gitkeep` keeps it in Git. Fill it when the
-first board driver moves out of the firmware tree, and list the ownership paths in `porting.toml` under
-the matching area.
+- `firmware-overlay/` — board-level UEFI code that has no shared home, laid out exactly like the
+  `uefi-nx741j` tree (`Platforms/ZTE/nx741jPkg/Drivers/...`). `board.toml [firmware] preflight`
+  runs `scripts/apply-firmware-overlay.py`, which copies it into the UEFI tree before the build, so a
+  clean checkout reproduces the firmware.
+- Board device-tree overlays, kext bundles and `Kit.toml` match rules go here when they are needed.
 
-Do not put local build inputs, firmware blobs or generated trees here: local inputs go to the Git-ignored
-`local.toml` / `unixnu.local.toml`, firmware belongs to `proprietary-files.txt` and `.cache/firmware`.
+## Rules
+
+- Do not put local build inputs, firmware blobs or generated trees here: local inputs go to the
+  Git-ignored `local.toml` / `unixnu.local.toml`, firmware belongs to `proprietary-files.txt` and
+  `.cache/firmware`.
