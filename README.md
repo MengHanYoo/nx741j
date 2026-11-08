@@ -7,6 +7,10 @@ Target: **iOS 16.7.16 (20H392)**, XNU **8796.141.3**, arm64, 4 KiB pages. The OS
 [board.toml](board.toml) (`os_profile = "ios-16.7.16-20H392"`); it is the only IPSW available for this
 port, so the iPadOS 17 / 10063 line is not a valid substitute.
 
+## 本地开发
+
+本机路径与 SoC 本地检出写在 Git 忽略的 `local.toml` 中，步骤与验证命令见 [docs/LOCAL-DEVELOPMENT.md](docs/LOCAL-DEVELOPMENT.md)。
+
 ## Status
 
 | Layer | State |

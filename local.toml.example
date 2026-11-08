@@ -3,3 +3,12 @@
 [local]
 drivers = "~/Code/dev/drivers"
 kits = "~/Code/dev/kits"
+
+# Per-source overrides use the same form as feeds.toml; relative paths resolve from this
+# file's directory and ~ / environment variables are expanded before lookup.
+# This device keeps its SoC checkout next to the device repository.
+#
+# [[source]]
+# name = "sm8850"
+# kind = "soc"
+# local = "../UniXNU-sm8850-common"
