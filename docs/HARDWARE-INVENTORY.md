@@ -274,3 +274,18 @@
 - IOMMU（`apps-smmu@15000000`）stream：UFS `0x60`、USB `0x40`、qcedev `0xc0/0xc1/0xc3`、
   qpace `0x2020/0x2024/0x2028/0x202c`、coresight `0x4e0`；GPU 使用独立 `kgsl-smmu@3da0000`。
 - 板级 ID：`qcom,board-id = <0x08 0x00>`，`qcom,msm-id` 含 `0x294/0x295`（soc_id 660/661）。
+
+## 身份种子与 fuse 读取（2026-11-09，实机）
+
+| 项 | 值 |
+|---|---|
+| socinfo serial | `160370627` = `0x098EE0C3`（ADT 中 `c3 e0 8e 09` 一致） |
+| soc_id | `660`（SM8850） |
+| `ro.boot.unique_chip_id` | 空（bootloader 未导出） |
+| qfprom 实例 | `221c8000.qfprom/qfprom17`（NVMEM） |
+| qfprom cells | `cpr_gfx_rc@9dc,6`、`disp_qultiv_fuse@144,0`、`gpu_debug_bus_bin@73,1`、`gpu_speed_bin@142,3`、`ssip_config@148,0` |
+| 结论 | qfprom 可读但**无独立 chip-id/serial cell**；身份以 socinfo serial 为准 |
+
+读取条件：`adb root` 可用（adbd 以 root 运行，context `u:r:ksu:s0`），因此
+`/sys/devices/platform/soc/221c8000.qfprom/qfprom17/{nvmem,cells}` 可读；
+KernelSU 管理器的 shell su 不可用，`/data/adb/ksu/bin/su` 被 SELinux 拒绝。

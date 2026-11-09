@@ -88,6 +88,7 @@ findings = [
   "Ownership backfill: loader/test-fdt.sh belongs to this area (historical baseline check).",
   "Ownership backfill: local.toml.example belongs to this area (historical baseline check).",
   "Ownership backfill: patches/firmware/2026-11-07-efisp-loader-platform.patch belongs to this area (historical baseline check).",
+  "adb root works on the HyperOS 4.0 port (adbd root, context u:r:ksu:s0); the KernelSU shell su path /data/adb/ksu/bin/su is denied by SELinux.",
 ]
 completion = [
   "status --json resolves device, OS profile, configuration, module sources and output directory",
@@ -690,6 +691,7 @@ findings = [
   "The trust cache and the ADT identity are already enforced by the payload build; a mismatch fails the build rather than the device.",
   "early_security_init stays empty because the original AMFI initializer address in this kernelcache has not been identified, so the early initializer does not run.",
   "board.toml changed in this range: the platform ADT inputs (psci_method/dram_size/owned_memory_size/cpu_regs) and the payload trust cache list were made explicit; see docs/STEP6-PLATFORM.md.",
+  "adb root reads qfprom17 but it exposes only GPU/display/CPR/SSIP cells; no chip-id fuse cell exists, so socinfo serial 160370627 (0x098EE0C3, matching the ADT bytes) remains the identity source.",
 ]
 completion = [
   "Trust cache and ADT identity match the device and the kernel reaches the early security stage",
