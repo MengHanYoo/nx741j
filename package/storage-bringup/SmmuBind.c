@@ -2,20 +2,17 @@
 //
 // Board binding for the ArmSmmu4K kit (qsmmu-v500 at 0x15000000).
 //
-// Three stages, each one only runs when the previous one succeeded:
+// Stages, each gated so an untested block can never hang the boot:
 //
-//   map      ml_io_map() the SMMU registers and hand the live mapping to
-//            ArmSmmu4KBindMmio(). Read-only.
-//   probe    read ID0/ID1/ID2 through that mapping. Read-only, and the only
-//            step that runs by default.
-//   attach   build the stage-1 tables into a page-aligned pool, publish them,
-//            program a disabled context bank and attach UFS stream 0x60.
-//            Destructive: it needs the bank/slot lease, a fault handler and
-//            the vendor stream map, so it is gated behind the "smmu-attach"
-//            boot argument and stays off unless someone asks for it.
+//   build    stage-1 tables in a page-checked static pool (default on)
+//   probe    map the registers, read ID0/ID1/ID2/SCR0/sACR/SFSR and dump the
+//            live SMR/S2CR table, then record which slot and bank the
+//            firmware already gave UFS stream 0x60 (smmu-probe=1)
+//   attach   program that context bank and attach that slot (smmu-attach=1)
 //
-// NativeUfs.o calls boot_progress_poll() while it brings the controller up,
-// which is where the probe (and, with the boot argument, the attach) runs.
+// Register offsets are the ones the kit itself uses in ArmSmmu4KStreams.c and
+// ArmSmmu4KProgram.c: sCR0 0x0, sACR 0xC, ID0/1/2 0x20/0x24/0x28, SFSR 0x48,
+// SMR[n] 0x800+4n, S2CR[n] 0xC00+4n, CBAR[n] 0x8000+4n, CBA2R[n] 0x8800+4n.
 #include <stdint.h>
 
 #include <arm/caches_internal.h>
@@ -31,14 +28,27 @@
 #define BOARD_SMMU_POOL_PAGES    8u
 #define BOARD_SMMU_PAGE_BYTES    4096u
 #define BOARD_SMMU_UFS_SID       0x60u
-#define BOARD_SMMU_UFS_BANK      0u
-#define BOARD_SMMU_UFS_ASID      1u
 #define BOARD_SMMU_POLL_BUDGET   1000u
+#define BOARD_SMMU_MAX_SCAN      64u
+
+#define REG_SCR0                 0x0u
+#define REG_SACR                 0xCu
+#define REG_ID0                  0x20u
+#define REG_ID1                  0x24u
+#define REG_ID2                  0x28u
+#define REG_SFSR                 0x48u
+#define REG_SMR(n)               (0x800u + 4u * (n))
+#define REG_S2CR(n)              (0xC00u + 4u * (n))
+#define REG_CBAR(n)              (0x8000u + 4u * (n))
+#define REG_CBA2R(n)             (0x8800u + 4u * (n))
 
 typedef struct {
     int mapped, bound, probed, built, attached;
-    int map_status, bind_status, probe_status, build_status, program_status, attach_status;
-    uint32_t id0, id1, id2, scr0;
+    int probe_status, build_status, attach_status;
+    uint32_t scr0, sacr, sfsr, id0, id1, id2;
+    unsigned slots;
+    unsigned ufs_slot, ufs_bank;
+    int ufs_found;
     uint64_t pool_physical;
     ArmSmmu4KStatus last;
 } board_smmu_state_t;
@@ -52,6 +62,8 @@ static ArmSmmu4KMmio board_smmu_mmio;
 static ArmSmmu4KIo board_smmu_io;
 static board_smmu_state_t board_smmu;
 
+void board_smmu_status_dump(void);
+
 const board_smmu_state_t *board_smmu_status(void)
 {
     return &board_smmu;
@@ -62,30 +74,82 @@ const ArmSmmu4KResult *board_smmu_last_result(void)
     return &board_smmu_result;
 }
 
+static uint32_t board_smmu_read32(unsigned offset)
+{
+    uint32_t value = 0xffffffffu;
+
+    if (board_smmu_io.read32(board_smmu_io.cookie, offset, &value) != 0) {
+        return 0xffffffffu;
+    }
+    return value;
+}
+
 static int board_smmu_map(void)
 {
     vm_offset_t mapping;
 
     if (board_smmu.mapped) {
-        return board_smmu.map_status;
+        return 0;
     }
     mapping = ml_io_map((vm_offset_t)BOARD_SMMU_BASE, (vm_size_t)BOARD_SMMU_BYTES);
     if (!mapping) {
-        board_smmu.map_status = -1;
         return -1;
     }
     board_smmu_mmio.mapping = (volatile unsigned char *)mapping;
     board_smmu_mmio.bytes = (size_t)BOARD_SMMU_BYTES;
     board_smmu.last = ArmSmmu4KBindMmio(&board_smmu_mmio, &board_smmu_io);
-    board_smmu.bind_status = (int)board_smmu.last;
     board_smmu.mapped = 1;
     board_smmu.bound = board_smmu.last == ArmSmmu4KSuccess;
-    board_smmu.map_status = board_smmu.bound ? 0 : -1;
-    return board_smmu.map_status;
+    return board_smmu.bound ? 0 : -1;
 }
 
-/* Read-only: the identification registers prove the block answers MMIO. */
-static int board_smmu_probe(void)
+/* Decode the live SMR/S2CR table and remember where SID 0x60 already goes.
+ * The firmware programs that route before we run, so reading it is how the
+ * bank and slot are learned without the vendor's table. */
+static void board_smmu_scan(void)
+{
+    int printed = 0;
+    unsigned exids = (board_smmu.id0 >> 8) & 1u;
+    unsigned mask_bits = exids ? 0xffffu : 0x7fffu;
+
+    board_smmu.slots = board_smmu.id0 & 0xffu;
+    if (board_smmu.slots > BOARD_SMMU_MAX_SCAN) {
+        board_smmu.slots = BOARD_SMMU_MAX_SCAN;
+    }
+    printf("SMMU: scr0 %08x id0 %08x id1 %08x id2 %08x sacr %08x sfsr %08x slots %u\n",
+           board_smmu.scr0, board_smmu.id0, board_smmu.id1, board_smmu.id2,
+           board_smmu.sacr, board_smmu.sfsr, board_smmu.slots);
+
+    for (unsigned slot = 0; slot < board_smmu.slots; ++slot) {
+        uint32_t smr = board_smmu_read32(REG_SMR(slot));
+        uint32_t s2cr = board_smmu_read32(REG_S2CR(slot));
+        unsigned valid = exids ? ((s2cr >> 10) & 1u) : ((smr >> 31) & 1u);
+        unsigned type = (s2cr >> 16) & 3u;
+        unsigned sid = smr & 0xffffu;
+        unsigned mask = (smr >> 16) & mask_bits;
+        unsigned bank = s2cr & 0xffu;
+
+        if (valid && printed < 12) {
+            printf("SMMU: slot %u smr %08x s2cr %08x sid %03x mask %03x type %u bank %u\n",
+                   slot, smr, s2cr, sid, mask, type, bank);
+            ++printed;
+        }
+        if (sid == BOARD_SMMU_UFS_SID && type == 0 && valid) {
+            board_smmu.ufs_slot = slot;
+            board_smmu.ufs_bank = bank;
+            board_smmu.ufs_found = 1;
+        }
+    }
+    if (board_smmu.ufs_found) {
+        uint32_t cbar = board_smmu_read32(REG_CBAR(board_smmu.ufs_bank));
+        printf("SMMU: ufs sid %03x slot %u bank %u cbar %08x\n",
+               BOARD_SMMU_UFS_SID, board_smmu.ufs_slot, board_smmu.ufs_bank, cbar);
+    } else {
+        printf("SMMU: ufs sid %03x is not routed yet (fault or unset)\n", BOARD_SMMU_UFS_SID);
+    }
+}
+
+int board_smmu_probe(void)
 {
     if (board_smmu.probed) {
         return board_smmu.probe_status;
@@ -94,20 +158,18 @@ static int board_smmu_probe(void)
         board_smmu.probe_status = -1;
         return -1;
     }
-    if (board_smmu_io.read32(board_smmu_io.cookie, 0x0, &board_smmu.id0) ||
-        board_smmu_io.read32(board_smmu_io.cookie, 0x4, &board_smmu.id1) ||
-        board_smmu_io.read32(board_smmu_io.cookie, 0x8, &board_smmu.id2)) {
-        board_smmu.probe_status = -1;
-        return -1;
-    }
-    (void)board_smmu_io.read32(board_smmu_io.cookie, 0xc, &board_smmu.scr0);
+    board_smmu.scr0 = board_smmu_read32(REG_SCR0);
+    board_smmu.id0 = board_smmu_read32(REG_ID0);
+    board_smmu.id1 = board_smmu_read32(REG_ID1);
+    board_smmu.id2 = board_smmu_read32(REG_ID2);
+    board_smmu.sacr = board_smmu_read32(REG_SACR);
+    board_smmu.sfsr = board_smmu_read32(REG_SFSR);
+    board_smmu_scan();
     board_smmu.probed = 1;
     board_smmu.probe_status = 0;
     return 0;
 }
 
-/* The pool has to be physically contiguous: check every page with the same
- * translation the hardware will use. */
 static int board_smmu_pool_physical(void)
 {
     uint64_t first = ml_vtophys((vm_offset_t)board_smmu_tables);
@@ -126,11 +188,10 @@ static int board_smmu_pool_physical(void)
     return 0;
 }
 
-/* Build and publish the stage-1 tables for one DMA window. */
 int board_smmu_build_tables(uint64_t iova, uint64_t physical, uint64_t bytes)
 {
-    ArmSmmu4KConfig *config = &board_smmu_config;
     ArmSmmu4KRange range = {0};
+    ArmSmmu4KConfig *config = &board_smmu_config;
 
     if (board_smmu_pool_physical() != 0) {
         board_smmu.build_status = -1;
@@ -155,60 +216,68 @@ int board_smmu_build_tables(uint64_t iova, uint64_t physical, uint64_t bytes)
     if (board_smmu.last != ArmSmmu4KSuccess) {
         return -1;
     }
-    /* Publish the tables the device will walk. */
     FlushPoC_Dcache();
     __sync_synchronize();
     board_smmu.built = 1;
     return 0;
 }
 
-/* Destructive: program the UFS context bank and attach SID 0x60.
- * Requires the bank lease, a quiesced client and the vendor stream map, so it
- * only runs when "smmu-attach=1" is on the boot command line. */
+/* Destructive: program the discovered UFS bank and attach its slot.
+ * Needs smmu-attach=1, a clean global fault state and the lease/handler work
+ * described in docs/SMMU-BRINGUP.md. */
 int board_smmu_attach_ufs(void)
 {
     ArmSmmu4KContextConfig context = {0};
     ArmSmmu4KProgramResult program = {0};
     ArmSmmu4KStreamState state = {0};
     ArmSmmu4KStreamResult stream_result = {0};
-    ArmSmmu4KStream stream = {.slot = BOARD_SMMU_UFS_SID, .sid = BOARD_SMMU_UFS_SID};
+    ArmSmmu4KStream stream = {0};
+
     if (board_smmu.attached) {
         return board_smmu.attach_status;
     }
     if (!board_smmu_gate("smmu-attach")) {
-        board_smmu.attach_status = 1;   /* gated off */
+        board_smmu.attach_status = 1;
         return board_smmu.attach_status;
     }
     if (board_smmu_probe() != 0 || !board_smmu.built) {
         board_smmu.attach_status = -1;
         return -1;
     }
+    if (!board_smmu.ufs_found) {
+        printf("SMMU: refusing to attach, sid %03x is not routed\n", BOARD_SMMU_UFS_SID);
+        board_smmu.attach_status = -2;
+        return board_smmu.attach_status;
+    }
 
     context.lower = &board_smmu_config;
     context.lower_tables = &board_smmu_result;
     context.id0 = board_smmu.id0;
     context.id2 = board_smmu.id2;
-    context.asid = BOARD_SMMU_UFS_ASID;
+    context.asid = 1;
     context.coherent_walk = 1;
     context.stall_on_fault = 0;
     context.continue_after_fault = 0;
 
-    board_smmu.last = ArmSmmu4KProgramDisabledContext(&board_smmu_io, BOARD_SMMU_UFS_BANK,
+    stream.slot = board_smmu.ufs_slot;
+    stream.sid = BOARD_SMMU_UFS_SID;
+
+    board_smmu.last = ArmSmmu4KProgramDisabledContext(&board_smmu_io, board_smmu.ufs_bank,
                                                      &context, BOARD_SMMU_POLL_BUDGET, &program);
-    board_smmu.program_status = (int)board_smmu.last;
     if (board_smmu.last != ArmSmmu4KSuccess) {
-        board_smmu.attach_status = -2;
+        printf("SMMU: program bank %u failed %d\n", board_smmu.ufs_bank, (int)board_smmu.last);
+        board_smmu.attach_status = -3;
         return board_smmu.attach_status;
     }
     board_smmu.last = ArmSmmu4KAttachStreams(&board_smmu_io, &state, &stream, 1,
-                                            BOARD_SMMU_UFS_BANK, &context, &stream_result);
+                                            board_smmu.ufs_bank, &context, &stream_result);
+    printf("SMMU: attach sid %03x slot %u bank %u -> %d\n",
+           BOARD_SMMU_UFS_SID, board_smmu.ufs_slot, board_smmu.ufs_bank, (int)board_smmu.last);
     board_smmu.attach_status = (int)board_smmu.last;
     board_smmu.attached = board_smmu.last == ArmSmmu4KSuccess;
     return board_smmu.attach_status;
 }
 
-/* MMIO stays untouched unless the boot command line asks for it: an unclocked
- * block would make the first register read hang the machine. */
 static int board_smmu_gate(const char *argument)
 {
     char flag[16];
@@ -216,7 +285,6 @@ static int board_smmu_gate(const char *argument)
     return PE_parse_boot_argn(argument, flag, sizeof(flag)) && flag[0] == '1';
 }
 
-/* Bootstrap: build the tables once; touch MMIO only under "smmu-probe=1". */
 int board_smmu_self_check(void)
 {
     if (!board_smmu.built &&
