@@ -122,6 +122,19 @@ make-adt.py …      # /arm-io 内含 intc、arm-timer、ufshc
 免密 sudo；需要 root 以 `-D /mnt/e/default-workspace/z80u-collect/repos/UniXNU-nx741j`
 重跑一次。
 
+## 第 1–4 级的组件实况（2026-11-09）
+
+官方 drivers 页列出的实现与本仓库 catalog（`components.toml`，9 项已选）对不上，先把差距写清楚：
+
+| 级别 | 官方列的实现 | catalog 实况 | 结论 |
+|---|---|---|---|
+| 1 平台/内存 | ArmDTPlatform、ArmCpu、ArmSmmu4K、SoC DTSI | 前两者已选；**ArmSmmu4K 是 `kind = "kit"`、无 `build`/归档**；SoC DTSI 为 `UniXNU-sm8850-common` | ArmSmmu4K 不是可选项；缺口在设备树，已补 `apps-smmu@15000000`（`nx741j-hw.dtsi`） |
+| 2 存储/根卷 | ShengUfs、RamBlock、VirtioMmioBlock、VerifiedRoot | 三项已选，**RamBlock 未选**（`kind = "driver"`，`build-arm-driver.py` → `libRamBlock.a`） | 策略包已能生成/编入；运行时缺信封投递与 xnu-8796 补丁 |
+| 3 显示/亮度 | GopFramebuffer、DisplayTimingProbe、AppleARMBacklight、Geni2c | 只有 **GopFramebuffer**；其余三个**不在 catalog** | 亮度/时序只能自己写或等上游组件；显示驱动（DPU/DSI）需自建 |
+| 4 输入 | QcomGeniSpi、ShengNovatekTouch、ShengHidInput、ButtonProbe | QcomGeniSpi、ShengHidInput 存在；**ShengHidInput 依赖 ShengNovatekTouch**（本机是 Synaptics TCM）；**ButtonProbe 不在 catalog** | 触摸要新建 `SynapticsTcm` 组件，不能套 Novatek 通路 |
+
+因此第 3、4 级"按官方顺序操作"目前只能做到：DT 就绪 + 选已存在的组件；真正缺的是新驱动代码。
+
 ## 仍未实现的驱动（需要源码，不是配置）
 
 | 顺序 | 能力 | 现状 | 需要的输入 |
