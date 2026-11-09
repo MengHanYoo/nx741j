@@ -27,6 +27,20 @@ DEVICE_DIR=../UniXNU-nx741j
 期望：`sm8850` 的 `local` 为 `true`；`unixnu.lock` 中该项标记为本地、不固定提交。
 提交到仓库的 `unixnu.lock` 保持 pin（本仓库当前未变），仅构建树副本带本地标记。
 
+## 本机资源分配（2026-11-09）
+
+| 项 | 值 | 位置 |
+|---|---|---|
+| 主机 | Ryzen 9 5950X（16 核 / 32 线程）、31.9 GB、电源方案"卓越性能" | Windows |
+| WSL2 可见 CPU | **32** | `%USERPROFILE%\.wslconfig` → `[wsl2] processors=32` |
+| WSL2 内存 / swap | 24 GB / 8 GB | 同上 |
+| 内核构建并行度 | **`-j 16`（8 核 16 线程）** | 构建树的 `unixnu.local.toml` → `jobs = 16` |
+
+验证：`nproc` = 32；构建时 `ps` 抓到 `make … -j16`，clang 进程约 30 个。改并行度只需改 `unixnu.local.toml` 的
+`jobs`（或命令行 `-j N`），改 VM 规格需编辑 `.wslconfig` 后 `wsl --shutdown`。
+
+ext4 构建树上的实测：`./unixnu kernel -j 16` 全量 **158 s**（drvfs 上 25 分钟未完成）。
+
 ## 可写构建树（本机 WSL，2026-11-09）
 
 `/opt/work/nx741j-build` 归 root，非 root 会话写不了 `out/`。复制一份到 E 盘即可构建：
