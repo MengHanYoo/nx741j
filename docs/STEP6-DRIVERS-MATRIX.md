@@ -9,7 +9,7 @@
 |---|---|---|---|---|
 | 1 | CPU/中断/定时器/RAM/DMA | ArmDTPlatform、ArmCpu、ArmSmmu4K | 🟡 部分 | 前两者已选并按 arch profile 归档；ArmSmmu4K 未选；平台输入见 `STEP6-PLATFORM.md` |
 | 2 | 存储/根卷/持久 Data | ShengUfs、RamBlock、VirtioMmioBlock、VerifiedRoot | 🟡 构建通过 | 已选中并链接（`libShengUfs.a` 含 ABI 参考对象 + 真实 VerifiedRoot）；UFS 节点已导出到 ADT（`ufshc`）；运行时仍 fail-closed（无策略包） |
-| 3 | 帧缓冲/刷新/亮度 | GopFramebuffer、DisplayTimingProbe、AppleARMBacklight、GeniI2c | 🟡 部分 | 面板 `bf375`+`rm692h5`、GOP 1216×2688 已确认；仅 `GopFramebuffer` 已选 |
+| 3 | 帧缓冲/刷新/亮度 | GopFramebuffer、DisplayTimingProbe、AppleARMBacklight、GeniI2c | 🟡 部分 | 面板 `bf375`+`rm692h5`、GOP 1216×2688 已确认；仅 `GopFramebuffer` 已选；MSM 显示控制器的 DT 已入库（`DISPLAY-DT.md`），驱动未实现 |
 | 4 | 触控与按键 | QcomGeniSpi、ShengHidInput、ButtonProbe（+自建 Synaptics TCM） | ⬜ 未开始 | 触控为 Synaptics TCM（`syna_firmware.img` 已提取），`ShengNovatekTouch` 不适用；UEFI 按键仍受 TLMM 映射阻塞 |
 | 5 | GPU/Metal | Adreno740、AdrenoMetal、Sm8550Platform、AdrenoFirmware、AdrenoPM4、AirNir | ⬜ 未开始 | 实机 DTB `Adreno840v2`（gen8-2-1，chipid `0x44050a01`）；目录 A740 需新实现 |
 | 6 | Wi-Fi/蓝牙/USB | Ath12kWifi、WifiProbe、WifiNet、MhiBoot、QcaBluetooth、QcomDwc3 | ⬜ 未开始 | 实机 WCN7880：BT 固件 BRAHMA/GANGES、PEACH BDWLAN、MAC `5C:7D:AE:43:D9:F8` 已取；组件按 WCN7850 编写需适配 |
@@ -102,6 +102,25 @@ make-adt.py …      # /arm-io 内含 intc、arm-timer、ufshc
 ```
 
 产物：payload `7ac7776f…`、boot `14596c1c…`、FD `c7cafaa6…`。
+
+## 本轮·显示设备树（2026-11-09 下午）
+
+第 3 级的前置输入从"面板参数"推进到"整条显示控制器的绑定"：
+
+| 问题 | 影响 | 修复 |
+|---|---|---|
+| 显示节点只提取到 `_tmp`，没有进仓库 | `&dsi0` 无定义，面板文件从未编译过 | 新增 `dts/nx741j-mdss.dtsi`（33 实节点 + 19 占位 provider），生成器 `scripts/mk-mdss-dtsi.py` 一并入库 |
+| phandle 替换器扫全文 `<0x…>` | 混进 LUT 表里的数值，且只映射到 56% | 改为属性白名单 + 按 provider `#*-cells` 走查；只改 `clocks/interconnects/power-domains/iommus/nvmem-cells/*-supply/*-gpio(s)/pinctrl-*/connectors` 等真引用 |
+| 面板文件 `nx741j-panel-bf375.dtsi` 缺 2 个闭合括号 | 一旦被 include 就是语法错误（此前没接线所以没暴露） | 补齐 `panel@0` 与 `&dsi0` 的收尾；文件接进 `nx741j.dts` |
+| 面板引用 `<0x33 …>`/`<0x7b4>`、`phandle = <0x7e8>` | 编译后是悬空数字 | 改成 `&tlmm`、`&dsi_panel_pwr_supply`，删掉 `phandle`；面板节点加 `panel` 标签供 `qcom,dsi-default-panel` 引用 |
+
+验证（与 `devicetree.py` 相同的 dtc 命令与 include 路径）：硬件 DTB 5,614 B → 56,798 B，
+无 error；`make-adt.py` 用旧/新 DTB 生成的 ADT 都是 12,972 B、内容一致（显示节点不带
+`unixnu,adt-name`，不进 `/arm-io`）。详见 `DISPLAY-DT.md`。
+
+`./unixnu payload` 未在本机跑完：构建树的 `out/`、`dts/` 归 root，本会话的 WSL 用户没有
+免密 sudo；需要 root 以 `-D /mnt/e/default-workspace/z80u-collect/repos/UniXNU-nx741j`
+重跑一次。
 
 ## 仍未实现的驱动（需要源码，不是配置）
 

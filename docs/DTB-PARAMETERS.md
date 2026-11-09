@@ -19,6 +19,13 @@
 | 面板 | `bf375` + DDIC `rm692h5`（bootargs `msm_drm.dsi_display0=...`） |
 | GOP | 1216×2688，32 bpp |
 | splash | `splash_region 0xfc800000+0x2b00000`（43 MB） |
+| 控制器 | `qcom,mdss_mdp@9800000`：mdp `0x9800000+0x1c8800`、vbif `0x9b16000+0x2008`、regdma `0x9b60000+0x7000`、ipcc `0x1100000+0x1000`、swfuse `0x9aa0000+0x13c`；IRQ 0x53；`qcom,sde-hw-version 0xd0000000` |
+| DSI | ctrl0 `0x9ac0000+0x1000`（IRQ 4）、ctrl1 `0x9ac3000+0x1000`（IRQ 5）；phy0 `0x9ac1500`、phy1 `0x9ac4500`（v7.2，兼作 PLL 时钟源） |
+| 面板供电 | `vddio` 1.8 V、`vdd` 1.25 V、`vci` 3.0 V（`dsi_panel_pwr_supply`） |
+| TE / 复位 | TE GPIO 86（`&tlmm 0x56`）；面板复位 GPIO 98（`&tlmm 0x62`） |
+| IOMMU | SDE unsec stream `0x800` mask `0x2`；sec stream `0x801` mask `0x0` |
+
+节点清单、生成规则与验证见 `DISPLAY-DT.md`。
 
 ## 触控（TCM）
 
