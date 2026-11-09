@@ -7,6 +7,27 @@
 - **硬件清单与缺失输入**：`docs/HARDWARE-INVENTORY.md`（每条注明来源；缺失项随测量划掉）。
 - 结构化移植记录：`porting.toml` 的 14 个 area（`./unixnu` 的 `porting-record.py check` 校验）。
 
+## 构建闸门：先 QEMU，后真机（2026-11-09 起，硬性）
+
+任何镜像在写 9008 之前必须先过 QEMU：
+
+```sh
+sudo ./scripts/build-and-test.sh ~/nx741j-build/UniXNU
+```
+
+它依次跑 `kernel → payload → firmware`，再把 payload 里的 kernel/ADT/trustcache 与 DEBUG 的
+`UniXNU.efi`、`DarwinBoot.efi` 组进 ESP，用 `qemu-system-aarch64 -M virt -m 16G -smp 8` 跑一遍，
+最后断言三个标记：
+
+| 标记 | 含义 |
+|---|---|
+| `UNIXNU: BootEntry` | 菜单真的调用了条目 |
+| `MARK #29` | DarwinBoot 走到 memory map（ADT、trustcache、256 MiB 窗口、15 段拷贝全过） |
+| `QEMU: EBS ok, entering the kernel` | `ExitBootServices` 成功并跳到内核入口 |
+
+任一缺失或出现 `Synchronous Exception` 时脚本返回非零 —— **这时不要刷机**。
+细节与不能模型的部分见 `docs/QEMU-MODEL.md`。
+
 ## OS 基准（2026-11-07 起，硬性）
 
 - **唯一基准镜像：iOS 16.7.16（20H392）**，profile `ios-16.7.16-20H392`；
