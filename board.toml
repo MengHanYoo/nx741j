@@ -62,7 +62,11 @@ fetch = ["KernelCache", "DeviceTree", "StaticTrustCache"]
 "Firmware/087-86698-044.dmg.trustcache" = "63e01c03b31e1532a5581a24865490673f0b5c297b0199fe0095637c6100ef4b"
 
 [device_tree]
-source = "device:dts/nx741j.dts"
+# 实机 DTB（911 KB / 5,332 节点）派生的 ADT 源：由 scripts/mk-adt-dts.py 生成，
+# 已就地补上 ADT 交接需要的四项归一（/memory 单段、/psci 提到根、/cpus 时基、
+# 删除 cpu-map/idle-states）并按板级身份覆盖 model/compatible。
+# 手写板级树 dts/nx741j.dts 仍保留，供固件 FdtBlob 与差异对照使用。
+source = "device:dts/nx741j-adt.dts"
 include_dirs = ["soc:dts"]
 
 [firmware]
@@ -88,7 +92,24 @@ volume = "NX741J"
 size_mib = 64
 loader = "firmware"
 title = "NX741J"
-kernel_args = ["-v", "serial=3", "keepsyms=1", "debug=0x144"]
+# 阶段 5 已越过控制台（根因是 BCM2837 的 PLATFORM_PANIC_LOG_PADDR，见
+# patches/xnu/0002-bcm2837-drop-panic-log-paddr.patch）。恢复真实面板帧缓冲：
+# 彩带在 MMU 关闭时写物理地址 0xFC800000，内核在 initialize_screen 里自己映射。
+# kextlog=0xffff：让 OSKext 把"正在启动哪个 kext"打到控制台（屏幕上能看见），
+# 用来定位 loadSecurityExtensions 里第一个失败的 Apple kext。
+kernel_args = ["-v", "serial=3", "keepsyms=1", "debug=0x144", "kextlog=0xffff"]
+# 阶段 5 二分探针：内核入口后 delay 秒复位（复位点在 FUNCTION 调 SYMBOL 之后）。
+# 阶段 5 二分探针：内核入口后 delay 秒复位（复位点在 FUNCTION 调 SYMBOL 之后）。
+# 阶段 5 二分探针：内核入口后 delay 秒复位（复位点在 FUNCTION 调 SYMBOL 之后）。
+# 阶段 5 二分探针：内核入口后 delay 秒复位（复位点在 FUNCTION 调 SYMBOL 之后）。
+# 阶段 5 二分探针：内核入口后 delay 秒复位（复位点在 FUNCTION 调 SYMBOL 之后）。
+# 阶段 5 二分探针：内核入口后 delay 秒复位（复位点在 FUNCTION 调 SYMBOL 之后）。
+# 阶段 5 二分探针：内核入口后 delay 秒复位（复位点在 FUNCTION 调 SYMBOL 之后）。
+# panic 屏和 stage-4 复位代码洞放不下（0xa1f vs 剩余 0x970），二分阶段先关掉；
+# 彩带仍随探针注入（stage 1/2 与复位洞穴是分开的）。
+# 阶段 5 二分探针：内核入口后 delay 秒复位（复位点在 FUNCTION 调 SYMBOL 之后）。
+# machine_startup 不返回，所以复位点放在调用之前：看到复位 = 已经走到 IOKit 门口。
+panic_screen = true
 timeout = 5
 rotate = 0
 fallback_timeout = 10
@@ -96,10 +117,11 @@ connect_all = true
 # Tools 菜单是固件日志导出的入口（Tools → Advanced Logger → 二维码页），
 # 对应固件侧 AdvancedLogDxe 与 Advanced Logger 缓冲区。
 tools = true
-panic_screen = true
-# 来自 out/.../payload/payload.json（上一次 payload 构建记录）
-trust_cache_sha256 = ["63e01c03b31e1532a5581a24865490673f0b5c297b0199fe0095637c6100ef4b",
-                        "9cc478fe3525e2683b5b9ea1eea0851eaebebdab21d206556233400e59d2e361"]
+# 正式构建（无探针、panic_screen = true）用 scripts/probe-mode.py off 生成。
+# DarwinBoot 的 ValidTrustCaches 要的是扁平 bundle（u32 计数 + 偏移表 + 以 2 开头的
+# blob），而 IPSW 里是 DER/IM4P 容器：直接塞 IM4P 会在 [0l] tc in 之后被拒
+# （EFI_COMPROMISED_DATA）。用 scripts/mk-trustcache-bundle.py 转换后再作为输入。
+trust_cache_sha256 = ["29dcf050a9b35f91493a48a1344ef2199364f8c86e79000a46e833332eefae4f"]
 
 [payload.ui]
 title = "NX741J"

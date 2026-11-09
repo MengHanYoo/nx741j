@@ -71,7 +71,31 @@ ReadBootVideo (UINT64 Video[6])
   }
   if (Status == EFI_NOT_FOUND) { return EFI_SUCCESS; }
   if (EFI_ERROR (Status)) { return Status; }
-  return DarwinBootVideoFromGop (Gop, Video);
+  if ((Gop->Mode == NULL) || (Gop->Mode->Info == NULL)) { return EFI_COMPROMISED_DATA; }
+  // A GOP that only implements Blt has no linear framebuffer to hand over:
+  // the kernel gets no video (Video stays zeroed) and the diagnostic marks
+  // are drawn through Blt. Same outcome as a machine without a GOP.
+  if ((Gop->Mode->FrameBufferBase == 0) || (Gop->Mode->FrameBufferSize == 0)) {
+    Print (L"DARWINBOOT: GOP has no linear framebuffer; mark text goes through Blt, kernel video is zero\r\n");
+    return EFI_SUCCESS;
+  }
+  Status = DarwinBootVideoFromGop (Gop, Video);
+  // Say why a GOP was refused: EFI_UNSUPPORTED means the channel order and
+  // EFI_COMPROMISED_DATA means the mode itself, and the big-type mark only
+  // carries the status code.
+  if (EFI_ERROR (Status) && (Gop->Mode != NULL) && (Gop->Mode->Info != NULL)) {
+    Print (
+      L"DARWINBOOT: video refused %r: format %u %ux%u stride %u fb %lx size %lx\r\n",
+      Status,
+      (UINT32)Gop->Mode->Info->PixelFormat,
+      (UINT32)Gop->Mode->Info->HorizontalResolution,
+      (UINT32)Gop->Mode->Info->VerticalResolution,
+      (UINT32)Gop->Mode->Info->PixelsPerScanLine,
+      (UINT64)Gop->Mode->FrameBufferBase,
+      (UINT64)Gop->Mode->FrameBufferSize
+      );
+  }
+  return Status;
 }
 
 STATIC
@@ -461,7 +485,15 @@ STATIC UINT32 *mFbBase;
 STATIC UINT64  mFbWidth, mFbHeight, mFbStride;
 STATIC BOOLEAN mFbValid;
 STATIC BOOLEAN mBsGone;
+// GOP without a linear framebuffer (QEMU virtio-gpu under AAVMF reports
+// PixelBitMask and Base/Size 0): the marks go through Blt instead.
+STATIC EFI_GRAPHICS_OUTPUT_PROTOCOL *mBltGop;
 STATIC BOOLEAN mProbeWrite;
+STATIC BOOLEAN mScratchVideo;
+STATIC BOOLEAN mNoVideo;
+STATIC UINT64  mVideoBarBase;   // address the firmware can write for the green bar
+#define SCRATCH_ROW     2560u
+#define SCRATCH_HEIGHT  480u
 
 // QEMU-only witness: the PL011 UART at 0x09000000 is not boot-services based,
 // so it keeps reporting after ExitBootServices. Enabled by "qemu-mark=1" only.
@@ -476,11 +508,90 @@ QemuMark (CONST CHAR8 *Text)
   }
 }
 
+// Blt-only GOPs (QEMU virtio-gpu under AAVMF reports PixelBitMask and no
+// framebuffer) cannot be written through a pointer: render the line into a
+// buffer and hand it to Blt, the same call UniXNU's menu uses.
+STATIC
+VOID
+DiagDrawBlt (
+  IN EFI_GRAPHICS_OUTPUT_PROTOCOL *Gop,
+  IN CONST CHAR16 *Text,
+  IN UINTN Row
+  )
+{
+  UINTN  Scale = 4;
+  UINTN  Cell  = 6 * Scale;
+  UINTN  Line  = 14 * Scale;
+  UINTN  Width;
+  UINTN  Height;
+  UINTN  Chars;
+  UINTN  Cols;
+  UINTN  Rows;
+  UINTN  Used;
+  UINTN  Col;
+  UINTN  X;
+  UINTN  Y;
+  UINTN  Index;
+  UINTN  Gx;
+  UINTN  Gy;
+  UINTN  Dx;
+  UINTN  Dy;
+  UINT64 Glyph;
+  UINT64 Data;
+  UINT16 Ch;
+  EFI_GRAPHICS_OUTPUT_BLT_PIXEL *Buf;
+  EFI_GRAPHICS_OUTPUT_BLT_PIXEL *P;
+  EFI_GRAPHICS_OUTPUT_BLT_PIXEL Black;
+
+  if ((Gop == NULL) || (Gop->Blt == NULL) || (Gop->Mode == NULL) || (Gop->Mode->Info == NULL)) { return; }
+  Width  = Gop->Mode->Info->HorizontalResolution;
+  Height = Gop->Mode->Info->VerticalResolution;
+  if ((Width < Cell) || (Height < Line)) { return; }
+  for (Chars = 0; (Text[Chars] != 0) && (Chars < 128); Chars++) { }
+  if (Chars == 0) { return; }
+  Cols = Width / Cell;
+  Rows = (Chars + Cols - 1) / Cols;
+  Used = (Chars < Cols) ? Chars : Cols;
+  Y    = Height / 4 + Row * Line;
+  if (Y + Rows * Line > Height) { Y = (Rows * Line < Height) ? Height - Rows * Line : 0; }
+  Buf = AllocatePool (Used * Cell * Rows * Line * sizeof (*Buf));
+  if (Buf == NULL) { return; }
+  for (Index = 0; Index < Used * Cell * Rows * Line; Index++) {
+    Buf[Index].Blue = 0; Buf[Index].Green = 0; Buf[Index].Red = 0; Buf[Index].Reserved = 0xFF;
+  }
+  for (Index = 0; Index < Chars; Index++) {
+    Ch = Text[Index];
+    if ((Ch < 32) || (Ch > 126)) { continue; }
+    if ((Index / Cols) >= Rows) { break; }
+    Col = Index % Cols;
+    if (Col >= Used) { continue; }
+    X     = Col * Cell;
+    Glyph = mDiagFont[Ch - 32];
+    for (Gy = 0; Gy < 12; Gy++) {
+      Data = (Gy < 6) ? ((Glyph >> 32) >> (Gy * 5)) : ((Glyph & 0xFFFFFFFFULL) >> ((Gy - 6) * 5));
+      for (Gx = 0; Gx < 5; Gx++) {
+        if (((Data >> Gx) & 1) == 0) { continue; }
+        for (Dy = 0; Dy < Scale; Dy++) {
+          for (Dx = 0; Dx < Scale; Dx++) {
+            P = &Buf[((Index / Cols) * Line + Gy * Scale + Dy) * (Used * Cell) + X + Gx * Scale + Dx];
+            P->Blue = 0xFF; P->Green = 0xFF; P->Red = 0xFF; P->Reserved = 0xFF;
+          }
+        }
+      }
+    }
+  }
+  // Clear the whole row first: a mark is usually shorter than the previous one
+  // and its tail would stay visible next to the new text.
+  Black.Blue = 0; Black.Green = 0; Black.Red = 0; Black.Reserved = 0xFF;
+  Gop->Blt (Gop, &Black, EfiBltVideoFill, 0, 0, 0, Y, Width, Rows * Line, 0);
+  Gop->Blt (Gop, Buf, EfiBltBufferToVideo, 0, 0, 0, Y, Used * Cell, Rows * Line, 0);
+  FreePool (Buf);
+}
 STATIC
 VOID
 DiagDraw (CONST CHAR16 *Text, UINTN Row)
 {
-  EFI_GRAPHICS_OUTPUT_PROTOCOL *Gop;
+  EFI_GRAPHICS_OUTPUT_PROTOCOL *Gop = NULL;
   UINT64                       Video[6];
   UINTN                        Scale = 4, X = 0, Y, Index, Gx, Gy, Dx, Dy, Cell, Line;
   UINT32                       *Fb;
@@ -489,17 +600,29 @@ DiagDraw (CONST CHAR16 *Text, UINTN Row)
 
   // Cache the framebuffer once: after ExitBootServices the protocol is gone but
   // the pixels are still writable, and the last line has to stay readable.
-  if (!mFbValid) {
+  if (!mFbValid && (mBltGop == NULL)) {
     // After ExitBootServices gBS is dead: never dereference it again, or the
     // machine takes a synchronous exception at 0x0 (seen in QEMU without GOP).
     if (mBsGone) { return; }
-    if (EFI_ERROR (gBS->LocateProtocol (&gEfiGraphicsOutputProtocolGuid, NULL, (VOID **)&Gop)) ||
-        EFI_ERROR (DarwinBootVideoFromGop (Gop, Video))) { return; }
-    mFbBase = (UINT32 *)(UINTN)Video[0];
-    mFbWidth = Video[3];
-    mFbHeight = Video[4];
-    mFbStride = Video[2] / 4;
-    mFbValid = TRUE;
+    if (EFI_ERROR (gBS->LocateProtocol (&gEfiGraphicsOutputProtocolGuid, NULL, (VOID **)&Gop))) { return; }
+    if (!EFI_ERROR (DarwinBootVideoFromGop (Gop, Video)) && (Video[0] != 0)) {
+      mFbBase   = (UINT32 *)(UINTN)Video[0];
+      mFbWidth  = Video[3];
+      mFbHeight = Video[4];
+      mFbStride = Video[2] / 4;
+      mFbValid  = TRUE;
+    } else if ((Gop->Blt != NULL) && (Gop->Mode != NULL) && (Gop->Mode->Info != NULL)) {
+      mBltGop = Gop;
+    } else {
+      return;
+    }
+  }
+  if (mBltGop != NULL) {
+    // Blt is a boot-service call: the cached protocol must not be used after
+    // ExitBootServices, unlike the plain framebuffer.
+    if (mBsGone) { return; }
+    DiagDrawBlt (mBltGop, Text, Row);
+    return;
   }
   Fb = mFbBase;
   Video[0] = (UINT64)(UINTN)mFbBase;
@@ -774,6 +897,8 @@ Boot (
     }
   }
   mProbeWrite = (AsciiStrStr (CommandLine, "probe-write=1") != NULL);
+  mScratchVideo = (AsciiStrStr (CommandLine, "scratch-video=1") != NULL);
+  mNoVideo = (AsciiStrStr (CommandLine, "no-video=1") != NULL);
   Root = NULL;
   Image = NULL;
   Tree = NULL;
@@ -941,6 +1066,35 @@ Boot (
   Args->MemorySize = WindowSize;
   Args->MemorySizeActual = WindowSize;
   Args->TopOfKernelData = Address + Used;
+  if (mScratchVideo) {
+    // A framebuffer inside the window, addressed through the linear map: the
+    // kernel's video console writes it as a virtual address, so a raw physical
+    // address (what the GOP gives) would fault.  With scratch-video=1 the panel
+    // keeps whatever this loader drew and the kernel paints into RAM instead.
+    UINT64 Scratch = ALIGN_VALUE (Address + Used, EFI_PAGE_SIZE);
+    UINT64 Bytes   = (UINT64)SCRATCH_ROW * SCRATCH_HEIGHT;
+    if (Scratch + Bytes < Address + WindowSize) {
+      ZeroMem ((VOID *)(UINTN)Scratch, (UINTN)Bytes);
+      Video[0] = Kernel.Base + (Scratch - Address);
+      Video[1] = 1;
+      Video[2] = SCRATCH_ROW;
+      Video[3] = SCRATCH_ROW / 4;
+      Video[4] = SCRATCH_HEIGHT;
+      Video[5] = 32;
+      mVideoBarBase = Scratch;
+      Args->TopOfKernelData = Scratch + Bytes;
+      Print (L"DARWINBOOT: scratch video pa %lx va %lx %lux%lu\r\n",
+             Scratch, (UINT64)Video[0], (UINT64)Video[3], (UINT64)SCRATCH_HEIGHT);
+    } else {
+      Print (L"DARWINBOOT: scratch video does not fit\r\n");
+    }
+  }
+  if (mNoVideo) {
+    // Hand the kernel no video at all: initialize_screen then takes its
+    // "No video - forcing serial mode" path instead of mapping a framebuffer.
+    ZeroMem (Video, sizeof (Video));
+    Print (L"DARWINBOOT: video suppressed by no-video=1\r\n");
+  }
   CopyMem (Args->Video, Video, sizeof (Video));
   Args->DeviceTree = Kernel.Base + TreeAddress - Address;
   Args->DeviceTreeLength = (UINT32)TreeSize;
@@ -1039,7 +1193,10 @@ Boot (
       if (AsciiStrStr (CommandLine, "qemu-mark=1") != NULL) {
         QemuMark ("QEMU: EBS ok, entering the kernel\n");
       }
-      DarwinEnter (ArgsAddress, Address + Kernel.Entry - Kernel.Base, Address, WindowSize, Video[0], Video[2] * Video[4]);
+      // The green bar is drawn with the firmware's own page tables still active,
+      // so it must use an address the firmware can write: the physical base.
+      DarwinEnter (ArgsAddress, Address + Kernel.Entry - Kernel.Base, Address, WindowSize,
+                   mVideoBarBase != 0 ? mVideoBarBase : Video[0], Video[2] * Video[4]);
       CpuDeadLoop ();
     }
     Print (L"DARWINBOOT: exit boot services attempt %u -> %r\r\n", Attempt, Status);

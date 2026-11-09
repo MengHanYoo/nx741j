@@ -1,0 +1,35 @@
+diff --git a/osfmk/arm64/arm_vm_init.c b/osfmk/arm64/arm_vm_init.c
+index d89b0f1..77f6fa2 100644
+--- a/osfmk/arm64/arm_vm_init.c
++++ b/osfmk/arm64/arm_vm_init.c
+@@ -34,6 +34,7 @@
+ #include <kern/monotonic.h>
+ #include <mach/vm_types.h>
+ #include <mach/vm_param.h>
++#include <pexpert/pexpert.h>
+ #include <vm/vm_kern.h>
+ #include <vm/vm_page.h>
+ #include <vm/pmap.h>
+@@ -2246,6 +2247,22 @@ arm_vm_init(uint64_t memory_size, boot_args * args)
+ #endif
+ 	pmap_bootstrap(dynamic_memory_begin);
+ 
++	/*
++	 * UniXNU,NX741J: the video console dereferences boot_args->Video.v_baseAddr as a
++	 * virtual address, but the loader hands over the panel physical address. Map the
++	 * framebuffer at the base of the region reserved above for the dynamic tables
++	 * (it already includes the framebuffer size) and repoint both copies of the field.
++	 */
++	if (args->Video.v_baseAddr != 0) {
++		vm_offset_t fb_pa = (vm_offset_t)args->Video.v_baseAddr;
++		vm_size_t fb_size = round_page(args->Video.v_height * args->Video.v_rowBytes);
++
++		pmap_map_bd((vm_map_address_t)dynamic_memory_begin, fb_pa, fb_pa + fb_size,
++		    VM_PROT_READ | VM_PROT_WRITE);
++		args->Video.v_baseAddr = (uint64_t)dynamic_memory_begin;
++		PE_state.video.v_baseAddr = dynamic_memory_begin;
++	}
++
+ 	disable_preemption();
+ 
+ 	/*

@@ -58,6 +58,7 @@ RunXnu (
   UINTN                         KextCount;
 
   UniXNUProgress (35, 0);
+  Print (L"UNIXNU: RunXnu entered, entry '%s'\r\n", Entry->Title);
   Status = gBS->LocateProtocol (&gUniXNULoaderProtocolGuid, NULL, (VOID **)&Loader);
   if (EFI_ERROR (Status)) {
     UniXNULog ("xnu: no loader protocol installed; UniXNU does not provide one");
@@ -94,7 +95,9 @@ RunXnu (
   Request.KextCount      = KextCount;
   UniXNULog ("xnu: handing off %u staged kext(s) to loader", (UINT32)KextCount);
   UniXNUProgress (37, 0);
+  Print (L"UNIXNU: calling Loader->Boot (kernel %s, ramdisk %lu)\r\n", Request.KernelPath, (UINT64)Request.RamdiskSize);
   Status = Loader->Boot (Loader, &Request);
+  Print (L"UNIXNU: Loader->Boot returned %r\r\n", Status);
   UniXNUProgress (38, (UINT64)Status);
   UniXNUFreeKexts (Kexts, KextCount);
   return Status;
@@ -121,6 +124,7 @@ UniXNUBootEntry (
   VOID                       *FirmwareFdt;
 
   UniXNUProgress (32, 0);
+  Print (L"UNIXNU: BootEntry '%s' type %u\r\n", Entry->Title, (UINT32)Entry->Type);
   UniXNULog ("boot: entry '%a' (%s)", (Entry->Id != NULL) ? Entry->Id : "?", Entry->Title);
 
   if (Entry->KextConfigError) {

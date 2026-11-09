@@ -1,5 +1,14 @@
 # Device XNU patch series (one patch path per line, applied in order, # starts a comment).
 #
-# Intentionally empty: the xnu-8796 port needs no board-specific delta. The 63 patches that
-# make this XNU build for NX741J live in the ARM64 profile series (arch:patches/xnu/series)
-# and are shared by every device on this profile; SoC/OS series are empty as well.
+# 0002: BCM2837.h hardcodes PLATFORM_PANIC_LOG_PADDR = 0x3c0fc000, a Raspberry Pi
+# address that does not exist on NX741J. check_for_panic_log() maps it and reads
+# a magic word, which takes an external abort inside PE_create_console() before the
+# console exists. With the macro undefined the device tree path is used and returns
+# immediately (our ADT has no pram node).
+#
+# 0003: skip KLDBootstrap::loadSecurityExtensions(). AppleImage4 is in the security
+# extension list, its start() fails with "failed to get crypto algorithm: 2" and
+# panics, which blocks the boot before the root volume. AMFI's early_security_init
+# is not wired in this port yet, so the pass has nothing to do anyway.
+0002-bcm2837-drop-panic-log-paddr.patch
+0003-skip-security-extensions.patch

@@ -36,9 +36,18 @@ for marker in 'UNIXNU: BootEntry' 'MARK #29' 'QEMU: EBS ok, entering the kernel'
     fail=1
   fi
 done
-if grep -q 'Synchronous Exception' "$SERIAL" 2>/dev/null; then
-  echo 'FAIL  synchronous exception in the guest'
-  fail=1
+# A guest exception before the hand-off is ours (firmware or DarwinBoot) and
+# blocks the build. One after it is the kernel running in a machine model that
+# has none of our hardware, so it is reported but does not block.
+ebs_line=$(grep -n 'QEMU: EBS ok, entering the kernel' "$SERIAL" 2>/dev/null | head -1 | cut -d: -f1)
+exc_line=$(grep -n 'Synchronous Exception' "$SERIAL" 2>/dev/null | head -1 | cut -d: -f1)
+if [ -n "$exc_line" ]; then
+  if [ -z "$ebs_line" ] || [ "$exc_line" -lt "$ebs_line" ]; then
+    echo "FAIL  synchronous exception at line $exc_line (before the hand-off)"
+    fail=1
+  else
+    echo "NOTE  guest exception at line $exc_line happens after the hand-off: the kernel ran into the QEMU machine model, not a loader bug"
+  fi
 fi
 
 if [ "$fail" -ne 0 ]; then

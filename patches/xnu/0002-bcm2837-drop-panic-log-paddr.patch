@@ -1,0 +1,21 @@
+diff --git a/pexpert/pexpert/arm64/BCM2837.h b/pexpert/pexpert/arm64/BCM2837.h
+index d9f0723..8d2e81f 100644
+--- a/pexpert/pexpert/arm64/BCM2837.h
++++ b/pexpert/pexpert/arm64/BCM2837.h
+@@ -60,7 +60,15 @@
+ #define BCM2837_PUT32(addr, value) do { *((volatile uint32_t *) addr) = value; } while(0)
+ #define BCM2837_GET32(addr) *((volatile uint32_t *) addr)
+ 
+-#define PLATFORM_PANIC_LOG_PADDR        0x3c0fc000
++/*
++ * UniXNU,NX741J: 0x3c0fc000 is a BCM2837 address that does not exist on this
++ * board. check_for_panic_log() maps it and reads a magic word from it, which
++ * faults with an external abort before the console is ever created. Leaving
++ * the macro undefined selects the device tree path (pram +
++ * embedded-panic-log-size), which returns immediately when the ADT has no
++ * pram node.
++ */
++/* #define PLATFORM_PANIC_LOG_PADDR        0x3c0fc000 */
+ #define PLATFORM_PANIC_LOG_SIZE         16384        // 16kb
+ #endif /* ! ASSEMBLER */
+ 

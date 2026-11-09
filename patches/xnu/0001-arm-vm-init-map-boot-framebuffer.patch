@@ -1,0 +1,22 @@
+--- a/osfmk/arm64/arm_vm_init.c
++++ b/osfmk/arm64/arm_vm_init.c
+@@ -2246,8 +2246,18 @@ arm_vm_init(uint64_t memory_size, boot_args * args)
+ 	pmap_bootstrap(dynamic_memory_begin);
+ 
++	/*
++	 * UniXNU,NX741J: the video console writes through boot_args->Video.v_baseAddr
++	 * as if it were a virtual address. Only map it when the boot loader already
++	 * handed over a kernel-space address; a physical address (what DarwinBoot
++	 * puts here today) is left alone because mapping it as a VA is meaningless.
++	 */
++	if (args->Video.v_baseAddr >= VM_MIN_KERNEL_ADDRESS) {
++		pmap_map_bd((vm_map_address_t)args->Video.v_baseAddr,
++		    (vm_offset_t)args->Video.v_baseAddr,
++		    (vm_offset_t)(args->Video.v_baseAddr +
++		    round_page(args->Video.v_height * args->Video.v_rowBytes)),
++		    VM_PROT_READ | VM_PROT_WRITE);
++	}
++
+ 	disable_preemption();
+ 
+ 	/*

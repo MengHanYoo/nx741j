@@ -113,6 +113,10 @@
 # nx741jPkg/Drivers/LogDumpDxe/LogDumpDxe.inf
   DarwinBootPkg/Driver/DarwinBoot.inf
   #
+  # ACPI
+  #
+  MdeModulePkg/Universal/Acpi/AcpiTableDxe/AcpiTableDxe.inf
+  #
   # ACPI Tables
   #
   #nx741j/AcpiTables.inf

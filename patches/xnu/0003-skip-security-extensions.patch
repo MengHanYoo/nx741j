@@ -1,0 +1,22 @@
+diff --git a/libsa/bootstrap.cpp b/libsa/bootstrap.cpp
+index f0f770a..9bed9b0 100644
+--- a/libsa/bootstrap.cpp
++++ b/libsa/bootstrap.cpp
+@@ -504,6 +504,17 @@ finish:
+ void
+ KLDBootstrap::loadSecurityExtensions(void)
+ {
++	/*
++	 * UniXNU,NX741J: this port does not wire AMFI's early_security_init yet
++	 * (the prelink reports no early security initializers), but the security
++	 * extension list still contains AppleImage4.  Its start() looks up a crypto
++	 * algorithm that the software provider here does not expose and panics with
++	 * "failed to get crypto algorithm: 2" inside OSKext::start, which stops the
++	 * boot before the root volume is even considered.  Skip the whole pass until
++	 * the security stack is brought up properly; nothing else depends on it yet.
++	 */
++	return;
++	
+ 	OSSharedPtr<OSDictionary>         extensionsDict;
+ 	OSSharedPtr<OSCollectionIterator> keyIterator;
+ 	OSString             * bundleID       = NULL;// don't release

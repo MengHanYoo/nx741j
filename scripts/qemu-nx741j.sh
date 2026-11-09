@@ -56,7 +56,7 @@ id = "xnu"
 title = "NX741J (QEMU model)"
 type = "xnu"
 path = "Payloads/kernel.macho"
-args = "keepsyms=1 debug=0x144 -v serial=3 qemu-mark=1"
+args = "keepsyms=1 debug=0x144 -v serial=3 qemu-mark=1 scratch-video=1"
 CFG
 
 MNT=$(mktemp -d)
