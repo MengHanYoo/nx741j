@@ -87,7 +87,7 @@ READ_LOCK_STATUS   = TRUE
   INF UniXNUPkg/Application/UniXNU/UniXNU.inf
   INF UniXNUPkg/Driver/UniXNUDxe/UniXNUDxe.inf
   INF UniXNUPkg/Driver/AdvancedLogDxe/AdvancedLogDxe.inf
-INF nx741jPkg/Drivers/LogDumpDxe/LogDumpDxe.inf
+# INF nx741jPkg/Drivers/LogDumpDxe/LogDumpDxe.inf
 
   # RAM Manager
 # V60 disabled (non-essential, Not Found spam): INF SiliciumPkg/Drivers/RamManagerDxe/RamManagerDxe.inf
