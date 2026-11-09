@@ -22,6 +22,7 @@ paths = [
   "scripts/prelink-status.py",
   "scripts/audit-live-dtb.py",
   "scripts/check-bringup.py",
+  "scripts/qemu-nx741j.sh",
   "dts/nx741j-hw.dtsi",
   ".gitignore",
   "artifacts/nx741j-stage2-2026-11-08.zip",
