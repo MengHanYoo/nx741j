@@ -280,6 +280,7 @@ ROOT_LABELS = {
 ALIAS_LABELS = {
     '/soc/pinctrl@f000000': 'tlmm',
     '/soc/interrupt-controller@17000000': 'intc',
+    '/soc/apps-smmu@15000000': 'apps_smmu',
 }
 
 # The stock tree points qcom,dsi-default-panel at the nt37801 reference panel

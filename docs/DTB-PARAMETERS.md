@@ -114,7 +114,13 @@
 
 其余 31 段为 <1 MiB 的日志/共享区。完整列表由 `stock/dt/live_fdt.dtb` 反编译得到。
 
-## IOMMU stream（apps-smmu@15000000）
+## IOMMU（apps-smmu@15000000）
+
+节点已进 `dts/nx741j-hw.dtsi`（`status = "ok"`，`qcom,qsmmu-v500`、`#iommu-cells = <2>`、`#global-interrupts = <1>`，
+带 stock 的完整 `interrupts` 与 `qcom,actlr` 表）；显示片段的 `iommus` 通过 `&apps_smmu` 引用它。
+ArmSmmu4K 组件是 kit、无归档，尚未被任何驱动消费。
+
+### stream 分配
 
 | 设备 | stream / mask |
 |---|---|

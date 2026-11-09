@@ -44,6 +44,13 @@ cd /mnt/e/unixnu-build/UniXNU
   改完 `scripts/*.py` 要 `./unixnu tree`（或手工 cp）才会进构建；
 - 树内 `build/` 是真正的编译输出（`libShengUfs.a`、`storage-bringup/` 等）。
 
+复制到 drvfs（`/mnt/e`）后有两个坑，已经踩过：
+
+| 现象 | 原因 | 处理 |
+|---|---|---|
+| `build-corecrypto-14.py` 报 "The crypto reference must stay immutable" | drvfs 把所有文件报成 `0777`，git 认为 1798 个文件 mode 变了 | `git config --global core.fileMode false`（并对 `refer/corecrypto-2023` 单独设一次） |
+| 同脚本报 `Conflicting header: cc.h` | 复制的 `build/corecrypto-2023` 里 235 个软链指向 `/opt/...` 旧路径 | `rm -rf tree/build/corecrypto-2023` 让它重新生成 |
+
 ## 覆盖优先级（官方）
 
 1. `--local-module [KIND:]NAME=PATH`
