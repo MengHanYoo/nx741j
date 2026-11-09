@@ -78,3 +78,25 @@ kernel_args = ["-v", "serial=3", "native-source-storage=1", "native-ufs-root=1"]
 | 4 输入 | 非必需 | ⬜ 未实现 |
 
 把层 4 打通是当前唯一能让 iOS 起来的动作；驱动工作按上表排优先级即可。
+
+## 层 5 诊断（层 4 通过之后）
+
+1. **判定进入内核**：屏幕上出现 `DARWINBOOT: p15 entering the kernel at …` 之后才出现的画面/花屏/黑屏，
+   都说明控制权已经交给 XNU；此时 `DARWINBOOT` 的行不会再增加。
+2. **抓 panic**：payload 构建时已给内核打了 `--panic-screen --no-reset`（`patch-xnu-entry-probe.py`），
+   内核 panic 会直接把文本画在 framebuffer 上、不自动重启；拍屏或用 UEFI 串口抓。
+3. **内核参数**：当前 `keepsyms=1 debug=0x144 -v serial=3`。`-v` 会让 XNU 早期把日志画到屏幕上；
+   如果屏幕全黑且无 panic，说明卡在 console 初始化之前（PE 早期），这时看 green bar 是否出现在最顶部。
+4. **日志导出**：固件阶段的 `AdvancedLogDxe` 已在 FV 里（Depex 等待协议，不影响现有通道）；
+   需要更细的固件日志时按 `docs/LAYER4-FIXED.md` 的导出步骤抓。
+
+## 层 5 起来后再打开存储
+
+到那时再改 `unixnu.local.toml`：
+
+```toml
+kernel_args = ["-v", "serial=3", "native-source-storage=1", "native-ufs-root=1"]
+```
+
+然后重跑 `payload` + `bootimg`（boot args 进的是 payload，不是 FD）。在此之前加了也不会执行——
+source-storage 运行时补丁还没有 xnu-8796 版本，存储路径不会真的挂载根卷。
