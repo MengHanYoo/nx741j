@@ -9,7 +9,7 @@
 sudo ./scripts/qemu-nx741j.sh ~/nx741j-build/UniXNU 60      # 第二个参数是超时秒数
 ```
 
-脚本在 `out/qemu/` 下组一个 ESP，然后启动 `qemu-system-aarch64 -M virt -cpu cortex-a72 -m 6G -smp 8`：
+脚本在 `out/qemu/` 下组一个 ESP，然后启动 `qemu-system-aarch64 -M virt -cpu cortex-a72 -m 16G -smp 8`：
 
 | ESP 内容 | 来源 |
 |---|---|
@@ -25,7 +25,7 @@ sudo ./scripts/qemu-nx741j.sh ~/nx741j-build/UniXNU 60      # 第二个参数是
 | 参数 | 真机 | QEMU 模型 |
 |---|---|---|
 | CPU | 8（1+3+4 三簇） | `-smp 8`（同核数，拓扑不同） |
-| 内存 | DRAM 5 GiB @0x8C0000000 | `-m 6G`（同量级，地址不同） |
+| 内存 | DRAM 5 GiB @0x8C0000000 | `-m 16G`（留足余量，地址不同） |
 | 交接窗口 | `owned_memory_size = 256 MiB` | 同（ADT 里的 `darwinboot-memory-size`） |
 | payload | `kernel.macho` 49.4 MB + ADT 13 KB + trustcache 1.5 KB | **原样**从真机 payload 取 |
 | DarwinBoot | 真机同一份 DEBUG 二进制 | 同 |

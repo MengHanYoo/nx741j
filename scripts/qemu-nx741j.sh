@@ -6,7 +6,7 @@
 #
 # The ESP gets the DEBUG build of UniXNU.efi, the DarwinBoot driver as an
 # autoloaded kit, and the Payloads/ directory taken from payload.img.  The
-# machine is QEMU virt with 8 CPUs and 6 GiB so DarwinBoot can find its 256 MiB
+# machine is QEMU virt with 8 CPUs and 16 GiB so DarwinBoot can find its 256 MiB
 # contiguous window; the serial log is the test output.
 set -eu
 
@@ -73,7 +73,7 @@ echo "esp: $ESP"
 echo "firmware: $FW"
 set +e
 timeout "$TIMEOUT" qemu-system-aarch64 \
-  -M virt -cpu cortex-a72 -m 6G -smp 8 \
+  -M virt -cpu cortex-a72 -m 16G -smp 8 \
   -drive if=pflash,format=raw,readonly=on,file="$FW" \
   -drive format=raw,file=fat:rw:"$ESP" \
   -nographic -serial mon:stdio \
