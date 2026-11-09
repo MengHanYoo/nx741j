@@ -54,12 +54,12 @@ llvm-ar t <archive.a>; llvm-nm --defined-only <archive.a>
 
 ## 驱动接口定义（官方第 1 节）
 
-对**已选 9 个组件**按官方五类接口（硬件 / 传输 / 内存 / OS provider / 构建）登记；来源为 `components.toml` 字段、
-组件源码与本次构建产物。
+对**已选 9 个组件**按官方五类接口（硬件 / 传输 / 内存 / OS provider / 构建）登记；官方清单里的 `ArmSmmu4K`
+是 `kind = "kit"`、不能单独选中，也单列一行说明它由消费方编入。来源为 `components.toml` 字段、组件源码与本次构建产物。
 
 来源版本（`components.toml` 固定）：ArmDTPlatform `417ff95d`、ArmCpu `93a5030c`、ShengUfs `99d8bcd3`、
 VirtioMmioBlock `4e1013eb`、VerifiedRoot `974f043d`、SoftwareAES `4a45326d`、GopFramebuffer `e47c1b8d`、
-DarwinBoot `3c757340`、XnuPrelink `c645d76b`。
+DarwinBoot `3c757340`、XnuPrelink `c645d76b`、ArmSmmu4K（kit）`83969cd8`。
 
 | 组件 | 硬件 | 传输 | 内存 | OS | 构建 |
 |---|---|---|---|---|---|
@@ -68,6 +68,7 @@ DarwinBoot `3c757340`、XnuPrelink `c645d76b`。
 | `SoftwareAES` | 无独立 MMIO（走 IOCryptoAcceleratorFamily） | 同步 AES-CBC 调用 | 调用方缓冲 | `IOAESAccelerator` ABI 绑定 | `NativeAES.cpp` + bindings → `libSoftwareAES.a` |
 | `GopFramebuffer` | UEFI GOP 帧缓冲（1216×2688，32bpp） | 无 | 帧缓冲映射 | `IOService` 显示 provider | `NativeMobileDisplay.cpp` → `libGopFramebuffer.a` |
 | `DarwinBoot` | 无 MMIO；内存窗口由 boot_args 描述 | 文件读取 + Mach-O/ADT 校验 | `WINDOW_SIZE` 连续窗口 | UEFI driver，产出 `EFI_UNIXNU_LOADER_PROTOCOL` | `DarwinBoot.c` → FV 内 `DarwinBoot.efi` |
+| `ArmSmmu4K`（kit，**非可选**） | ARM MMU-500 / `qcom,qsmmu-v500`，`0x15000000+0x100000`，`#iommu-cells = <2>`、`#global-interrupts = <1>`、约 100 条 stream 中断 + `qcom,actlr`；stream 归属：UFS `0x60`、USB `0x40`、qcedev `0xc0–0xc3`、qpace `0x2020–0x202c`；节点由设备仓库提供（`nx741j-hw.dtsi` 的 `apps-smmu@15000000`，status ok） | 无请求队列：消费方把页表基址/stream 配置写入 STE（`qcom,use-3-lvl-tables` 三层表），硬件按 stream-id 完成翻译 | 页表由消费方按 4 KiB 页分配；`dma-coherent`；kit 不含缓冲分配 | kit 的翻译例程（`kits/ArmSmmu4K`）被消费组件静态编入内核，本身不是 IOKit 类，也没有自己的 provider | `kind = "kit"`：`build`/`outputs` 为空、没有归档，**由消费方的归档把它编进去**——`build-arm-driver.py` 对 ARM 驱动统一加 `-I kits/ArmSmmu4K`，但该 kit 目前没有被 fetch 进构建树（`tree/kits/` 只有 NativePrelink/VerifiedRoot/XnuPrelink/nx741j），也没有驱动 include 它，所以**当前没有消费方** |
 | `ShengUfs` | UFS HC `1d84000`（ufs_mem/ice/mcq_sqd/mcq_vs）、PHY `1d80000`、GCC `0x100000` 的 canoe 分支偏移（AHB `0x77028`、UNIPRO `0x7706c`、ICE `0x7707c`、PHY_AUX `0x770bc`、RX0/1 `0x77030`/`0x770d8`、TX0 `0x7702c`、AGGRE `0x770f0`）、SPI IRQ `0x109`、SMMU stream `0x60` | UFS UTP 请求队列 + MCQ（`mcq_sqd`/`mcq_vs`）+ doorbell | `dma-coherent`、`iommu-dma="fastmap"`、ICE 区、每次传输的 PRDT/缓冲 | `NativeUfsBlock : IOBlockStorageDevice`；基类布局由 `IOBlockStorageDevice-reference.o` 锚定（0x90） | `drivers/ShengUfs`（本地覆盖 `ShengUfs-canoe`）+ `package/storage-bringup` + `build-storage-bringup.py` → `build/sheng-ufs/libShengUfs.a`（`CONFIG_XNU_NATIVE_UFS`，force_load） |
 | `VirtioMmioBlock` | 无真实 MMIO：virtio-mmio 窗口由固件/宿主发布 | virtio 1.0 MMIO 寄存器 + virtqueue（desc/avail/used） | ring 与 buffer 由内核分配，缓存策略随平台 | `IOBlockStorageDevice` 家族（RAM/块设备后端） | `drivers/VirtioMmioBlock` + `build-virtio-mmio-bindings.py` → `build/native-virtio-block/` |
 | `VerifiedRoot` | 无 MMIO；贴在存储读取路径上逐个 4 KiB 块校验 | 无请求队列：`vr_open`/`vr_open_header`/`vr_verify_block` | 只读常驻受信 key（395 B）与签名信封（160+384+32N），哈希表按块索引 | 纯 C 内核库（`xnu_crypto.c` 接 XNU 的 SHA-256/RSA-3072），无 IOKit 类 | kit（无归档清单）→ `build-storage-bringup.py` 用内核编译记录编成 `verified_root.o`/`xnu_crypto.o` 与策略 `Policy.o`，并入 `libShengUfs.a`；信封由 `mk-verified-root-policy.py` 生成 |
