@@ -49,13 +49,16 @@ cd ~/nx741j-build/UniXNU
 | loader | efisp（LUN4 LBA 748894） | 仅在改 `loader/` 时需要 |
 | `boot.img` | 不写 | ABL 会拒绝；仅归档 |
 
+一次写完两段（同一个 9008 会话，先 payload 后 FD，自动校验哈希与尺寸）：
+
 ```powershell
-# 先 payload，再 FD
-powershell -File E:\default-workspace\z80u-collect\wsl\flash-boota-9008.ps1 `
-  -Img <payload.img> -Label rawdump -Lun 0 -StartSector 4743976 -PartitionBytes 536870912
-powershell -File E:\default-workspace\z80u-collect\wsl\flash-boota-9008.ps1 `
-  -Img <SILICIUM_UEFI.fd> -Label rawdump -Lun 0 -StartSector 4760360 -PartitionBytes 536870912
+powershell -File E:\default-workspace\z80u-collect\wsl\flash-rawdump-9008.ps1 `
+  -Payload E:\default-workspace\z80u-collect\_tmp\payload-v86.img `
+  -Fd      E:\default-workspace\z80u-collect\_tmp\fd-v86.bin
 ```
+
+加 `-DryRun` 只做尺寸/哈希检查与暂存、不碰设备（已实测：payload 16,384 扇区 @4743976、FD 1,024 扇区 @4760360）。
+默认期望的哈希就是 V86 那版（`a68ebc4e…` / `dea20e0d…`），不匹配会直接拒绝。
 
 首次会话需要 Sahara；写坏只能 9008 恢复 stock `efisp.img`（sha256 `4df183594a63af28…`）。
 
