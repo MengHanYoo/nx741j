@@ -145,10 +145,15 @@ def main():
     compile_c(ROOT / 'kits/VerifiedRoot/adapters/xnu_crypto.c', OUT / 'xnu_crypto.o')
 
     if smmu_kit.is_dir():
-        compile_c(smmu_kit / 'ArmSmmu4K.c', OUT / 'ArmSmmu4K.o', ['-I', str(smmu_kit)])
+        # the kit is a set of translation units, not one file: compile all of them
+        for source in sorted(smmu_kit.glob('*.c')):
+            if source.stem.lower().startswith(('test', 'audit_test')):
+                continue
+            compile_c(source, OUT / (source.stem + '.o'), ['-I', str(smmu_kit)])
+            smmu.append(OUT / (source.stem + '.o'))
         compile_c(stubs.parent / 'SmmuBind.c', OUT / 'SmmuBind.o', ['-I', str(smmu_kit)])
-        smmu = [OUT / 'ArmSmmu4K.o', OUT / 'SmmuBind.o']
-        print(f'== storage-bringup: ArmSmmu4K bound from {smmu_kit}')
+        smmu.append(OUT / 'SmmuBind.o')
+        print(f'== storage-bringup: ArmSmmu4K bound from {smmu_kit} ({len(smmu)} objects)')
     else:
         print(f'== storage-bringup: {smmu_kit} missing, SMMU binding skipped')
 
@@ -159,7 +164,7 @@ def main():
     # build without a policy cannot keep a stale Policy.o that defines the same
     # symbols as Stubs.o.
     for name in ('IOBlockStorageDevice-reference.o', 'verified_root.o', 'xnu_crypto.o', 'Stubs.o', 'Policy.o',
-                 'ArmSmmu4K.o', 'SmmuBind.o'):
+                 *[member.name for member in smmu]):
         subprocess.run(['llvm-ar', 'd', str(archive), name],
                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=120)
     subprocess.run(['llvm-ar', 'r', str(archive), str(reference),
