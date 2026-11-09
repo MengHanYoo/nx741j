@@ -138,6 +138,12 @@ def main():
     archive = ROOT / 'build/sheng-ufs/libShengUfs.a'
     if not archive.is_file():
         raise SystemExit('Missing build/sheng-ufs/libShengUfs.a; build the ShengUfs component first')
+    # llvm-ar r only adds or replaces: drop the members this recipe owns first, so a
+    # build without a policy cannot keep a stale Policy.o that defines the same
+    # symbols as Stubs.o.
+    for name in ('IOBlockStorageDevice-reference.o', 'verified_root.o', 'xnu_crypto.o', 'Stubs.o', 'Policy.o'):
+        subprocess.run(['llvm-ar', 'd', str(archive), name],
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=120)
     subprocess.run(['llvm-ar', 'r', str(archive), str(reference),
                     str(OUT / 'verified_root.o'), str(OUT / 'xnu_crypto.o'), str(OUT / 'Stubs.o'),
                     *map(str, members)], check=True, timeout=120)
