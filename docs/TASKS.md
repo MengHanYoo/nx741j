@@ -28,7 +28,7 @@
 
 | # | 任务 | 前置 | 说明 |
 |---|---|---|---|
-| 1 | 阶段 4：定位 DarwinBoot/XNU 交接崩溃 | — | 在 `EFI_DARWIN_BOOT_REQUEST` 构造、ADT 解析、Mach-O 校验三处加日志；黑屏说明崩溃在打印前 |
+| 1 | **唯一待办**：V86 探针上机取 `pN` | — | 本机走 efisp 路线，刷 rawdump 两段（payload `a68ebc4e…` @LBA 4743976、FD `dea20e0d…` @LBA 4760360），命令见 `BOOT-FIRST.md`；**不写 boot_a**。判读表见 `LAYER4-PROBE.md` |
 | 2 | 按键（UEFI） | V41 探针结果 | 若 TLMM 可读 → 直接写死三键映射；不可读 → 改页表/映射层 |
 | 3 | `DTBExtnProtocol` provider | — | 步骤 6 驱动适配前置；影响 `DALTLMM`/`PmicDxe`/`Ucx/Rng`/`HALIOMMU` |
 | 4 | 音频/USB/基带驱动 | 步骤 6 | 输入已在 `HARDWARE-INVENTORY.md` §6 登记 |

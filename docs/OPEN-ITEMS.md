@@ -2,10 +2,22 @@
 
 更新于设备仓库 revision `4b410c2513b7db0fe14fc6420516659a7b6c0c12`。状态：`完成` / `进行中` / `阻塞`（缺硬件或信息）。
 
+> **唯一待办（2026-11-09）**：把 V86 探针刷上机，取回最后一个 `pN`。
+> 本机走 efisp 路线，**不写 boot_a**（ABL 拒绝第三方 boot.img），要向 rawdump 写两段：
+>
+> ```powershell
+> powershell -File E:\default-workspace\z80u-collect\wsl\flash-rawdump-9008.ps1 `
+>   -Payload E:\default-workspace\z80u-collect\_tmp\payload-v86.img `
+>   -Fd      E:\default-workspace\z80u-collect\_tmp\fd-v86.bin
+> ```
+>
+> payload `a68ebc4e…`（rawdump+0，LBA 4743976）、FD `dea20e0d…`（rawdump+64 MiB，LBA 4760360）；
+> 判读见 [LAYER4-PROBE.md](LAYER4-PROBE.md)，刷写细节见 [BOOT-FIRST.md](BOOT-FIRST.md)。
+
 | # | 项 | 官方页 | 状态 | 下一步 |
 |---|---|---|---|---|
 | 1 | 固件集成可复现 | [UEBI 固件](/zh/porting/uefi-firmware) | 完成（本次） | `package/firmware-overlay/` 已收录 DSC/FDF/incs/驱动；构建前运行 `scripts/apply-firmware-overlay.py <uefi-tree>` |
-| 2 | 菜单 → DarwinBoot 交接 | [启动链](/zh/concepts/boot-chain)、[Payload](/zh/concepts/payload) | 阻塞 | 菜单倒计时结束后直接 MemoryDump，`DARWINBOOT: Boot called` 未出现；下一步在 `Menu.c` 超时返回与 `UniXNUBootEntry` 入口加 `DEBUG` 并逐行确认 |
+| 2 | 菜单 → DarwinBoot 交接 | [启动链](/zh/concepts/boot-chain)、[Payload](/zh/concepts/payload) | 进行中 | 已到 DarwinBoot 内部（`kernel … bytes`、`adt … window …`）；V76/V77 修掉长停顿与 DeviceTree 传参后，V86 在 handoff 路径加了 `p1`–`p15` 探针，等上机取最后一个 `pN` |
 | 3 | UEFI 按键 | [触控与按键](/zh/porting/input) | 阻塞 | TLMM 读探测：GCD `type 3 len 0x500000`，`0x0F000000`/`0x0F00FFF0` 可读，`0x0F010000` 起读崩；需 DxeCore/ArmMmuLib 建映射或改 PMIC/SPMI |
 | 4 | 存储（UFS） | [UFS 存储](/zh/porting/ufs) | 进行中 | 目录 `ShengUfs` 标注 SM8550 控制器；先核对 SM8850 UFS 寄存器差异再选组件 |
 | 5 | 显示/亮度 | [显示](/zh/porting/display) | 未开始 | `GopFramebuffer` 已选；内核侧显示与亮度驱动待适配 |
