@@ -50,6 +50,8 @@ cd /mnt/e/unixnu-build/UniXNU
 |---|---|---|
 | `build-corecrypto-14.py` 报 "The crypto reference must stay immutable" | drvfs 把所有文件报成 `0777`，git 认为 1798 个文件 mode 变了 | `git config --global core.fileMode false`（并对 `refer/corecrypto-2023` 单独设一次） |
 | 同脚本报 `Conflicting header: cc.h` | 复制的 `build/corecrypto-2023` 里 235 个软链指向 `/opt/...` 旧路径 | `rm -rf tree/build/corecrypto-2023` 让它重新生成 |
+| `archive-11` 报 `The libpthread reference must remain immutable` | 检查的是 `tree/refer/libpthread`（不是 `.cache/libpthread-work`），它同样 `core.fileMode=true`，203 个 mode 变更 | 对 `tree/refer/*` 每个仓库都 `git config --local core.fileMode false`（`refer` 下还有 xnu、edk2、libdispatch、IOStorageFamily…） |
+| 单独跑 `build-libpthread-kernel.py` 报 `TargetConditionals.h not found` | 直接在 shell 里跑没带 `UNIXNU_SDKROOT`，`xcrun --show-sdk-path` 回落到字面量 `iphoneos` | 用 `./unixnu kernel` 跑（它注入 `UNIXNU_SDKROOT=fakeroot` 等一整套环境），或照 `scripts/unixnu/kernel.py` 手动导出 |
 
 ## 覆盖优先级（官方）
 
