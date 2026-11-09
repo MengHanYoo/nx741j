@@ -135,6 +135,11 @@ make-adt.py …      # /arm-io 内含 intc、arm-timer、ufshc
 
 因此第 3、4 级"按官方顺序操作"目前只能做到：DT 就绪 + 选已存在的组件；真正缺的是新驱动代码。
 
+第 3 级还查到一件会影响"启动到 iOS"的事实：`GopFramebuffer` 的 `NativeMobileDisplay` 通过
+`PE_current_console(&video)` 取 UEFI 交接的 framebuffer（**不读设备树**，所以 DT 里的 `framebuffer`
+节点只是文档），而它只实现了少数 ABI 入口，`unclassified168/169/170/171` 直接 `panic()`。
+用户态一旦调用这些入口就会宕机——这是 UI 阶段必须补的，不是配置问题。
+
 ## 仍未实现的驱动（需要源码，不是配置）
 
 | 顺序 | 能力 | 现状 | 需要的输入 |
