@@ -21,7 +21,6 @@ paths = [
   "scripts/ci-local.sh",
   "scripts/prelink-status.py",
   ".gitignore",
-  ".github/workflows/porting-record.yml",
   "artifacts/nx741j-stage2-2026-11-08.zip",
   "loader/build-p2.sh",
   "loader/build-p2c.sh",
@@ -66,7 +65,7 @@ findings = [
   "The arch profile's [kernel].archives lists component:SoftwareAES, so the board has to select that component or the archive plan aborts with 'component SoftwareAES is not selected'.",
   "A local sm8850 override in local.toml keeps the source unpinned and makes status report 'not reproducible'; the repository is mirrored into the host source cache and fetched through feeds.toml instead.",
   "The libpthread reference must match the 8796 kernel generation: 519.120.4 calls proc_get_jit_entitled, which 8796's pthread_callbacks_s does not define.",
-  "The repository ran without GitHub Actions (owner request): the full pipeline still runs locally in WSL via scripts/ci-local.sh. Only the shared porting-record check is wired in .github/workflows/porting-record.yml, because the discovery and publication route expects the record workflow.",
+  "GitHub Actions are not used: the repository has no workflows and the full pipeline runs locally in WSL via scripts/ci-local.sh (owner request).",
   "Ownership backfill: .gitignore belongs to this area (historical baseline check).",
   "Ownership backfill: artifacts/nx741j-stage2-2026-11-08.zip belongs to this area (historical baseline check).",
   "Ownership backfill: loader/build-p2.sh belongs to this area (historical baseline check).",
@@ -107,7 +106,6 @@ evidence = [
   { kind = "source", reference = "board.toml", result = "Board, component, kernel, firmware, payload and boot image inputs" },
   { kind = "source", reference = "unixnu.lock", result = "Resolved source commits including sm8850 825a5304 and libpthread cf9e1c7e" },
   { kind = "source", reference = "configs/nx741j_defconfig", result = "Kernel CONFIG_XNU_* values consumed by the kernel build script" },
-  { kind = "source", reference = ".github/workflows/porting-record.yml", result = "Calls the shared UniXNU porting-record check on push and pull request" },
   { kind = "host", reference = "docs/STEP4-BUILD-RESOLUTION.md", result = "defconfig/fetch/status/tree resolve 20 modules and 63 patches with no local overrides", command = "./unixnu defconfig nx741j_defconfig && ./unixnu fetch && ./unixnu status --json && ./unixnu tree", revision = "7cdf2738b8ee007a65fca59f1a36232fac520656" },
 ]
 
@@ -277,7 +275,13 @@ components = [
   "VirtioMmioBlock",
   "VerifiedRoot",
 ]
-paths = ["board.toml", "docs/PORTING-RECORD.md"]
+paths = [
+  "board.toml",
+  "docs/PORTING-RECORD.md",
+  "docs/STORAGE-POLICY.md",
+  "package/storage-bringup/Stubs.c",
+  "scripts/mk-verified-root-policy.py",
+]
 inputs = [
   "UFS model KLUGG8NHKB-F0H1, vendor Samsung, revision 0500, boot LUN 4",
   "GPT entries: boot_a 119078, uefi_a 6, efisp 748894, vbmeta_a 143706, vendor_boot_a 302310",
@@ -302,6 +306,8 @@ findings = [
   "The vendor UFS stack cannot run in this firmware because HALIOMMU needs DTBExtnProtocol and UFSDxe needs the RPMH/SCM chain; both providers are absent.",
   "board.toml changed in this range: the platform ADT inputs (psci_method/dram_size/owned_memory_size/cpu_regs) and the payload trust cache list were made explicit; see docs/STEP6-PLATFORM.md.",
   "ShengUfs is selected and links; the ADT now exports /arm-io/ufshc and the UFS GCC offsets are the measured canoe values. Runtime stays fail-closed because no verified-root policy bundle is compiled in.",
+  "The policy bundle is not an external input: kits/VerifiedRoot ships the signer (tools/manifest.py) and the verifier (src/verified_root.c). scripts/mk-verified-root-policy.py drives it (owner key, 160-byte header, RSA-3072 signature, ordered block hashes) and the result was verified on the host against the compiled C implementation, including the tampered-block and generation cases. See docs/STORAGE-POLICY.md.",
+  "Envelope size decides the delivery path: the 17 GiB root dump needs 128 MiB of hashes (134,218,272-byte envelope), far beyond the 64 MiB payload, so the envelope has to be loaded from disk or the authenticated range narrowed.",
 ]
 completion = [
   "SCSI capacity, GPT and known blocks read correctly",
@@ -310,18 +316,19 @@ completion = [
 limits = [
   "No Mu-side UFS BlockIo: UFSDxe/HALIOMMU cannot be enabled without DTBExtn, NPA and RPMH providers",
   "No XNU UFS driver yet: ShengUfs targets SM8550 and needs an SM8850 clock/reset table plus ArmSmmu4K",
-  "ShengUfs link needs build-boot-progress.py plus storage policy/VerifiedRoot archives; the upstream public script depends on private kits/sheng sources and build-sheng-source-storage.py is not published (404).",
+  "ShengUfs link needs build-boot-progress.py plus storage policy/VerifiedRoot archives; the upstream public script depends on private kits/sheng sources and build-sheng-source-storage.py is not published (404). The policy envelope itself is generated locally now, but nothing loads it into verified_root_policies[] yet.",
 ]
 next_action = [
   "Keep the payload-volume path for stage 2/3 verification and revisit UFS only for the root volume after stage 4 passes",
   "Read the UFS model through fh_loader --getstorageinfo in 9008 (or root sysfs) and record it here.",
-  "Generate the iOS 16 storage policy bundle (or port source-storage-runtime.patch to xnu-8796) to replace the empty verified-root policy table, then flash and verify capacity/GPT/mount.",
+  "Decide where the 128 MiB envelope (or a narrowed authenticated range) is loaded from and populate verified_root_policies[]; port source-storage-runtime.patch to xnu-8796; then flash and verify capacity/GPT/mount.",
 ]
 evidence = [
   { kind = "source", reference = "board.toml", result = "hardware.storage LBAs, UFS model and payload size" },
   { kind = "source", reference = "docs/PORTING-RECORD.md", result = "GPT inventory and partition strategy" },
   { kind = "device", reference = "docs/STAGE2-CONFORMANCE.md", result = "Payload volume mounted from the initrd (Fat) without any UFS BlockIo", command = "boot the minimal FV and read the UNIXNURAMDISK/Fat lines", revision = "f2584c81ca5ddcf3c9e58a6d15b6866e85e11f85" },
   { kind = "source", reference = "docs/STEP6-UFS.md", result = "UFS controller/PHY/GCC/SMMU checklist read from the device live DTB; ShengUfs SM8550 constants differ" },
+  { kind = "host", reference = "docs/STORAGE-POLICY.md", result = "Policy envelope generated by scripts/mk-verified-root-policy.py and authenticated by the compiled verified_root.c (real RSA-3072 + every block); tampered block and generation mismatch rejected", command = "gcc -shared -I kits/VerifiedRoot/include kits/VerifiedRoot/src/verified_root.c kits/VerifiedRoot/tests/openssl_provider.c -lcrypto -o libverifiedroot.so && python3 kits/VerifiedRoot/tools/verify_image.py --library libverifiedroot.so --manifest manifest.bin --trusted-key trusted-key.bin --image image.bin --volume-uuid 01e286f1-f4dd-4b2f-99d9-4973337fc788 --minimum-generation 3 --output verify.json", revision = "c0aa646e138bf09cc36f7faa3803522fb86e7fbf" },
 ]
 
 # ---------------------------------------------------------------------------

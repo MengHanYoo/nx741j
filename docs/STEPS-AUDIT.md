@@ -9,7 +9,7 @@
 | 3 创建设备仓库 | 格式 2、源码固定、参数明确 | ✅ 本地 | `schema_version = 2`、`board.example` 已移除、布局文件齐（112 个受控文件）；记录路径改指 `dts/nx741j.dts`（原先指向模板残留 `dts/board.dts`），本地 `porting-record.py check` 通过；**按 owner 决定不启用 GitHub Actions**，仓库不带 `.github/workflows/` |
 | 4 解析并检查构建配置 | `defconfig/fetch/status/tree` 通过 | ✅ | 9 组件 / 24 模块 / 67 补丁；`scripts/porting-record.py check`：14 个结构化区域通过 |
 | 5 准备硬件描述和固件 | 可构建固件 + 两个树输入 | ✅ | 4 MiB FD（DXE/BDS、无 LogDumpDxe）、菜单、payload/ADT、bootimg；硬件 DTB 5,614 B → 56,798 B（本轮加入 mdss/DSI 与面板） |
-| 6 按依赖顺序适配驱动 | 每项能力有配置与验证 | 🟡 | 平台 ✅（ArmDTPlatform/ArmCpu/SoftwareAES）；存储 🟡（构建通过，运行时 fail-closed）；显示 🟡（GopFramebuffer 已选 + 控制器 DT 入库，DPU/DSI/背光驱动未写）；输入、GPU、WCN、基带、音频 ⬜ |
+| 6 按依赖顺序适配驱动 | 每项能力有配置与验证 | 🟡 | 平台 ✅（ArmDTPlatform/ArmCpu/SoftwareAES）；存储 🟡（构建通过、运行时 fail-closed；策略包已能本地生成并主机验证，缺信封投递与 xnu-8796 补丁，见 `STORAGE-POLICY.md`）；显示 🟡（GopFramebuffer 已选 + 控制器 DT 入库，DPU/DSI/背光驱动未写）；输入、GPU、WCN、基带、音频 ⬜ |
 | 7 构建并启动 | 构建输出 + 设备观测 | 🟡 | 层 1–3 ✅；层 4（菜单→DarwinBoot）断点未定位；层 5 未启动 |
 | 8 完成并发布 | 格式 2 + unixnu topic + 设备页 | ⏸ 不发布 | owner 决定本地自用：仓库保持私有、不加 `unixnu` topic、不生成官网页面。记录本身已能渲染（中英文各 745 行），需要时再按下面的流程发布 |
 

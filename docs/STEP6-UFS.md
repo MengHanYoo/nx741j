@@ -116,6 +116,12 @@ nx741j 还需为 iOS 16 profile 提供对应策略目录（`scripts/policies/ios
 2. `source-storage-runtime.patch` 的 **xnu-8796 版本**（当前只有 xnu-12377）；
 3. 与 xnu-8796 匹配的公开 IOStorageFamily 源码版本（用于重新生成 `storage-abi` 审计与绑定）。
 
+**2026-11-09 更新**：第 1 项里的"策略包"不再是外部输入 —— VerifiedRoot kit 自带
+`tools/manifest.py`（签名）与 `src/verified_root.c`（校验），设备仓库的
+`scripts/mk-verified-root-policy.py` 已能生成并验证信封（真实 RSA-3072 + 全块校验，反例也拒绝），
+见 `STORAGE-POLICY.md`。sheng 参考的 `scripts/policies/<profile>` 目录布局仍然没有公开，
+但它只是"批量签名 + 打包"的外壳；剩下的硬阻塞仍是第 2 项（xnu-8796 运行时补丁）与信封投递方式。
+
 ## 构建已打通（本地 bring-up）
 
 `ShengUfs` 已选中并链接成功（`kernel.macho` sha256 `ec801093…`）：官方 audit 产出

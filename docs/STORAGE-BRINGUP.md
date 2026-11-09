@@ -22,9 +22,12 @@
 
 ## 已知限制
 
-- verified-root **不再被绕过**：`vr_open`/`vr_verify_block` 为 VerifiedRoot 真实实现；当前未编译策略
-  加载器且策略表 count=0，因此校验**fail-closed**。要真正挂载根卷，仍需生成并编译策略包
-  （`build-sheng-source-storage.py` 或等价物）。
+- verified-root **不再被绕过**：`vr_open`/`vr_verify_block` 为 VerifiedRoot 真实实现；策略表 count=0，
+  因此校验**fail-closed**。
+- 策略包本身已不需要外部输入：kit 自带 `tools/manifest.py`（签名）与 `src/verified_root.c`（校验），
+  `scripts/mk-verified-root-policy.py` 已能在本机生成信封并用真实 C 实现验证通过（含篡改块、generation
+  不匹配两个反例）。剩下的两件事是"信封怎么送进内核"（17 GiB dump 需要 128 MiB 哈希表，超出 64 MiB
+  payload）与 xnu-8796 的 `source-storage-runtime.patch`。详见 `STORAGE-POLICY.md`。
 - `IOBlockStorageDevice` 参考对象来自公开 Darwin 23 源码；`SourceStorage` 运行时会校验
   kernelcache 中基类大小（0x90），不匹配会 panic。
 - 运行时还需 `native-source-storage=1` 与 `native-ufs-root=1` 才会真正挂载；当前 bootargs 未加，
