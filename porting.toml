@@ -21,6 +21,7 @@ paths = [
   "scripts/ci-local.sh",
   "scripts/prelink-status.py",
   "scripts/audit-live-dtb.py",
+  "scripts/check-bringup.py",
   "dts/nx741j-hw.dtsi",
   ".gitignore",
   "artifacts/nx741j-stage2-2026-11-08.zip",
@@ -92,6 +93,7 @@ findings = [
   "Ownership backfill: local.toml.example belongs to this area (historical baseline check).",
   "Ownership backfill: patches/firmware/2026-11-07-efisp-loader-platform.patch belongs to this area (historical baseline check).",
   "adb root works on the HyperOS 4.0 port (adbd root, context u:r:ksu:s0); the KernelSU shell su path /data/adb/ksu/bin/su is denied by SELinux.",
+  "board.toml also selects ArmSmmu4K now: it is a kit, not an archive, and the storage archive compiles it in; this area is unchanged by that selection.",
 ]
 completion = [
   "status --json resolves device, OS profile, configuration, module sources and output directory",
@@ -153,6 +155,7 @@ findings = [
   "device-verified evidence for this area predates the menu-run regression: layer 1/2 checks pass, but layer 3/4 (menu to DarwinBoot) currently ends in ZTE MemoryDump mode, so the level must be re-validated on the next successful boot.",
   "Layer 4 remains blocked: the menu countdown ends in MemoryDump and the DARWINBOOT Boot called line never appears (docs/OPEN-ITEMS.md item 2).",
   "V67 regression: UniXNUDxe writes no Boot#### (the BDS never loads UniXNU) and the TLMM key probe faults; V68 adds a direct-start fallback and removes the keys driver from the FV. Current firmware is implemented, not device-verified for the menu path.",
+  "board.toml also selects ArmSmmu4K now: it is a kit, not an archive, and the storage archive compiles it in; this area is unchanged by that selection.",
 ]
 completion = [
   "SILICIUM_UEFI.fd builds and contains UniXNU, DarwinBoot, the ramdisk block driver and the log exporter",
@@ -203,6 +206,7 @@ procedure = [
 findings = [
   "The stock DT has no CPU frequency table and no MIDR; both had to be read from the running Android system.",
   "L2 cache is per-core on cluster0 and shared through phandle 0x0e on cluster1.",
+  "board.toml also selects ArmSmmu4K now: it is a kit, not an archive, and the storage archive compiles it in; this area is unchanged by that selection.",
 ]
 completion = [
   "Every enabled CPU reaches its entry checkpoint and local timer interrupts fire on each CPU",
@@ -250,6 +254,7 @@ findings = [
   "SMEM is set up by XBL before ABL runs, so a firmware path that runs before XBL initialization reads zeros; this is the open layer 2 input.",
   "The FD is mapped at 0xFF300000 and the framebuffer region at 0xFC800000; both must not overlap the DXE heap.",
   "The board DTS is dts/nx741j.dts; the template copy dts/board.dts was dropped so every record path names the file the build actually compiles.",
+  "board.toml also selects ArmSmmu4K now: it is a kit, not an archive, and the storage archive compiles it in; this area is unchanged by that selection.",
 ]
 completion = [
   "All handoff regions are accounted for and the kernel memory map matches the reserved set",
@@ -277,11 +282,13 @@ components = [
   "ShengUfs",
   "VirtioMmioBlock",
   "VerifiedRoot",
+  "ArmSmmu4K",
 ]
 paths = [
   "board.toml",
   "docs/PORTING-RECORD.md",
   "docs/STORAGE-POLICY.md",
+  "package/storage-bringup/SmmuBind.c",
   "package/storage-bringup/Stubs.c",
   "scripts/build-storage-bringup.py",
   "scripts/mk-verified-root-policy.py",
@@ -311,6 +318,7 @@ findings = [
   "board.toml changed in this range: the platform ADT inputs (psci_method/dram_size/owned_memory_size/cpu_regs) and the payload trust cache list were made explicit; see docs/STEP6-PLATFORM.md.",
   "ShengUfs is selected and links; the ADT now exports /arm-io/ufshc and the UFS GCC offsets are the measured canoe values. Runtime stays fail-closed because no verified-root policy bundle is compiled in.",
   "The policy bundle is not an external input: kits/VerifiedRoot ships the signer (tools/manifest.py) and the verifier (src/verified_root.c). scripts/mk-verified-root-policy.py drives it (owner key, 160-byte header, RSA-3072 signature, ordered block hashes) and the result was verified on the host against the compiled C implementation, including the tampered-block and generation cases. See docs/STORAGE-POLICY.md.",
+  "ArmSmmu4K is bound for the storage path: build-storage-bringup.py compiles the kit with the board binding (package/storage-bringup/SmmuBind.c) into libShengUfs.a, the binding implements the boot_progress_poll() hook NativeUfs.o calls, and the first progress report builds the stage-1 tables through ArmSmmu4KBuild(). The kernel keeps a single definition of the hook.",
   "Envelope size decides the delivery path: the 17 GiB root dump needs 128 MiB of hashes (134,218,272-byte envelope), far beyond the 64 MiB payload, so the envelope has to be loaded from disk or the authenticated range narrowed.",
   "build-storage-bringup.py now compiles a real policy when build/verified-root holds an envelope: it generates Policy.c (395-byte owner key + envelope), builds Policy.o with the kernel compile record, folds it into libShengUfs.a and skips the empty anchors in Stubs.c. Built in the E: tree with an 8,320-byte image: the archive holds Policy.o and verified_root_key/policies/count are defined, with the key starting VROOTKEY.",
 ]
@@ -371,6 +379,7 @@ findings = [
   "UEFI side output is confirmed; the XNU side has not been started.",
   "UEFI GOP gives the 1216x2688 menu; the XNU display driver is not implemented yet, so kernel-time geometry/backlight remain unverified.",
   "The SDE/MDP and DSI controller nodes are in dts/nx741j-mdss.dtsi, generated from the live FDT by scripts/mk-mdss-dtsi.py: 33 real nodes plus 19 disabled provider placeholders, with the BF375 panel attached below &dsi0. The hardware DTB compiles (5,614 -> 56,798 bytes) and the generated ADT is unchanged; the DPU/DSI driver itself is still missing.",
+  "board.toml also selects ArmSmmu4K now: it is a kit, not an archive, and the storage archive compiles it in; this area is unchanged by that selection.",
 ]
 completion = [
   "The panel shows the menu at 1216x2688 and the kernel keeps the same geometry",
@@ -419,6 +428,7 @@ findings = [
   "Vendor ButtonsDxe needs PmicGpio/TLMM/PmicPON; PmicDxeLa cannot start (RPMH assert), and KeypadDxe alone cannot produce input.",
   "The board package now carries all attempts: Nx741jKeysDxe (calibration/mapping variants) and the read-only TlmmProbeDxe.",
   "The touch controller is a Synaptics TCM (firmware and DTB parameters captured); the keys probe was disabled because TLMM only maps 64 KiB. No input driver exists yet.",
+  "board.toml also selects ArmSmmu4K now: it is a kit, not an archive, and the storage archive compiles it in; this area is unchanged by that selection.",
 ]
 completion = [
   "Touch coordinates map to the 1216x2688 menu and to the kernel input device",
@@ -460,6 +470,7 @@ procedure = [
 findings = [
   "The kernel side was verified on the earlier CI lineage, but only with wallpaper black and 13-30 fps; that is not a device-qualified state.",
   "The DTB reports Adreno840v2 (gen8-2-1, chipid 0x44050a01); catalog implementations target A740, so nothing is selected.",
+  "board.toml also selects ArmSmmu4K now: it is a kit, not an archive, and the storage archive compiles it in; this area is unchanged by that selection.",
 ]
 completion = [
   "GPU firmware loads, submissions complete and fences retire, then Metal presents a frame",
@@ -501,6 +512,7 @@ procedure = [
 findings = [
   "ath12k supports wcn7850, so the driver choice is correct; the missing part is the PCIe host on this board.",
   "The module is WCN7880, not the catalog WCN7850; BT BRAHMA/GANGES firmware, PEACH BDWLAN data and the persist MAC are captured. No driver is selected.",
+  "board.toml also selects ArmSmmu4K now: it is a kit, not an archive, and the storage archive compiles it in; this area is unchanged by that selection.",
 ]
 completion = [
   "Firmware download succeeds, the interface associates and packets move",
@@ -539,6 +551,7 @@ procedure = [
 findings = [
   "Audio depends on the DSP and power framework, which both come after the RPMh and platform work.",
   "The codec is WSA884x (canoe-mtp-wsa884x sound card); DSP/audio components are not selected yet.",
+  "board.toml also selects ArmSmmu4K now: it is a kit, not an archive, and the storage archive compiles it in; this area is unchanged by that selection.",
 ]
 completion = [
   "Playback and capture work through the selected codec and DSP routes",
@@ -574,6 +587,7 @@ procedure = [
 ]
 findings = [
   "Layer 2 currently fails at RpmhDxe (FAR=0x58) because the RPMh register set needs the SMEM contents that XBL normally provides.",
+  "board.toml also selects ArmSmmu4K now: it is a kit, not an archive, and the storage archive compiles it in; this area is unchanged by that selection.",
 ]
 completion = [
   "Regulators, clocks and power domains come up and the SoC leaves the boot state",
@@ -630,6 +644,7 @@ findings = [
   "GitHub Actions are not used: the repository has no workflows; scripts/ci-local.sh runs the same checks and builds in the local WSL checkout.",
   "board.toml changed in this range: the platform ADT inputs (psci_method/dram_size/owned_memory_size/cpu_regs) and the payload trust cache list were made explicit; see docs/STEP6-PLATFORM.md.",
   "Ownership backfill: scripts/apply-firmware-overlay.py belongs to this area (historical baseline check).",
+  "board.toml also selects ArmSmmu4K now: it is a kit, not an archive, and the storage archive compiles it in; this area is unchanged by that selection.",
 ]
 completion = [
   "package.sh produces kernel.macho, payload.img, boot.img and package.manifest.json with matching hashes",
@@ -675,6 +690,7 @@ findings = [
   "Without -O the parallel log interleaves and hides error lines; that is what made the bsd failure look silent.",
   "Old objects and work trees survive pin changes: .cache/libpthread-work and build/xnu/ios-obj must be removed when a source pin changes.",
   "The 9008 path needs a ZTE-signed programmer for program commands; the official rescue package carries it, and power commands work with the generic one.",
+  "board.toml also selects ArmSmmu4K now: it is a kit, not an archive, and the storage archive compiles it in; this area is unchanged by that selection.",
 ]
 completion = [
   "Every failed stage leaves a log with the failing target and a reproducible command",
@@ -717,6 +733,7 @@ findings = [
   "early_security_init stays empty because the original AMFI initializer address in this kernelcache has not been identified, so the early initializer does not run.",
   "board.toml changed in this range: the platform ADT inputs (psci_method/dram_size/owned_memory_size/cpu_regs) and the payload trust cache list were made explicit; see docs/STEP6-PLATFORM.md.",
   "adb root reads qfprom17 but it exposes only GPU/display/CPR/SSIP cells; no chip-id fuse cell exists, so socinfo serial 160370627 (0x098EE0C3, matching the ADT bytes) remains the identity source.",
+  "board.toml also selects ArmSmmu4K now: it is a kit, not an archive, and the storage archive compiles it in; this area is unchanged by that selection.",
 ]
 completion = [
   "Trust cache and ADT identity match the device and the kernel reaches the early security stage",
