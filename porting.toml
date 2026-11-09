@@ -21,6 +21,7 @@ paths = [
   "scripts/ci-local.sh",
   "scripts/prelink-status.py",
   ".gitignore",
+  ".github/workflows/porting-record.yml",
   "artifacts/nx741j-stage2-2026-11-08.zip",
   "loader/build-p2.sh",
   "loader/build-p2c.sh",
@@ -65,7 +66,7 @@ findings = [
   "The arch profile's [kernel].archives lists component:SoftwareAES, so the board has to select that component or the archive plan aborts with 'component SoftwareAES is not selected'.",
   "A local sm8850 override in local.toml keeps the source unpinned and makes status report 'not reproducible'; the repository is mirrored into the host source cache and fetched through feeds.toml instead.",
   "The libpthread reference must match the 8796 kernel generation: 519.120.4 calls proc_get_jit_entitled, which 8796's pthread_callbacks_s does not define.",
-  "GitHub Actions are not used: the repository has no workflows and the full pipeline runs locally in WSL via scripts/ci-local.sh (owner request).",
+  "The repository ran without GitHub Actions (owner request): the full pipeline still runs locally in WSL via scripts/ci-local.sh. Only the shared porting-record check is wired in .github/workflows/porting-record.yml, because the discovery and publication route expects the record workflow.",
   "Ownership backfill: .gitignore belongs to this area (historical baseline check).",
   "Ownership backfill: artifacts/nx741j-stage2-2026-11-08.zip belongs to this area (historical baseline check).",
   "Ownership backfill: loader/build-p2.sh belongs to this area (historical baseline check).",
@@ -106,6 +107,7 @@ evidence = [
   { kind = "source", reference = "board.toml", result = "Board, component, kernel, firmware, payload and boot image inputs" },
   { kind = "source", reference = "unixnu.lock", result = "Resolved source commits including sm8850 825a5304 and libpthread cf9e1c7e" },
   { kind = "source", reference = "configs/nx741j_defconfig", result = "Kernel CONFIG_XNU_* values consumed by the kernel build script" },
+  { kind = "source", reference = ".github/workflows/porting-record.yml", result = "Calls the shared UniXNU porting-record check on push and pull request" },
   { kind = "host", reference = "docs/STEP4-BUILD-RESOLUTION.md", result = "defconfig/fetch/status/tree resolve 20 modules and 63 patches with no local overrides", command = "./unixnu defconfig nx741j_defconfig && ./unixnu fetch && ./unixnu status --json && ./unixnu tree", revision = "7cdf2738b8ee007a65fca59f1a36232fac520656" },
 ]
 
@@ -181,7 +183,7 @@ evidence = [
 id = "cpu"
 status = "implemented"
 components = ["ArmCpu"]
-paths = ["dts/board.dts", "board.toml", "configs/nx741j_defconfig"]
+paths = ["dts/nx741j.dts", "board.toml", "configs/nx741j_defconfig"]
 inputs = [
   "8 cores in two clusters: cluster0 cpu@0..500 (6 cores), cluster1 cpu@10000,10100 (2 cores)",
   "MIDR 0x51 / 0x002 (Qualcomm Oryon) on all cores, read from the running device",
@@ -189,7 +191,7 @@ inputs = [
   "GICv3 distributor and redistributors, ARM generic timer",
 ]
 configuration = [
-  "dts/board.dts carries the cpu nodes, cpu-map and the mpidr values from the stock DT",
+  "dts/nx741j.dts carries the cpu nodes, cpu-map and the mpidr values from the stock DT",
   "capacity-dmips-mhz 1792/1894 and dynamic-power-coefficient 238/588 from the stock DT",
   "configs/nx741j_defconfig enables CONFIG_XNU_ARMCPU",
 ]
@@ -212,7 +214,7 @@ next_action = [
   "Boot the kernel and record the per-CPU entry checkpoints in the diagnostics log",
 ]
 evidence = [
-  { kind = "source", reference = "dts/board.dts", result = "CPU topology, mpidr and capacity values for both clusters" },
+  { kind = "source", reference = "dts/nx741j.dts", result = "CPU topology, mpidr and capacity values for both clusters" },
   { kind = "source", reference = "board.toml", result = "hardware.cpu section with MIDR, frequencies and cache layout" },
   { kind = "source", reference = "docs/STEP6-PLATFORM.md", result = "STEP6-PLATFORM cpu: inputs from the compiled board DTS" },
 ]
@@ -225,7 +227,6 @@ id = "memory"
 status = "implemented"
 components = []
 paths = [
-  "dts/board.dts",
   "board.toml",
   "docs/PORTING-RECORD.md",
   "dts/nx741j.dts",
@@ -238,7 +239,7 @@ inputs = [
 ]
 configuration = [
   "board.toml [hardware.memory] and [hardware.reserved] list the regions and their owners",
-  "dts/board.dts carries the reserved-memory nodes consumed by the ADT generator",
+  "dts/nx741j.dts carries the reserved-memory nodes consumed by the ADT generator",
 ]
 procedure = [
   "read the live FDT on the device and reconcile every reserved-memory node",
@@ -247,6 +248,7 @@ procedure = [
 findings = [
   "SMEM is set up by XBL before ABL runs, so a firmware path that runs before XBL initialization reads zeros; this is the open layer 2 input.",
   "The FD is mapped at 0xFF300000 and the framebuffer region at 0xFC800000; both must not overlap the DXE heap.",
+  "The board DTS is dts/nx741j.dts; the template copy dts/board.dts was dropped so every record path names the file the build actually compiles.",
 ]
 completion = [
   "All handoff regions are accounted for and the kernel memory map matches the reserved set",
@@ -329,7 +331,13 @@ evidence = [
 id = "display"
 status = "implemented"
 components = ["GopFramebuffer"]
-paths = ["board.toml", "dts/board.dts"]
+paths = [
+  "board.toml",
+  "dts/nx741j.dts",
+  "dts/nx741j-mdss.dtsi",
+  "dts/nx741j-panel-bf375.dtsi",
+  "scripts/mk-mdss-dtsi.py",
+]
 inputs = [
   "Panel bf375 / rm692h5 6.8 inch, native 1440x3200, DSI command mode with dual 1216x2688 modes (120/60 fps)",
   "UEFI GOP must be 1216x2688; the framebuffer region is 0xFC800000 / 0x2B00000",
@@ -349,19 +357,23 @@ findings = [
   "The 10-26 CI line carried a panel geometry fix (1216x2688); that geometry must not regress to 1220x2656.",
   "UEFI side output is confirmed; the XNU side has not been started.",
   "UEFI GOP gives the 1216x2688 menu; the XNU display driver is not implemented yet, so kernel-time geometry/backlight remain unverified.",
+  "The SDE/MDP and DSI controller nodes are in dts/nx741j-mdss.dtsi, generated from the live FDT by scripts/mk-mdss-dtsi.py: 33 real nodes plus 19 disabled provider placeholders, with the BF375 panel attached below &dsi0. The hardware DTB compiles (5,614 -> 56,798 bytes) and the generated ADT is unchanged; the DPU/DSI driver itself is still missing.",
 ]
 completion = [
   "The panel shows the menu at 1216x2688 and the kernel keeps the same geometry",
 ]
 limits = [
-  "XNU display and brightness are not started",
+  "XNU display and brightness are not started; only the UEFI GOP framebuffer paints",
+  "The MSM display controller has a device tree but no driver: the TLMM pin states, the SDE reserved-memory region and the DP/CESTA blocks are not modelled yet",
 ]
 next_action = [
   "Bring up GopFramebuffer after the kernel boots and record the first paint",
+  "Port the SDE/DSI driver against dts/nx741j-mdss.dtsi, replacing the disabled provider placeholders with the real clock and NoC nodes",
 ]
 evidence = [
   { kind = "source", reference = "board.toml", result = "Panel, GOP geometry and framebuffer region" },
   { kind = "source", reference = "docs/STEP6-DRIVERS-MATRIX.md", result = "STEP6-MATRIX: driver order, selected/planned components and build integration checked" },
+  { kind = "source", reference = "docs/DISPLAY-DT.md", result = "DISPLAY-DT: mdss/DSI topology, phandle rewrite rules and the dtc/ADT verification" },
 ]
 
 # ---------------------------------------------------------------------------
