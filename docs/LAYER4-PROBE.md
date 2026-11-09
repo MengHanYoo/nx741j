@@ -51,6 +51,14 @@ sudo ./unixnu firmware -D /mnt/e/default-workspace/z80u-collect/repos/UniXNU-nx7
 2. 缺失的那一行就是断点，按上表定位；
 3. 到 `p15` 才黑屏 → 层 4 通过，转层 5（green bar / panic 文本 / `serial=3` 日志）。
 
+## 当前版本的三个行为约定（V102 之后）
+
+| 约定 | 说明 |
+|---|---|
+| **Fail 不返回** | `Fail:` 与 `AllocateWindow` 失败都会死循环重绘错误码：屏幕留在 `[FAIL] <status>` 或 `NO WINDOW …`，**不再回到菜单**，也不会打印 `boot refused`。停机是刻意的（否则错误码一闪而过查不到），代价是这一版必须复位才能退出。 |
+| **探测写盘默认关闭** | 每个 `Mark` 只有在内核参数带 `probe-write=1` 时才写 rawdump+79 MiB；默认只走屏幕与 ConOut，避免每步一次 UFS 写掩盖要观测的现象。 |
+| **ADT 与窗口数值留在标记里** | `[J1]` 现在带上 `adt <bytes> win <bytes>`（例：`MARK #12 [J1] adt 32E0 win 10000000`），不再需要单独的 Print 行。 |
+
 ## 历史
 
 | 版本 | 打印/停顿 | 结果 |

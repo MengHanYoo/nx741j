@@ -14,6 +14,15 @@
 #include <Protocol/SimpleFileSystem.h>
 #include <Protocol/BlockIo.h>
 STATIC VOID DbProbeWrite (IN CONST UNIXNU_LOADER_BOOT_REQUEST *Request);
+STATIC VOID DbProbeFlush (VOID);
+// Freeze on this mark so the screen stops scrolling and the last reached step
+// can be photographed: bisect the handoff by changing this number.
+#define HALT_MARK 0u
+
+typedef struct { UINT32 Magic; UINT32 Step; UINT64 Status; UINT64 A; UINT64 B; UINT64 C; } DB_PROBE;
+STATIC DB_PROBE  mDbProbe;
+STATIC EFI_BLOCK_IO_PROTOCOL *mDbDisk;
+STATIC UINT32    mMarkIndex;
 #include "BootArgs.h"
 #include "BootVideo.h"
 #include "PackedRamdisk.h"
@@ -448,6 +457,25 @@ RunEnd (EFI_MEMORY_DESCRIPTOR *Map, UINTN Size, UINTN Stride, UINT64 Start, UINT
 #include "DiagFont.h"
 STATIC CONST UINT64 mDiagFont[] = GLYPH_FONT;
 
+STATIC UINT32 *mFbBase;
+STATIC UINT64  mFbWidth, mFbHeight, mFbStride;
+STATIC BOOLEAN mFbValid;
+STATIC BOOLEAN mBsGone;
+STATIC BOOLEAN mProbeWrite;
+
+// QEMU-only witness: the PL011 UART at 0x09000000 is not boot-services based,
+// so it keeps reporting after ExitBootServices. Enabled by "qemu-mark=1" only.
+STATIC
+VOID
+QemuMark (CONST CHAR8 *Text)
+{
+  volatile UINT32      *uart = (volatile UINT32 *)(UINTN)0x09000000;
+
+  while (*Text != 0) {
+    *uart = (UINT8)*Text++;
+  }
+}
+
 STATIC
 VOID
 DiagDraw (CONST CHAR16 *Text, UINTN Row)
@@ -459,8 +487,26 @@ DiagDraw (CONST CHAR16 *Text, UINTN Row)
   UINT64                       Glyph, Data;
   CHAR16                       Ch;
 
-  if (EFI_ERROR (gBS->LocateProtocol (&gEfiGraphicsOutputProtocolGuid, NULL, (VOID **)&Gop)) ||
-      EFI_ERROR (DarwinBootVideoFromGop (Gop, Video))) { return; }
+  // Cache the framebuffer once: after ExitBootServices the protocol is gone but
+  // the pixels are still writable, and the last line has to stay readable.
+  if (!mFbValid) {
+    // After ExitBootServices gBS is dead: never dereference it again, or the
+    // machine takes a synchronous exception at 0x0 (seen in QEMU without GOP).
+    if (mBsGone) { return; }
+    if (EFI_ERROR (gBS->LocateProtocol (&gEfiGraphicsOutputProtocolGuid, NULL, (VOID **)&Gop)) ||
+        EFI_ERROR (DarwinBootVideoFromGop (Gop, Video))) { return; }
+    mFbBase = (UINT32 *)(UINTN)Video[0];
+    mFbWidth = Video[3];
+    mFbHeight = Video[4];
+    mFbStride = Video[2] / 4;
+    mFbValid = TRUE;
+  }
+  Fb = mFbBase;
+  Video[0] = (UINT64)(UINTN)mFbBase;
+  Video[2] = (UINT64)(mFbStride * 4);
+  Video[3] = mFbWidth;
+  Video[4] = mFbHeight;
+  if (!Fb) { return; }
   Cell = 6 * Scale;
   Line = 14 * Scale;
   Y = Video[4] / 4 + Row * Line;
@@ -489,6 +535,36 @@ DiagDraw (CONST CHAR16 *Text, UINTN Row)
       }
     }
     X += Cell;
+  }
+}
+
+
+// Every step mark goes to the GOP in big letters AND to ConOut: DiagDraw can
+// return silently when the video protocol validation fails, which would look
+// exactly like "the code stopped".
+STATIC
+VOID
+Mark (
+  CONST CHAR16 *Text,
+  UINTN        Row
+  )
+{
+  ++mMarkIndex;
+  // The block write is a hardware side effect on every step and is only needed
+  // when a session asks for it (probe-write=1); the screen and QEMU serial are
+  // the normal channels.
+  if (mProbeWrite) {
+    mDbProbe.Step = mMarkIndex;
+    mDbProbe.Status = 0;
+    DbProbeFlush ();
+  }
+  Print (L"MARK #%u %s\r\n", mMarkIndex, Text);
+  DiagDraw (Text, Row);
+  if (mMarkIndex == HALT_MARK) {
+    for (;;) {
+      DiagDraw (Text, Row);
+      gBS->Stall (200000);
+    }
   }
 }
 
@@ -535,6 +611,18 @@ AllocateWindow (KERNEL *Kernel, UINT64 WindowSize, EFI_PHYSICAL_ADDRESS *Address
     UINTN  Row = 1;
     UnicodeSPrint (Line, sizeof (Line), L"NO WINDOW %lx BIG RUN %lx @ %lx", WindowSize, BestBytes, BestStart);
     DiagDraw (Line, 0);
+    // What bounds the biggest run from above: its type tells whether the 64 MiB
+    // payload buffer (EfiLoaderData) or something else sits next to it.
+    for (Offset = 0; Offset + Stride <= Size; Offset += Stride) {
+      Descriptor = (EFI_MEMORY_DESCRIPTOR *)((UINT8 *)Map + Offset);
+      if (Descriptor->PhysicalStart == BestStart + BestBytes) {
+        UnicodeSPrint (Line, sizeof (Line), L"NEXT t%lx @ %lx + %lx", (UINT64)Descriptor->Type,
+                       (UINT64)Descriptor->PhysicalStart,
+                       (UINT64)EFI_PAGES_TO_SIZE (Descriptor->NumberOfPages));
+        DiagDraw (Line, Row++);
+        break;
+      }
+    }
     for (Offset = 0; Offset + Stride <= Size; Offset += Stride) {
       Descriptor = (EFI_MEMORY_DESCRIPTOR *)((UINT8 *)Map + Offset);
       if ((Descriptor->Type == EfiConventionalMemory) && (Descriptor->NumberOfPages >= 0x400) && (Row < 8)) {
@@ -542,7 +630,10 @@ AllocateWindow (KERNEL *Kernel, UINT64 WindowSize, EFI_PHYSICAL_ADDRESS *Address
         DiagDraw (Line, Row++);
       }
     }
-
+    // Keep the diagnostic on screen: the generic Fail mark would overwrite it.
+    for (;;) {
+      gBS->Stall (200000);
+    }
   }
   FreePool (Map);
   return Status;
@@ -551,9 +642,21 @@ AllocateWindow (KERNEL *Kernel, UINT64 WindowSize, EFI_PHYSICAL_ADDRESS *Address
 
 // ---- persistent boot probe (rawdump + 79 MiB) ------------------------------
 #define DB_PROBE_OFFSET (4743976ULL * 4096ULL + 79ULL * 1024 * 1024)
-typedef struct { UINT32 Magic; UINT32 Step; UINT64 Status; UINT64 A; UINT64 B; UINT64 C; } DB_PROBE;
-STATIC DB_PROBE  mDbProbe;
-STATIC EFI_BLOCK_IO_PROTOCOL *mDbDisk;
+// Persist the current mark: the screen scrolls too fast to read on hardware,
+// but this sector can be read back over 9008 afterwards.
+STATIC
+VOID
+DbProbeFlush (
+  VOID
+  )
+{
+  if (mDbDisk == NULL || mDbDisk->Media == NULL || mDbDisk->Media->BlockSize == 0) {
+    return;
+  }
+  mDbProbe.Magic = 0x32444244;
+  mDbDisk->WriteBlocks (mDbDisk, mDbDisk->Media->MediaId,
+                        DB_PROBE_OFFSET / mDbDisk->Media->BlockSize, 4096, &mDbProbe);
+}
 
 STATIC
 VOID
@@ -637,20 +740,25 @@ Boot (
 
   (VOID)This;
   mDbProbe.Step = 0; DbProbeWrite (Request);
+  Mark (L"[0] entry", 0);
   DEBUG ((DEBUG_ERROR, "DARWINBOOT: Boot called, EL%u req %lx fdt %lx/%lu ramdisk %lu\n",
          (UINT32)(DarwinCurrentEl () >> 2), (UINT64)(UINTN)Request,
          Request != NULL ? (UINT64)(UINTN)Request->DeviceTree : 0ULL,
          Request != NULL ? (UINT64)Request->DeviceTreeSize : 0ULL,
          Request != NULL ? (UINT64)Request->RamdiskSize : 0ULL));
-  gBS->Stall (1000 * 1000);
+  // Stall removed for bring-up: timer events are suspects here.
+  Mark (L"[0a] stall", 0);
   mDbProbe.Step = 1; DbProbeWrite (Request);
+  Mark (L"[0b] probe1", 0);
   if ((Request == NULL) || (Request->Volume == NULL) || (Request->KernelPath == NULL)) { return EFI_INVALID_PARAMETER; }
   mDbProbe.Step = 2; DbProbeWrite (Request);
+  Mark (L"[0c] probe2", 0);
   if ((Request->KextCount != 0) || (Request->DeviceTree != NULL) || (Request->DeviceTreeSize != 0) ||
       (DarwinCurrentEl () != 4)) {
     Print (L"DARWINBOOT: unsupported inputs or exception level; firmware retained\n");
     return EFI_UNSUPPORTED;
   }
+  Mark (L"[0d] ramlayout", 0);
   if (!RamdiskLayout (Request->Ramdisk, Request->RamdiskSize, &RamdiskExpandedSize, &RamdiskPacked)) {
     Print (L"DARWINBOOT: ramdisk layout rejected, %lu bytes\n", (UINT64)Request->RamdiskSize);
     return EFI_BAD_BUFFER_SIZE;
@@ -665,6 +773,7 @@ Boot (
       CommandLine[Index] = (CHAR8)Request->BootArgs[Index];
     }
   }
+  mProbeWrite = (AsciiStrStr (CommandLine, "probe-write=1") != NULL);
   Root = NULL;
   Image = NULL;
   Tree = NULL;
@@ -681,20 +790,26 @@ Boot (
   if (EFI_ERROR (Status)) { return Status; }
   Status = Fs->OpenVolume (Fs, &Root);
   if (EFI_ERROR (Status)) { return Status; }
+  Mark (L"[0e] volume", 0);
+  Mark (L"[0f] read", 0);
   Status = ReadFile (Root, Request->KernelPath, SIZE_128MB, &Image, &ImageSize);
   if (EFI_ERROR (Status)) { goto Fail; }
+  Mark (L"[0g] kernel in", 0);
   Status = ParseKernel (Image, ImageSize, &Kernel);
   if (EFI_ERROR (Status)) { goto Fail; }
+  Mark (L"[0h] parsed", 0);
   Print (L"DARWINBOOT: kernel %lu bytes, entry %lx base %lx segs %u\r\n",
          (UINT64)ImageSize, (UINT64)Kernel.Entry, (UINT64)Kernel.Base, (UINT32)Kernel.Count);
-  gBS->Stall (1000 * 1000);   // stage freeze
+  // Stall removed for bring-up: timer events are suspects here.
   Length = StrSize (Request->KernelPath);
-  TreePath = AllocatePool (Length + 11 * sizeof (CHAR16));
+  // Room for the longest suffix (.trustcache is 11 chars + NUL) with slack.
+  TreePath = AllocatePool (Length + 16 * sizeof (CHAR16));
   if (TreePath == NULL) { Status = EFI_OUT_OF_RESOURCES; goto Fail; }
   CopyMem (TreePath, Request->KernelPath, Length);
-  StrCatS (TreePath, Length / sizeof (CHAR16) + 11, L".adt");
+  StrCatS (TreePath, Length / sizeof (CHAR16) + 16, L".adt");
   Status = ReadFile (Root, TreePath, SIZE_16MB, &Tree, &TreeSize);
   if (EFI_ERROR (Status)) { goto Fail; }
+  Mark (L"[0i] adt in", 0);
   Offset = 0;
   RamdiskOffset = MAX_UINTN;
   TrustCacheOffset = MAX_UINTN;
@@ -705,9 +820,13 @@ Boot (
   if (!AdtNode (Tree, TreeSize, &Offset, 0, 3, &RamdiskOffset, &TrustCacheOffset, &AddonOffset, &PolicyOffset, &WindowSize, &KeepPacked) || (Offset != TreeSize)) { Status = EFI_COMPROMISED_DATA; goto Fail; }
   if (KeepPacked && (!RamdiskPacked || (RamdiskOffset == MAX_UINTN))) { Status = EFI_COMPROMISED_DATA; goto Fail; }
   if (WindowSize == 0) { WindowSize = WINDOW_SIZE; }
+  Mark (L"[0j] tree ok", 0);
   mDbProbe.Step = 3; DbProbeWrite (Request);
-  Print (L"DARWINBOOT: adt %lu bytes, window %lx\r\n", (UINT64)TreeSize, (UINT64)WindowSize);
-  gBS->Stall (1000 * 1000);
+  {
+    CHAR16 AdtLine[64];
+    UnicodeSPrint (AdtLine, sizeof (AdtLine), L"[J1] adt %lx win %lx", (UINT64)TreeSize, (UINT64)WindowSize);
+    Mark (AdtLine, 0);
+  }
   if (Kernel.Base > MAX_UINT64 - WindowSize) { Status = EFI_LOAD_ERROR; goto Fail; }
   if (Request->Ramdisk != NULL) {
     if ((RamdiskOffset == MAX_UINTN) || (U64 ((UINT8 *)Tree + RamdiskOffset) != 0) ||
@@ -716,10 +835,13 @@ Boot (
     Status = EFI_UNSUPPORTED;
     goto Fail;
   }
+  Mark (L"[J2] ramdisk ok", 0);
+  Mark (L"[0k] tc", 0);
   CopyMem (TreePath, Request->KernelPath, Length);
-  StrCatS (TreePath, Length / sizeof (CHAR16) + 11, L".trustcache");
+  StrCatS (TreePath, Length / sizeof (CHAR16) + 16, L".trustcache");
   Status = ReadFile (Root, TreePath, SIZE_16MB, &TrustCaches, &TrustCacheSize);
   if (EFI_ERROR (Status) && (Status != EFI_NOT_FOUND)) { goto Fail; }
+  Mark (L"[0l] tc in", 0);
   if (TrustCaches != NULL) {
     if ((TrustCacheOffset == MAX_UINTN) || (U64 ((UINT8 *)Tree + TrustCacheOffset) != 0) ||
         (U64 ((UINT8 *)Tree + TrustCacheOffset + 8) != 0) || !ValidTrustCaches (TrustCaches, TrustCacheSize)) {
@@ -734,10 +856,12 @@ Boot (
   // The GPU addon (kernel.macho.gpuaddon, scripts/make-gpu-addon.py): files the kernel writes into the Data volume before its addon
   // mounts. Only its header is checked here; the kernel validates every entry.
   //
+  Mark (L"[0m] addon", 0);
   CopyMem (TreePath, Request->KernelPath, Length);
-  StrCatS (TreePath, Length / sizeof (CHAR16) + 11, L".gpuaddon");
+  StrCatS (TreePath, Length / sizeof (CHAR16) + 16, L".gpuaddon");
   Status = ReadFile (Root, TreePath, SIZE_64MB, &Addon, &AddonSize);
   if (EFI_ERROR (Status) && (Status != EFI_NOT_FOUND)) { goto Fail; }
+  Mark (L"[0n] addon in", 0);
   if (Addon != NULL) {
     if ((AddonOffset == MAX_UINTN) || (U64 ((UINT8 *)Tree + AddonOffset) != 0) || (U64 ((UINT8 *)Tree + AddonOffset + 8) != 0) ||
         (AddonSize < 24) || (CompareMem (Addon, "NGPUADD2", 8) != 0) || (U64 ((UINT8 *)Addon + 16) != AddonSize)) {
@@ -750,10 +874,12 @@ Boot (
   }
   // Root hash tables live outside the kernel's coalesced constant segments.
   // The kernel authenticates each envelope against its compiled owner anchor.
+  Mark (L"[0o] vroot", 0);
   CopyMem (TreePath, Request->KernelPath, Length);
-  StrCatS (TreePath, Length / sizeof (CHAR16) + 11, L".vroot");
+  StrCatS (TreePath, Length / sizeof (CHAR16) + 16, L".vroot");
   Status = ReadFile (Root, TreePath, SIZE_128MB, &Policies, &PolicySize);
   if (EFI_ERROR (Status) && (Status != EFI_NOT_FOUND)) { goto Fail; }
+  Mark (L"[0p] vroot in", 0);
   if (Policies != NULL) {
     if ((PolicyOffset == MAX_UINTN) || (U64 ((UINT8 *)Tree + PolicyOffset) != 0) ||
         (U64 ((UINT8 *)Tree + PolicyOffset + 8) != 0) || (PolicySize < 32) ||
@@ -767,15 +893,18 @@ Boot (
     Status = EFI_COMPROMISED_DATA;
     goto Fail;
   }
+  Mark (L"[1] assets", 0);
   Print (L"DARWINBOOT: p1 assets trustcache %lu addon %lu vroot %lu\r\n",
          (UINT64)TrustCacheSize, (UINT64)AddonSize, (UINT64)PolicySize);
   mDbProbe.Step = 4; DbProbeWrite (Request);
   Status = ReadBootVideo (Video);
   if (EFI_ERROR (Status)) { goto Fail; }
+  Mark (L"[2] video", 0);
   Print (L"DARWINBOOT: p2 video base %lx\r\n", (UINT64)Video[0]);
   mDbProbe.Step = 5; DbProbeWrite (Request);
   Status = AllocateWindow (&Kernel, WindowSize, &Address);
   if (EFI_ERROR (Status)) { goto Fail; }
+  Mark (L"[3] window", 0);
   Print (L"DARWINBOOT: p3 window at %lx size %lx\r\n", (UINT64)Address, (UINT64)WindowSize);
   ArgsAddress = ALIGN_VALUE (Address + Kernel.End - Kernel.Base, SIZE_16KB);
   TreeAddress = ArgsAddress + EFI_PAGE_SIZE;
@@ -790,15 +919,19 @@ Boot (
     Status = EFI_BAD_BUFFER_SIZE;
     goto Fail;
   }
+  Mark (L"[4] layout", 0);
   Print (L"DARWINBOOT: p4 window layout used %lu of %lx\r\n", (UINT64)Used, (UINT64)WindowSize);
   mDbProbe.Step = 6; DbProbeWrite (Request);
+  Mark (L"[5] zero", 0);
   Print (L"DARWINBOOT: p5 zeroing %lu bytes\r\n", (UINT64)Used);
   ZeroMem ((VOID *)(UINTN)Address, (UINTN)Used);
+  Mark (L"[6] copy", 0);
   Print (L"DARWINBOOT: p6 copying %u segments\r\n", (UINT32)Kernel.Count);
   for (Index = 0; Index < Kernel.Count; Index++) {
     CopyMem ((VOID *)(UINTN)(Address + Kernel.Segments[Index].Address - Kernel.Base),
              (UINT8 *)Image + Kernel.Segments[Index].FileOffset, (UINTN)Kernel.Segments[Index].FileSize);
   }
+  Mark (L"[7] copied", 0);
   Print (L"DARWINBOOT: p7 kernel image in place\r\n");
   Args = (DARWIN_BOOT_ARGS *)(UINTN)ArgsAddress;
   Args->Revision = 2;
@@ -814,9 +947,11 @@ Boot (
   CopyMem (Args->CommandLine, CommandLine, sizeof (CommandLine));
   CopyMem ((VOID *)(UINTN)TreeAddress, Tree, TreeSize);
   if (Request->Ramdisk != NULL) {
+    Mark (L"[8] ramdisk", 0);
     Print (L"DARWINBOOT: p8 ramdisk %lu bytes packed %u\r\n", (UINT64)Request->RamdiskSize, (UINT32)KeepPacked);
     if (KeepPacked) { CopyMem ((VOID *)(UINTN)RamdiskAddress, Request->Ramdisk, Request->RamdiskSize); }
     else { CopyRamdisk ((VOID *)(UINTN)RamdiskAddress, Request->Ramdisk, Request->RamdiskSize, RamdiskPacked); }
+    Mark (L"[9] ramdone", 0);
     Print (L"DARWINBOOT: p9 ramdisk in place\r\n");
     WriteUnaligned64 ((UINT64 *)(UINTN)(TreeAddress + RamdiskOffset), RamdiskAddress);
     WriteUnaligned64 ((UINT64 *)(UINTN)(TreeAddress + RamdiskOffset + 8), KeepPacked ? Request->RamdiskSize : RamdiskBytes);
@@ -839,8 +974,10 @@ Boot (
     WriteUnaligned64 ((UINT64 *)(UINTN)(TreeAddress + PolicyOffset + 8), PolicySize);
     FreePool (Policies); Policies = NULL;
   }
+  Mark (L"[10] step7", 0);
   Print (L"DARWINBOOT: p10 assets copied, writing step 7\r\n");
   mDbProbe.Step = 7; DbProbeWrite (Request);
+  Mark (L"[11] root", 0);
   Print (L"DARWINBOOT: p11 closing the root\r\n");
   FreePool (Image); Image = NULL;
   FreePool (Tree); Tree = NULL;
@@ -848,6 +985,7 @@ Boot (
   Root->Close (Root); Root = NULL;
   Status = GetMap (&Map, &Capacity, &MapSize, &Key, &Stride);
   if (EFI_ERROR (Status)) { goto Fail; }
+  Mark (L"[12] map", 0);
   Print (L"DARWINBOOT: p12 map %lu bytes key %lx\r\n", (UINT64)MapSize, (UINT64)Key);
   Print (L"DARWINBOOT: ARM64 va=0x%lx pa=0x%lx args=0x%lx entry=0x%lx owned=0x%lx\n",
          Kernel.Base, Address, ArgsAddress, Address + Kernel.Entry - Kernel.Base, (UINT64)WindowSize);
@@ -877,30 +1015,51 @@ Boot (
           READ_SYSREG (id_aa64mmfr0_el1) & 0xF, (((READ_SYSREG (id_aa64mmfr0_el1) >> 28) & 0xF) == 0xF) ? "NOT supported" : "supported"));
   DEBUG ((DEBUG_ERROR, "ID_AA64PFR0_EL1  0x%lx\n", READ_SYSREG (id_aa64pfr0_el1)));
   DEBUG ((DEBUG_ERROR, "\nExiting boot services. A green bar across the top\nmarks the loader handoff before the kernel branch.\n"));
+  Print (L"DARWINBOOT: p13 map, then straight to ExitBootServices\r\n");
   for (Attempt = 0; Attempt < 3; Attempt++) {
     MapSize = Capacity;
     Status = gBS->GetMemoryMap (&MapSize, Map, &Key, &Stride, &Version);
-    Print (L"DARWINBOOT: p13 attempt %u map -> %r key %lx\r\n", Attempt, Status, (UINT64)Key);
     if (EFI_ERROR (Status)) {
+      Print (L"DARWINBOOT: GetMemoryMap failed %r\r\n", Status);
       if (Attempt == 0) { goto Fail; }
-      Print (L"DARWINBOOT: p13b map failed after the first attempt, stopping\r\n");
       CpuDeadLoop ();
     }
+    //
+    // Nothing between GetMemoryMap and ExitBootServices may allocate: a Mark,
+    // a Print or the probe write all change the map and invalidate Key, which
+    // is exactly the EFI_INVALID_PARAMETER loop seen on hardware.
+    //
     Status = gBS->ExitBootServices (mImage, Key);
-    Print (L"DARWINBOOT: p14 attempt %u exit boot services -> %r\r\n", Attempt, Status);
     if (!EFI_ERROR (Status)) {
-      Print (L"DARWINBOOT: p15 entering the kernel at %lx\r\n", (UINT64)(Address + Kernel.Entry - Kernel.Base));
+      // Boot services are gone: Print/Mark/DbProbeFlush are all invalid here,
+      // only the cached framebuffer can still draw.
+      mBsGone = TRUE;
+      DiagDraw (L"[16] EBS ok", 0);
+      DiagDraw (L"[15] jump", 0);
+      if (AsciiStrStr (CommandLine, "qemu-mark=1") != NULL) {
+        QemuMark ("QEMU: EBS ok, entering the kernel\n");
+      }
       DarwinEnter (ArgsAddress, Address + Kernel.Entry - Kernel.Base, Address, WindowSize, Video[0], Video[2] * Video[4]);
       CpuDeadLoop ();
     }
+    Print (L"DARWINBOOT: exit boot services attempt %u -> %r\r\n", Attempt, Status);
     if (Status != EFI_INVALID_PARAMETER) {
-      Print (L"DARWINBOOT: p14b exit boot services refused with %r, stopping\r\n", Status);
+      Print (L"DARWINBOOT: exit boot services refused with %r, stopping\r\n", Status);
       CpuDeadLoop ();
     }
   }
   CpuDeadLoop ();
   return EFI_ABORTED;
 Fail:
+  {
+    CHAR16 FailText[64];
+    UnicodeSPrint (FailText, sizeof (FailText), L"[FAIL] %r", Status);
+    Print (L"MARK-FAIL %s\r\n", FailText);
+    for (;;) {
+      DiagDraw (FailText, 0);
+      gBS->Stall (200000);
+    }
+  }
   if (Root != NULL) { Root->Close (Root); }
   if (Image != NULL) { FreePool (Image); }
   if (Tree != NULL) { FreePool (Tree); }
@@ -934,10 +1093,10 @@ DarwinBootEntry (EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 
   (VOID)SystemTable;
   DEBUG ((DEBUG_ERROR, "DARWINBOOT: entry called\n"));
-  gBS->Stall (5 * 1000 * 1000);
+  // Stall removed for bring-up: timer events are suspects here.
   Status = gBS->LocateProtocol (&gUniXNULoaderProtocolGuid, NULL, &Existing);
   DEBUG ((DEBUG_ERROR, "DARWINBOOT: existing loader -> %r\n", Status));
-  gBS->Stall (1000 * 1000);
+  // Stall removed for bring-up: timer events are suspects here.
   if (!EFI_ERROR (Status)) { return EFI_ALREADY_STARTED; }
   DEBUG ((DEBUG_ERROR, "DARWINBOOT: handle loaded-image\n"));
   Status = gBS->HandleProtocol (ImageHandle, &gEfiLoadedImageProtocolGuid, (VOID **)&Loaded);
