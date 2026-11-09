@@ -37,10 +37,27 @@ cd ~/nx741j-build/UniXNU
 ./unixnu bootimg -D /mnt/e/.../repos/UniXNU-nx741j
 ```
 
-## 烧写与启动
+## 烧写与启动（本机走 efisp 路线，**不写 boot_a**）
 
-9008 写入脚本：z80u-collect/wsl/flash-boota-9008.ps1（FD 走 LUN0 LBA 4760360、efisp 走 LUN4 LBA 748894；首次会话需要 Sahara）。
-分区修复只能走 9008——fastboot 是受限 LinuxLoader。
+本机 ABL 拒绝第三方 `boot.img`，实机引导链是 `ABL → efisp loader → rawdump(payload/FD) → UEFI`
+（见 `EFISP-ROUTE-ANALYSIS.md`）。所以 `unixnu bootimg` 的产物**只归档不刷**，更新写的是 rawdump 的两个固定偏移：
+
+| 改了什么 | 写到 | 9008 参数 |
+|---|---|---|
+| payload（bootargs / ramdisk / ADT） | rawdump + 0 | `-Lun 0 -StartSector 4743976 -PartitionBytes 536870912 -Label rawdump`（65536 扇区） |
+| FD（固件，含探针） | rawdump + 64 MiB | `-Lun 0 -StartSector 4760360 -PartitionBytes 536870912 -Label rawdump`（1024 扇区） |
+| loader | efisp（LUN4 LBA 748894） | 仅在改 `loader/` 时需要 |
+| `boot.img` | 不写 | ABL 会拒绝；仅归档 |
+
+```powershell
+# 先 payload，再 FD
+powershell -File E:\default-workspace\z80u-collect\wsl\flash-boota-9008.ps1 `
+  -Img <payload.img> -Label rawdump -Lun 0 -StartSector 4743976 -PartitionBytes 536870912
+powershell -File E:\default-workspace\z80u-collect\wsl\flash-boota-9008.ps1 `
+  -Img <SILICIUM_UEFI.fd> -Label rawdump -Lun 0 -StartSector 4760360 -PartitionBytes 536870912
+```
+
+首次会话需要 Sahara；写坏只能 9008 恢复 stock `efisp.img`（sha256 `4df183594a63af28…`）。
 
 ## 启动参数
 
