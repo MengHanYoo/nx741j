@@ -1,9 +1,13 @@
 /*
  * NX741J hardware nodes copied from the device's own stock FDT
- * (stock/dt/live_fdt.dtb, SHA-256 a5c109c0…). These nodes are status="disabled":
- * they document the real register/IRQ/GPIO values for driver bring-up and do not
- * claim the Linux drivers are ported. Clock/regulator/SMMU phandles are omitted on
- * purpose so the fragment compiles against the minimal sm8850.dtsi.
+ * (stock/dt/live_fdt.dtb, SHA-256 a5c109c0…). Register windows, interrupts and
+ * GPIOs are the measured values; status follows the stock tree, because the
+ * device really has these blocks. Clock/regulator phandles are omitted on purpose
+ * so the fragment compiles against the minimal sm8850.dtsi.
+ *
+ * scripts/audit-live-dtb.py compares every node in this file against the stock
+ * FDT, so a wrong window or a stale enabled/disabled state is a test failure and
+ * not something that waits for hardware.
  */
 
 / {
@@ -14,7 +18,8 @@
         #gpio-cells = <0x2>;
         interrupt-controller;
         #interrupt-cells = <0x2>;
-        status = "disabled";
+        interrupts = <0x0 0xd0 0x4>;
+        status = "okay";
     };
 
     ufshc@1d84000 {
@@ -30,10 +35,11 @@
     };
 
     ufsphy_mem@1d80000 {
+        compatible = "qcom,ufs-phy-qmp-v4-canoe";
         reg = <0x0 0x1d80000 0x0 0x2000>;
         reg-names = "phy_mem";
         #phy-cells = <0x0>;
-        status = "disabled";
+        status = "okay";
     };
 
     pcie@1c00000 {
@@ -54,28 +60,24 @@
                      <0x0 0x97 0x4>, <0x0 0x98 0x4>;
         interrupt-names = "int_global_int", "int_a", "int_b", "int_c", "int_d";
         perst-gpios = <&tlmm 0x66 0x0>;
-        status = "disabled";
+        status = "okay";
     };
 
-    cnss-peach@b0000000 {
-        compatible = "qcom,cnss-peach";
-        reg = <0x0 0xb0000000 0x0 0x10000>;
-        qcom,wlan-rc-num = <0x0>;
-        qcom,wlan-sw-ctrl-gpio = <&tlmm 0x13 0x0>;
-        status = "disabled";
-    };
-
+    /*
+     * The stock tree nests this under ssusb@a600000; it is flattened here like the
+     * other SoC nodes. Values are the stock ones.
+     */
     dwc3@a600000 {
         compatible = "snps,dwc3";
         reg = <0x0 0xa600000 0x0 0xd93c>;
         interrupts = <0x0 0x85 0x4>;
-        status = "disabled";
+        status = "okay";
     };
 
     gpio_keys {
         compatible = "gpio-keys";
         label = "gpio-keys";
-        status = "disabled";
+        status = "okay";
 
         vol_up {
             label = "volume_up";
@@ -100,14 +102,15 @@
         };
     };
 
+    /* the stock tree nests it under spf_core_platform; values are the stock ones */
     sound {
         compatible = "qcom,canoe-asoc-snd";
         qcom,model = "canoe-mtp-wsa884x-snd-card";
-        status = "disabled";
+        status = "okay";
     };
 
     qcom,kgsl-3d0@3d00000 {
-        compatible = "qcom,adreno-gpu-gen8-2-1";
+        compatible = "qcom,adreno-gpu-gen8-2-1", "qcom,kgsl-3d0";
         reg = <0x0 0x3d00000 0x0 0x40000
                0x0 0x3d50000 0x0 0x10000
                0x0 0x3d61000 0x0 0x3000
@@ -117,17 +120,19 @@
         interrupt-names = "kgsl_3d0_irq", "cx_host_irq";
         qcom,gpu-model = "Adreno840v2";
         qcom,chipid = <0x44050a01>;
-        status = "disabled";
+        status = "okay";
     };
 
+    /* the stock tree nests it under qcom,qupv3_4_geni_se@1ac0000 */
     spi@1a80000 {
         compatible = "qcom,spi-geni";
-        reg = <0x1a80000 0x4000>;
+        reg = <0x0 0x1a80000 0x0 0x4000>;
+        reg-names = "se_phys";
         #address-cells = <0x1>;
         #size-cells = <0x0>;
         interrupts = <0x0 0x358 0x4>;
         spi-max-frequency = <0x2faf080>;
-        status = "disabled";
+        status = "okay";
 
         touch@0 {
             compatible = "synaptics,tcm-spi";

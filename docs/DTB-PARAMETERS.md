@@ -42,7 +42,7 @@
 
 | 参数 | 值 |
 |---|---|
-| cnss | `cnss-peach@b0000000+0x10000`，`qcom,wlan-rc-num 0`，`wlan-sw-ctrl-gpio = &tlmm 19` |
+| cnss | 实机 FDT 里**没有** `cnss-peach` 节点（该节点来自厂商 dtsi，已从 `nx741j-hw.dtsi` 移除）：WLAN 挂在 `pcie@1c00000/pcie_rp/cnss_pci0`；固件/MAC 等事实来自 vendor 文件，不是 DTB |
 | PCIe | `pcie@1c00000`：parf/phy/dm_core/elbi/iatu/pcie_sm；BAR `0x40200000+0x100000`；IRQ 0x8c/0x95-0x98；`perst-gpio = &tlmm 102` |
 | 域 | `linux,pci-domain 0`，bus-range 0–0xff，40 MSI 向量 |
 | MAC | `5C:7D:AE:43:D9:F8`（persist `wifimac.dat`） |
@@ -82,6 +82,20 @@
 | FOCUS | GPIO 179 |
 | SHOOT | GPIO 95 |
 | VOL− | PMIC `pmk8350-pon / resin` |
+
+## 与实机 DTB 的自动核对
+
+`scripts/audit-live-dtb.py` 把本仓库声称描述的节点（`nx741j-hw.dtsi` 里的 10 个）逐个和实机 FDT 比对
+`compatible`/`reg`/`interrupts`/`reg-names`/`status` 等属性：`reg` 按父节点的 cell 宽解码后比较（本仓库把节点
+拍平到根，格数与嵌套的 stock 节点不同），`status` 把缺失/okay/ok 视作同一个值。
+
+```sh
+scripts/audit-live-dtb.py --live live-fdt.dtb --include <soC-dts>
+```
+
+2026-11-09 首次运行发现并修掉 12 处差异：`ufsphy_mem` 缺 `compatible`、`tlmm` 缺 `interrupts`、`kgsl` 的
+`compatible` 少了 `qcom,kgsl-3d0`、`spi@1a80000` 的 `reg` 只有 2 格（父为 2/2 时应为 4 格，dtc 一直在告警）
+且缺 `reg-names = "se_phys"`、七个节点的 `status` 与实机相反、`cnss-peach` 是不存在的节点。现在 10/10 一致。
 
 ## 编译验证
 
