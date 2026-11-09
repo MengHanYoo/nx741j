@@ -144,6 +144,18 @@ def main():
         check(results, 1, 'apps-smmu enabled',
               fdt.text('/apps-smmu@15000000', 'status') in (None, 'okay', 'ok'),
               str(fdt.text('/apps-smmu@15000000', 'status')))
+        if archive and archive.is_file():
+            import subprocess
+            members = subprocess.run(['llvm-ar', 't', str(archive)], capture_output=True, text=True).stdout.split()
+            check(results, 1, 'ArmSmmu4K compiled into the consumer archive',
+                  'ArmSmmu4K.o' in members and 'SmmuBind.o' in members, ' '.join(m for m in members if 'Smmu' in m))
+            kernel = tree.parent / 'kernel/kernel.macho' if tree else None
+            if kernel and kernel.is_file():
+                symbols = subprocess.run(['llvm-nm', str(kernel)], capture_output=True, text=True).stdout
+                check(results, 1, 'kernel links ArmSmmu4KBuild', '_ArmSmmu4KBuild' in symbols, '')
+                defined = [line for line in symbols.splitlines() if line.endswith(' _boot_progress_poll')]
+                check(results, 1, 'kernel keeps one boot_progress_poll', len(defined) == 1,
+                      f'{len(defined)} definition(s)')
 
     if 2 in levels:
         name = fdt.text('/ufshc@1d84000', 'unixnu,adt-name')

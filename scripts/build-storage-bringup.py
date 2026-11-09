@@ -7,6 +7,8 @@ The archive ends up containing:
   * Stubs.o                           (owner-key/policy anchors + board diagnostic hook)
   * Policy.o                          (only when build/verified-root holds an envelope:
                                        real owner key + signed manifest, replaces the anchors)
+  * SmmuBind.o + ArmSmmu4K.o          (the board binding that calls the ArmSmmu4K kit,
+                                       and the kit itself, which has no archive of its own)
 
 No kernel build-script patch is required: ShengUfs is already force-loaded by the
 native-UFS branch, so appending the members to its archive makes them part of the link.
@@ -120,20 +122,35 @@ def policy_source(policy: Path):
 
 def main():
     stubs = anchor_source()
+    # ArmSmmu4K is a kit: no archive of its own, so the consumer compiles the
+    # translation code in and carries it in its archive. Decided before Stubs.c
+    # because the kit also owns the boot_progress_poll hook.
+    smmu_kit = ROOT / 'kits/ArmSmmu4K'
+    smmu, bound = [], []
+    if smmu_kit.is_dir():
+        bound = ['-DVR_SMMU_BOUND']
     policy = policy_source(args.policy)
     if policy is not None:
         (OUT / 'Policy.c').write_text(policy)
         compile_c(OUT / 'Policy.c', OUT / 'Policy.o', ['-DVR_POLICY_BUILT_IN'])
-        compile_c(stubs, OUT / 'Stubs.o', ['-DVR_POLICY_BUILT_IN'])
+        compile_c(stubs, OUT / 'Stubs.o', ['-DVR_POLICY_BUILT_IN', *bound])
         members = [OUT / 'Policy.o']
         print(f'== storage-bringup: policy {args.policy} compiled in')
     else:
-        compile_c(stubs, OUT / 'Stubs.o')
+        compile_c(stubs, OUT / 'Stubs.o', bound)
         members = []
         print(f'== storage-bringup: no envelope in {args.policy}, policy table stays empty (fail closed)')
 
     compile_c(ROOT / 'kits/VerifiedRoot/src/verified_root.c', OUT / 'verified_root.o')
     compile_c(ROOT / 'kits/VerifiedRoot/adapters/xnu_crypto.c', OUT / 'xnu_crypto.o')
+
+    if smmu_kit.is_dir():
+        compile_c(smmu_kit / 'ArmSmmu4K.c', OUT / 'ArmSmmu4K.o', ['-I', str(smmu_kit)])
+        compile_c(stubs.parent / 'SmmuBind.c', OUT / 'SmmuBind.o', ['-I', str(smmu_kit)])
+        smmu = [OUT / 'ArmSmmu4K.o', OUT / 'SmmuBind.o']
+        print(f'== storage-bringup: ArmSmmu4K bound from {smmu_kit}')
+    else:
+        print(f'== storage-bringup: {smmu_kit} missing, SMMU binding skipped')
 
     archive = ROOT / 'build/sheng-ufs/libShengUfs.a'
     if not archive.is_file():
@@ -141,12 +158,13 @@ def main():
     # llvm-ar r only adds or replaces: drop the members this recipe owns first, so a
     # build without a policy cannot keep a stale Policy.o that defines the same
     # symbols as Stubs.o.
-    for name in ('IOBlockStorageDevice-reference.o', 'verified_root.o', 'xnu_crypto.o', 'Stubs.o', 'Policy.o'):
+    for name in ('IOBlockStorageDevice-reference.o', 'verified_root.o', 'xnu_crypto.o', 'Stubs.o', 'Policy.o',
+                 'ArmSmmu4K.o', 'SmmuBind.o'):
         subprocess.run(['llvm-ar', 'd', str(archive), name],
                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=120)
     subprocess.run(['llvm-ar', 'r', str(archive), str(reference),
                     str(OUT / 'verified_root.o'), str(OUT / 'xnu_crypto.o'), str(OUT / 'Stubs.o'),
-                    *map(str, members)], check=True, timeout=120)
+                    *map(str, members), *map(str, smmu)], check=True, timeout=120)
     print(f'== storage-bringup: folded into {archive}')
 
 
