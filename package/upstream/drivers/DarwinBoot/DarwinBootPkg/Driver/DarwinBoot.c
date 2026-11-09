@@ -767,12 +767,16 @@ Boot (
     Status = EFI_COMPROMISED_DATA;
     goto Fail;
   }
+  Print (L"DARWINBOOT: p1 assets trustcache %lu addon %lu vroot %lu\r\n",
+         (UINT64)TrustCacheSize, (UINT64)AddonSize, (UINT64)PolicySize);
   mDbProbe.Step = 4; DbProbeWrite (Request);
   Status = ReadBootVideo (Video);
   if (EFI_ERROR (Status)) { goto Fail; }
+  Print (L"DARWINBOOT: p2 video base %lx\r\n", (UINT64)Video[0]);
   mDbProbe.Step = 5; DbProbeWrite (Request);
   Status = AllocateWindow (&Kernel, WindowSize, &Address);
   if (EFI_ERROR (Status)) { goto Fail; }
+  Print (L"DARWINBOOT: p3 window at %lx size %lx\r\n", (UINT64)Address, (UINT64)WindowSize);
   ArgsAddress = ALIGN_VALUE (Address + Kernel.End - Kernel.Base, SIZE_16KB);
   TreeAddress = ArgsAddress + EFI_PAGE_SIZE;
   RamdiskAddress = ALIGN_VALUE (TreeAddress + TreeSize, EFI_PAGE_SIZE);
@@ -786,12 +790,16 @@ Boot (
     Status = EFI_BAD_BUFFER_SIZE;
     goto Fail;
   }
+  Print (L"DARWINBOOT: p4 window layout used %lu of %lx\r\n", (UINT64)Used, (UINT64)WindowSize);
   mDbProbe.Step = 6; DbProbeWrite (Request);
+  Print (L"DARWINBOOT: p5 zeroing %lu bytes\r\n", (UINT64)Used);
   ZeroMem ((VOID *)(UINTN)Address, (UINTN)Used);
+  Print (L"DARWINBOOT: p6 copying %u segments\r\n", (UINT32)Kernel.Count);
   for (Index = 0; Index < Kernel.Count; Index++) {
     CopyMem ((VOID *)(UINTN)(Address + Kernel.Segments[Index].Address - Kernel.Base),
              (UINT8 *)Image + Kernel.Segments[Index].FileOffset, (UINTN)Kernel.Segments[Index].FileSize);
   }
+  Print (L"DARWINBOOT: p7 kernel image in place\r\n");
   Args = (DARWIN_BOOT_ARGS *)(UINTN)ArgsAddress;
   Args->Revision = 2;
   Args->Version = 2;
@@ -806,8 +814,10 @@ Boot (
   CopyMem (Args->CommandLine, CommandLine, sizeof (CommandLine));
   CopyMem ((VOID *)(UINTN)TreeAddress, Tree, TreeSize);
   if (Request->Ramdisk != NULL) {
+    Print (L"DARWINBOOT: p8 ramdisk %lu bytes packed %u\r\n", (UINT64)Request->RamdiskSize, (UINT32)KeepPacked);
     if (KeepPacked) { CopyMem ((VOID *)(UINTN)RamdiskAddress, Request->Ramdisk, Request->RamdiskSize); }
     else { CopyRamdisk ((VOID *)(UINTN)RamdiskAddress, Request->Ramdisk, Request->RamdiskSize, RamdiskPacked); }
+    Print (L"DARWINBOOT: p9 ramdisk in place\r\n");
     WriteUnaligned64 ((UINT64 *)(UINTN)(TreeAddress + RamdiskOffset), RamdiskAddress);
     WriteUnaligned64 ((UINT64 *)(UINTN)(TreeAddress + RamdiskOffset + 8), KeepPacked ? Request->RamdiskSize : RamdiskBytes);
   }
@@ -829,13 +839,16 @@ Boot (
     WriteUnaligned64 ((UINT64 *)(UINTN)(TreeAddress + PolicyOffset + 8), PolicySize);
     FreePool (Policies); Policies = NULL;
   }
+  Print (L"DARWINBOOT: p10 assets copied, writing step 7\r\n");
   mDbProbe.Step = 7; DbProbeWrite (Request);
+  Print (L"DARWINBOOT: p11 closing the root\r\n");
   FreePool (Image); Image = NULL;
   FreePool (Tree); Tree = NULL;
   FreePool (TreePath); TreePath = NULL;
   Root->Close (Root); Root = NULL;
   Status = GetMap (&Map, &Capacity, &MapSize, &Key, &Stride);
   if (EFI_ERROR (Status)) { goto Fail; }
+  Print (L"DARWINBOOT: p12 map %lu bytes key %lx\r\n", (UINT64)MapSize, (UINT64)Key);
   Print (L"DARWINBOOT: ARM64 va=0x%lx pa=0x%lx args=0x%lx entry=0x%lx owned=0x%lx\n",
          Kernel.Base, Address, ArgsAddress, Address + Kernel.Entry - Kernel.Base, (UINT64)WindowSize);
   Print (L"DARWINBOOT: video base=0x%lx display=%lu row=%lu width=%lu height=%lu depth=%lu\n",
@@ -867,16 +880,23 @@ Boot (
   for (Attempt = 0; Attempt < 3; Attempt++) {
     MapSize = Capacity;
     Status = gBS->GetMemoryMap (&MapSize, Map, &Key, &Stride, &Version);
+    Print (L"DARWINBOOT: p13 attempt %u map -> %r key %lx\r\n", Attempt, Status, (UINT64)Key);
     if (EFI_ERROR (Status)) {
       if (Attempt == 0) { goto Fail; }
+      Print (L"DARWINBOOT: p13b map failed after the first attempt, stopping\r\n");
       CpuDeadLoop ();
     }
     Status = gBS->ExitBootServices (mImage, Key);
+    Print (L"DARWINBOOT: p14 attempt %u exit boot services -> %r\r\n", Attempt, Status);
     if (!EFI_ERROR (Status)) {
+      Print (L"DARWINBOOT: p15 entering the kernel at %lx\r\n", (UINT64)(Address + Kernel.Entry - Kernel.Base));
       DarwinEnter (ArgsAddress, Address + Kernel.Entry - Kernel.Base, Address, WindowSize, Video[0], Video[2] * Video[4]);
       CpuDeadLoop ();
     }
-    if (Status != EFI_INVALID_PARAMETER) { CpuDeadLoop (); }
+    if (Status != EFI_INVALID_PARAMETER) {
+      Print (L"DARWINBOOT: p14b exit boot services refused with %r, stopping\r\n", Status);
+      CpuDeadLoop ();
+    }
   }
   CpuDeadLoop ();
   return EFI_ABORTED;
