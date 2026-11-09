@@ -20,13 +20,13 @@
 
 | 产物 | 大小 | sha256 |
 |---|---|---|
-| boot.img | 68,677,632 B | 4cb45bea2be22b61ce293eef2daff59cec655b99d874263cb11dd7ce59cae960 |
-| payload.img | 67,108,864 B | 969f9a5a0eb3de404973c30d6bdcf207f9fa9948cb91dd78a26cc1398fdce43f |
+| boot.img（V86 探针版） | 68,677,632 B | 5828e5a2a053a521b2fc0e3d314f73095a12af0552cf5a0f72013676c43b732c |
+| payload.img（V86 探针版） | 67,108,864 B | a68ebc4e9b00bf43d4b6f19c1b197e46df6c4743b6b7ae64dee1fd1ec7a22e10 |
 | kernel.macho（payload 内） | — | 36a618dbcb0b5e1736f0ea6596460e6c92a4b6d833818f7ac4bc5c4746793477 |
 | boot 里的 kernel（入口补丁后） | — | 9964e55ae6e39c5fc9f8ecd036eb7f9a1e144fff4ba41cedcee899db93da16ee |
 | ADT | — | be90306b72255c8e6934636db7dc261683350d9263f045a2937a301ddbf7bdf5 |
 | 硬件 DTB | — | a5c109c0ca6fb30ebe34b915ea090ea4494fe000aadda92042c8575d5b2a8292 |
-| FD | 4 MiB | 6f8b002cf46db66d22fcd5bf870888d8d05579e1a5b4260026479d1c4d4f77e1 |
+| FD（V86 探针版） | 4 MiB | dea20e0d8d343e1b46aa160911e0fda94fc5f9b650bd8dcf7ceacb6a633e73e2 |
 
 构建命令（ext4 构建树，16 线程）：
 

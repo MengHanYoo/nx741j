@@ -59,6 +59,25 @@ sudo ./unixnu firmware -D /mnt/e/default-workspace/z80u-collect/repos/UniXNU-nx7
 | V75 | 去掉长停顿、kext 为空时跳过 | 出现 `DARWINBOOT: Boot called`，层 4 打通到 DarwinBoot 内部 |
 | V76 | 不再传 DeviceTree，改 payload 的 `.adt` sidecar；10 s → 1 s | 实机见 `kernel … bytes`、`adt … window …` |
 | V77 | video/window/copy/map/ExitBootServices 之间加打印 | FD `d49993ff…`，待验证 |
-| V86 | 本次：`p1`–`p15` 逐段打印 | 待实机 |
+| V86 | 本次：`p1`–`p15` 逐段打印 | FD `dea20e0d…`，boot.img `5828e5a2…`，待实机 |
+
+## V86 已编进固件（2026-11-09 验证）
+
+`sudo ./unixnu firmware`（root，22 s 增量）→ `DarwinBoot.efi` 重建（sha256 `f5d5c883…`），
+`FVMAIN.Fv` 里能查到 `p1 assets` 与 `p15 entering the kernel`（`DARWINBOOT` 共 29 处）。
+
+注意：最终 `SILICIUM_UEFI.fd` 是 **LZMA 压缩的 FVMAIN_COMPACT**，直接对 fd 做 `strings` 找不到任何模块字符串——
+要验证得看 `Build/nx741jPkg/DEBUG_CLANGPDB/FV/FVMAIN.Fv` 或模块自己的 `.efi`：
+
+```sh
+strings -el Build/nx741jPkg/DEBUG_CLANGPDB/FV/FVMAIN.Fv | grep -c 'p1 assets'
+```
+
+| 产物 | sha256 |
+|---|---|
+| FD | `dea20e0d8d343e1b46aa160911e0fda94fc5f9b650bd8dcf7ceacb6a633e73e2` |
+| DarwinBoot.efi | `f5d5c883531416b5ae288ab582ce7cfa11a49918511858a95accf65482365961` |
+| boot.img | `5828e5a2a053a521b2fc0e3d314f73095a12af0552cf5a0f72013676c43b732c` |
+| payload.img | `a68ebc4e9b00bf43d4b6f19c1b197e46df6c4743b6b7ae64dee1fd1ec7a22e10` |
 
 源码均在 `package/upstream/drivers/DarwinBoot/DarwinBootPkg/Driver/DarwinBoot.c`，随设备仓库版本控制。
