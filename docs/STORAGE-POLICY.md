@@ -84,6 +84,24 @@ python3 $KIT/tools/verify_image.py --library libverifiedroot.so --manifest manif
 需要先定信封从哪里加载（候选：Data 分区的固定位置、或把镜像裁到真正要验证的范围）。
 这一点是本轮之后剩下的设计问题，不是数据缺失。
 
+## 编入内核（已验证）
+
+`scripts/build-storage-bringup.py` 在 `build/verified-root/{trusted-key.bin,manifest.bin}` 存在时生成
+`build/storage-bringup/Policy.c`（395 字节 owner key + 信封 + `verified_root_policies[16]`），用内核编译记录
+编成 `Policy.o` 并 `llvm-ar r` 进 `build/sheng-ufs/libShengUfs.a`；`Stubs.c` 用 `-DVR_POLICY_BUILT_IN`
+跳过空锚点定义。没有信封时行为不变（`count = 0`，fail-closed）。超过 `--max-policy-bytes`（默认 1 MiB）
+的信封会被拒绝，提示改为运行时投递。
+
+2026-11-09 在 E 盘构建树实测（8,320 B 测试镜像、640 B 信封）：
+
+| 检查 | 结果 |
+|---|---|
+| 归档成员 | `verified_root.o`、`Stubs.o`、`Policy.o` |
+| 符号 | `_verified_root_key` / `_verified_root_policies` / `_verified_root_policy_count` 均为 `D`（已定义） |
+| 密钥字节 | `56524f4f 544b4559` = `VROOTKEY`，后接 384 字节模数 |
+
+真实镜像还没编进去：17 GiB 需要 128 MiB 信封，会先被大小检查拦下，投递方式见下。
+
 ## 仍然缺的三件事（策略包之外）
 
 1. **信封投递**：`Stubs.c` 里 `verified_root_policies[16]` 是空数组，谁来读信封、放在哪、多大，未定；

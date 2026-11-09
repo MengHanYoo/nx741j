@@ -27,6 +27,23 @@ DEVICE_DIR=../UniXNU-nx741j
 期望：`sm8850` 的 `local` 为 `true`；`unixnu.lock` 中该项标记为本地、不固定提交。
 提交到仓库的 `unixnu.lock` 保持 pin（本仓库当前未变），仅构建树副本带本地标记。
 
+## 可写构建树（本机 WSL，2026-11-09）
+
+`/opt/work/nx741j-build` 归 root，非 root 会话写不了 `out/`。复制一份到 E 盘即可构建：
+
+```sh
+cp -a /opt/work/nx741j-build/UniXNU /mnt/e/unixnu-build/UniXNU    # 1.3 GiB，约 6 分钟
+cd /mnt/e/unixnu-build/UniXNU
+./unixnu payload -D /mnt/e/default-workspace/z80u-collect/repos/UniXNU-nx741j
+```
+
+注意事项：
+
+- 工具链仍在 `/opt/unixnu-linux`（只读可用），构建树里的 `toolchain` 只是软链；
+- `tree/kits/nx741j` 指向设备仓库的 `package/`，但 `tree/scripts/` 是设备脚本的**副本**：
+  改完 `scripts/*.py` 要 `./unixnu tree`（或手工 cp）才会进构建；
+- 树内 `build/` 是真正的编译输出（`libShengUfs.a`、`storage-bringup/` 等）。
+
 ## 覆盖优先级（官方）
 
 1. `--local-module [KIND:]NAME=PATH`
