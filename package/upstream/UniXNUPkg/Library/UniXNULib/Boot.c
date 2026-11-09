@@ -6,6 +6,8 @@
 **/
 
 #include "Internal.h"
+#include <Protocol/BlockIo.h>
+extern VOID UniXNUProgress (UINT32 Step, UINT64 Status);
 
 #include <Guid/Fdt.h>
 #include <Protocol/UniXNULoader.h>
@@ -55,15 +57,8 @@ RunXnu (
   UNIXNU_LOADER_KEXT             *Kexts;
   UINTN                         KextCount;
 
-  DEBUG ((DEBUG_ERROR, "UNIXNU: RunXnu entered, config %lx entry %lx\n",
-          (UINT64)(UINTN)Config, (UINT64)(UINTN)Entry));
-  Print (L"UNIXNU: RunXnu entered\r\n");
-  gBS->Stall (1000 * 1000);
-  DEBUG ((DEBUG_ERROR, "UNIXNU: looking for the loader protocol\n"));
+  UniXNUProgress (35, 0);
   Status = gBS->LocateProtocol (&gUniXNULoaderProtocolGuid, NULL, (VOID **)&Loader);
-  DEBUG ((DEBUG_ERROR, "UNIXNU: loader locate -> %r, pointer %lx\n", Status, (UINT64)(UINTN)Loader));
-  Print (L"UNIXNU: loader pointer\r\n");
-  gBS->Stall (2000 * 1000);
   if (EFI_ERROR (Status)) {
     UniXNULog ("xnu: no loader protocol installed; UniXNU does not provide one");
     return EFI_UNSUPPORTED;
@@ -76,25 +71,7 @@ RunXnu (
     return EFI_UNSUPPORTED;
   }
 
-  Print (L"UNIXNU: reading loader fields\r\n");
-  gBS->Stall (1000 * 1000);
-  DEBUG ((DEBUG_ERROR, "UNIXNU: loader revision %lx boot %lx\n",
-          (UINT64)Loader->Revision, (UINT64)(UINTN)Loader->Boot));
-  Print (L"UNIXNU: loader fields ok\r\n");
-  DEBUG ((DEBUG_ERROR, "UNIXNU: kext count %lu config-error %u\n",
-          (UINT64)Entry->KextCount, (UINT32)Entry->KextConfigError));
-  if (Entry->KextCount == 0) {
-    Kexts      = NULL;
-    KextCount  = 0;
-    Status     = EFI_SUCCESS;
-    DEBUG ((DEBUG_ERROR, "UNIXNU: no kexts configured, skipping staging\n"));
-    Print (L"UNIXNU: no kexts configured\r\n");
-  } else {
-    DEBUG ((DEBUG_ERROR, "UNIXNU: staging %lu kexts\n", (UINT64)Entry->KextCount));
-    Print (L"UNIXNU: staging kexts\r\n");
-    Status = UniXNUStageKexts (Config, Entry, &Kexts, &KextCount);
-  }
-  DEBUG ((DEBUG_ERROR, "UNIXNU: kexts -> %r count %lu\n", Status, (UINT64)KextCount));
+  Status = UniXNUStageKexts (Config, Entry, &Kexts, &KextCount);
   if (EFI_ERROR (Status)) {
     return Status;
   }
@@ -115,15 +92,10 @@ RunXnu (
   Request.RamdiskSize    = RamdiskSize;
   Request.Kexts          = Kexts;
   Request.KextCount      = KextCount;
-  DEBUG ((DEBUG_ERROR, "UNIXNU: handing off, kexts %lu\n", (UINT64)KextCount));
-  Print (L"UNIXNU: handing off to loader\r\n");
   UniXNULog ("xnu: handing off %u staged kext(s) to loader", (UINT32)KextCount);
-  gBS->Stall (1000 * 1000);
-  DEBUG ((DEBUG_ERROR, "UNIXNU: calling Loader->Boot %lx\n", (UINT64)(UINTN)Loader->Boot));
-  Print (L"UNIXNU: calling Loader->Boot\r\n");
-  gBS->Stall (1000 * 1000);
+  UniXNUProgress (37, 0);
   Status = Loader->Boot (Loader, &Request);
-  DEBUG ((DEBUG_ERROR, "UNIXNU: Loader->Boot returned %r\n", Status));
+  UniXNUProgress (38, (UINT64)Status);
   UniXNUFreeKexts (Kexts, KextCount);
   return Status;
 }
@@ -148,14 +120,8 @@ UniXNUBootEntry (
   CHAR16                     *ExitData;
   VOID                       *FirmwareFdt;
 
-  DEBUG ((DEBUG_ERROR, "UNIXNU: BootEntry entered, entry %lx config %lx\n",
-          (UINT64)(UINTN)Entry, (UINT64)(UINTN)Config));
-  Print (L"UNIXNU: BootEntry entered\r\n");
-  gBS->Stall (5 * 1000 * 1000);
-  DEBUG ((DEBUG_ERROR, "UNIXNU: entry id %lx title %lx\n",
-          (UINT64)(UINTN)(Entry->Id), (UINT64)(UINTN)(Entry->Title)));
+  UniXNUProgress (32, 0);
   UniXNULog ("boot: entry '%a' (%s)", (Entry->Id != NULL) ? Entry->Id : "?", Entry->Title);
-  DEBUG ((DEBUG_ERROR, "UNIXNU: first log done\n"));
 
   if (Entry->KextConfigError) {
     UniXNULog ("kext: invalid entry configuration; boot refused");
@@ -172,35 +138,20 @@ UniXNUBootEntry (
   InitrdSize   = 0;
   InitrdHandle = NULL;
 
-  if (Entry->Type == UniXNUEntryXnu) {
-    DEBUG ((DEBUG_ERROR, "UNIXNU: XNU entry, skipping UEFI variable writes\n"));
-    Print (L"UNIXNU: XNU entry, variables skipped\r\n");
-  } else {
-    DEBUG ((DEBUG_ERROR, "UNIXNU: setting entry variables\n"));
-    UniXNUSetEntryVariables (Entry);
-    DEBUG ((DEBUG_ERROR, "UNIXNU: entry variables set\n"));
-  }
-  gBS->Stall (1000 * 1000);
+  UniXNUSetEntryVariables (Entry);
 
   if (EFI_ERROR (EfiGetSystemConfigurationTable (&gFdtTableGuid, &FirmwareFdt))) {
     FirmwareFdt = NULL;
   }
 
+  UniXNUProgress (34, 0);
   Status = UniXNUPrepareDeviceTree (Config, Entry, &Fdt, &FdtSize);
-  DEBUG ((DEBUG_ERROR, "UNIXNU: device tree prepared -> %r (fdt %lx size %lu)\n", Status, (UINT64)(UINTN)Fdt, (UINT64)FdtSize));
-  gBS->Stall (1000 * 1000);
   if (EFI_ERROR (Status)) {
     return Status;
   }
 
-  DEBUG ((DEBUG_ERROR, "UNIXNU: after DT, initrd %lx volume %lx path %lx\n",
-          (UINT64)(UINTN)Entry->Initrd, (UINT64)(UINTN)Entry->Volume, (UINT64)(UINTN)Entry->Path));
-  Print (L"UNIXNU: after device tree\r\n");
-  gBS->Stall (1000 * 1000);
   if (Entry->Initrd != NULL) {
-    Print (L"UNIXNU: reading initrd\r\n");
     Status = UniXNUReadFile (Entry->Volume, Entry->Initrd, &Initrd, &InitrdSize);
-    DEBUG ((DEBUG_ERROR, "UNIXNU: initrd read -> %r size %lu\n", Status, (UINT64)InitrdSize));
     if (EFI_ERROR (Status)) {
       UniXNULog ("boot: cannot read initrd %s: %r", Entry->Initrd, Status);
       goto Done;
@@ -218,6 +169,7 @@ UniXNUBootEntry (
   }
 
   if (Entry->Type == UniXNUEntryXnu) {
+    UniXNUProgress (39, 0);
     Status = RunXnu (Config, Entry, Fdt, FdtSize, Initrd, InitrdSize);
     goto Done;
   }

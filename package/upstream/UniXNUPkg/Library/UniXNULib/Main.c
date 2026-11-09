@@ -6,6 +6,49 @@
 **/
 
 #include "Internal.h"
+#include <Protocol/BlockIo.h>
+extern VOID UniXNUProgress (UINT32 Step, UINT64 Status);
+
+// ---- boot progress record (rawdump + 79 MiB) -------------------------------
+#define BP_OFFSET  (4743976ULL * 4096ULL + 79ULL * 1024 * 1024)
+typedef struct { UINT32 Magic; UINT32 Step; UINT64 Status; UINT64 A; UINT64 B; UINT64 C; } BP_RECORD;
+STATIC BP_RECORD mBp;
+
+VOID
+UniXNUProgress (
+  IN UINT32  Step,
+  IN UINT64  Status
+  )
+{
+  EFI_STATUS  S;
+  UINTN       Count = 0, Index;
+  EFI_HANDLE  *Handles = NULL;
+  EFI_BLOCK_IO_PROTOCOL *Bio = NULL, *Best = NULL;
+
+  mBp.Magic = 0x32444244;
+  mBp.Step = Step;
+  mBp.Status = Status;
+  if (EFI_ERROR (gBS->LocateHandleBuffer (ByProtocol, &gEfiBlockIoProtocolGuid, NULL, &Count, &Handles))) {
+    return;
+  }
+  for (Index = 0; Index < Count; Index++) {
+    Bio = NULL;
+    if (EFI_ERROR (gBS->HandleProtocol (Handles[Index], &gEfiBlockIoProtocolGuid, (VOID **)&Bio)) || Bio == NULL || Bio->Media == NULL) {
+      continue;
+    }
+    if (Best == NULL || Bio->Media->LastBlock > Best->Media->LastBlock) {
+      Best = Bio;
+    }
+  }
+  FreePool (Handles);
+  if (Best == NULL || Best->Media->BlockSize == 0) {
+    return;
+  }
+  S = Best->WriteBlocks (Best, Best->Media->MediaId, BP_OFFSET / Best->Media->BlockSize, 4096, &mBp);
+  (VOID)S;
+}
+// ---------------------------------------------------------------------------
+
 
 #include <Protocol/SerialIo.h>
 
@@ -76,13 +119,11 @@ UniXNURun (
     );
 
   //
-  // Storage may not be connected yet, whichever way UniXNU was entered. Started
-  // from BDS it is because nothing has connected the controllers; started as a
-  // DXE driver it is because the ramdisk BlockIo is dispatched before
-  // UniXNURamDiskDxe installs it, so without this the initrd volume never gets a
-  // SimpleFileSystem and payload discovery reports that no payload exists.
+  // Started straight from BDS, storage may not be connected yet.
   //
-  UniXNUConnectAll ();
+  if (Host == UniXNUHostFirmware) {
+    UniXNUConnectAll ();
+  }
 
   UniXNUConfigLoad (ImageHandle, &Config);
   UniXNULog (
@@ -119,16 +160,12 @@ UniXNURun (
     );
 
   Countdown = TRUE;
+  UniXNUProgress (30, 0);
   for ( ; ;) {
     Index  = UniXNUMenuRun (&Ui, &Config, Countdown);
-    DEBUG ((DEBUG_ERROR, "UNIXNU: A menu returned index %u\n", (UINT32)Index));
-    DEBUG ((DEBUG_ERROR, "UNIXNU: B config %lx entries %lx count %u\n",
-            (UINT64)(UINTN)&Config, (UINT64)(UINTN)Config.Entries, (UINT32)Config.EntryCount));
+    UniXNUProgress (31, (UINT64)Index);
     Entry  = &Config.Entries[Index];
-    DEBUG ((DEBUG_ERROR, "UNIXNU: C entry %lx\n", (UINT64)(UINTN)Entry));
     BootCopy = *Entry;
-    DEBUG ((DEBUG_ERROR, "UNIXNU: D copied, type %u\n", (UINT32)BootCopy.Type));
-    gBS->Stall (1000 * 1000);
     if (Entry->Confirm != NULL) {
       UINTN  Choice;
 

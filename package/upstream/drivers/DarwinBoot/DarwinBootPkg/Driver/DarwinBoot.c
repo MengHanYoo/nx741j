@@ -12,6 +12,8 @@
 #include <Protocol/LoadedImage.h>
 #include <Protocol/GraphicsOutput.h>
 #include <Protocol/SimpleFileSystem.h>
+#include <Protocol/BlockIo.h>
+STATIC VOID DbProbeWrite (IN CONST UNIXNU_LOADER_BOOT_REQUEST *Request);
 #include "BootArgs.h"
 #include "BootVideo.h"
 #include "PackedRamdisk.h"
@@ -546,6 +548,39 @@ AllocateWindow (KERNEL *Kernel, UINT64 WindowSize, EFI_PHYSICAL_ADDRESS *Address
   return Status;
 }
 
+
+// ---- persistent boot probe (rawdump + 79 MiB) ------------------------------
+#define DB_PROBE_OFFSET (4743976ULL * 4096ULL + 79ULL * 1024 * 1024)
+typedef struct { UINT32 Magic; UINT32 Step; UINT64 Status; UINT64 A; UINT64 B; UINT64 C; } DB_PROBE;
+STATIC DB_PROBE  mDbProbe;
+STATIC EFI_BLOCK_IO_PROTOCOL *mDbDisk;
+
+STATIC
+VOID
+DbProbeWrite (
+  IN CONST UNIXNU_LOADER_BOOT_REQUEST *Request
+  )
+{
+  EFI_DEVICE_PATH_PROTOCOL  *Dp = NULL;
+  EFI_HANDLE                Disk = NULL;
+  EFI_BLOCK_IO_PROTOCOL     *Bio = NULL;
+
+  mDbProbe.Magic = 0x32444244;
+  if (Request != NULL && Request->Volume != NULL) {
+    if (!EFI_ERROR (gBS->HandleProtocol (Request->Volume, &gEfiDevicePathProtocolGuid, (VOID **)&Dp)) && Dp != NULL) {
+      gBS->LocateDevicePath (&gEfiBlockIoProtocolGuid, &Dp, &Disk);
+      gBS->HandleProtocol (Disk, &gEfiBlockIoProtocolGuid, (VOID **)&Bio);
+    }
+  }
+  if (Bio == NULL || Bio->Media == NULL || Bio->Media->BlockSize == 0) {
+    return;
+  }
+  mDbDisk = Bio;
+  mDbDisk->WriteBlocks (mDbDisk, mDbDisk->Media->MediaId,
+                        DB_PROBE_OFFSET / mDbDisk->Media->BlockSize, 4096, &mDbProbe);
+}
+// ---------------------------------------------------------------------------
+
 STATIC
 EFI_STATUS
 EFIAPI
@@ -601,13 +636,16 @@ Boot (
   UINT64                          Video[6];
 
   (VOID)This;
+  mDbProbe.Step = 0; DbProbeWrite (Request);
   DEBUG ((DEBUG_ERROR, "DARWINBOOT: Boot called, EL%u req %lx fdt %lx/%lu ramdisk %lu\n",
          (UINT32)(DarwinCurrentEl () >> 2), (UINT64)(UINTN)Request,
          Request != NULL ? (UINT64)(UINTN)Request->DeviceTree : 0ULL,
          Request != NULL ? (UINT64)Request->DeviceTreeSize : 0ULL,
          Request != NULL ? (UINT64)Request->RamdiskSize : 0ULL));
   gBS->Stall (1000 * 1000);
+  mDbProbe.Step = 1; DbProbeWrite (Request);
   if ((Request == NULL) || (Request->Volume == NULL) || (Request->KernelPath == NULL)) { return EFI_INVALID_PARAMETER; }
+  mDbProbe.Step = 2; DbProbeWrite (Request);
   if ((Request->KextCount != 0) || (Request->DeviceTree != NULL) || (Request->DeviceTreeSize != 0) ||
       (DarwinCurrentEl () != 4)) {
     Print (L"DARWINBOOT: unsupported inputs or exception level; firmware retained\n");
@@ -667,6 +705,7 @@ Boot (
   if (!AdtNode (Tree, TreeSize, &Offset, 0, 3, &RamdiskOffset, &TrustCacheOffset, &AddonOffset, &PolicyOffset, &WindowSize, &KeepPacked) || (Offset != TreeSize)) { Status = EFI_COMPROMISED_DATA; goto Fail; }
   if (KeepPacked && (!RamdiskPacked || (RamdiskOffset == MAX_UINTN))) { Status = EFI_COMPROMISED_DATA; goto Fail; }
   if (WindowSize == 0) { WindowSize = WINDOW_SIZE; }
+  mDbProbe.Step = 3; DbProbeWrite (Request);
   Print (L"DARWINBOOT: adt %lu bytes, window %lx\r\n", (UINT64)TreeSize, (UINT64)WindowSize);
   gBS->Stall (1000 * 1000);
   if (Kernel.Base > MAX_UINT64 - WindowSize) { Status = EFI_LOAD_ERROR; goto Fail; }
@@ -728,13 +767,11 @@ Boot (
     Status = EFI_COMPROMISED_DATA;
     goto Fail;
   }
-  Print (L"DARWINBOOT: reading video\r\n");
+  mDbProbe.Step = 4; DbProbeWrite (Request);
   Status = ReadBootVideo (Video);
-  Print (L"DARWINBOOT: video -> %r base 0x%lx\r\n", Status, Video[0]);
   if (EFI_ERROR (Status)) { goto Fail; }
-  Print (L"DARWINBOOT: allocating window 0x%lx\r\n", (UINT64)WindowSize);
+  mDbProbe.Step = 5; DbProbeWrite (Request);
   Status = AllocateWindow (&Kernel, WindowSize, &Address);
-  Print (L"DARWINBOOT: window -> %r addr 0x%lx\r\n", Status, (UINT64)Address);
   if (EFI_ERROR (Status)) { goto Fail; }
   ArgsAddress = ALIGN_VALUE (Address + Kernel.End - Kernel.Base, SIZE_16KB);
   TreeAddress = ArgsAddress + EFI_PAGE_SIZE;
@@ -749,9 +786,8 @@ Boot (
     Status = EFI_BAD_BUFFER_SIZE;
     goto Fail;
   }
-  Print (L"DARWINBOOT: zeroing 0x%lx bytes at 0x%lx\r\n", (UINT64)Used, (UINT64)Address);
+  mDbProbe.Step = 6; DbProbeWrite (Request);
   ZeroMem ((VOID *)(UINTN)Address, (UINTN)Used);
-  Print (L"DARWINBOOT: copying %u segments\r\n", (UINT32)Kernel.Count);
   for (Index = 0; Index < Kernel.Count; Index++) {
     CopyMem ((VOID *)(UINTN)(Address + Kernel.Segments[Index].Address - Kernel.Base),
              (UINT8 *)Image + Kernel.Segments[Index].FileOffset, (UINTN)Kernel.Segments[Index].FileSize);
@@ -793,19 +829,19 @@ Boot (
     WriteUnaligned64 ((UINT64 *)(UINTN)(TreeAddress + PolicyOffset + 8), PolicySize);
     FreePool (Policies); Policies = NULL;
   }
-  Print (L"DARWINBOOT: segments copied, closing files\r\n");
+  mDbProbe.Step = 7; DbProbeWrite (Request);
   FreePool (Image); Image = NULL;
   FreePool (Tree); Tree = NULL;
   FreePool (TreePath); TreePath = NULL;
   Root->Close (Root); Root = NULL;
   Status = GetMap (&Map, &Capacity, &MapSize, &Key, &Stride);
-  Print (L"DARWINBOOT: map -> %r size 0x%lx\r\n", Status, (UINT64)MapSize);
   if (EFI_ERROR (Status)) { goto Fail; }
   Print (L"DARWINBOOT: ARM64 va=0x%lx pa=0x%lx args=0x%lx entry=0x%lx owned=0x%lx\n",
          Kernel.Base, Address, ArgsAddress, Address + Kernel.Entry - Kernel.Base, (UINT64)WindowSize);
   Print (L"DARWINBOOT: video base=0x%lx display=%lu row=%lu width=%lu height=%lu depth=%lu\n",
          Video[0], Video[1], Video[2], Video[3], Video[4], Video[5]);
   Print (L"DARWINBOOT: command line: %a\n", CommandLine);
+  mDbProbe.Step = 9; DbProbeWrite (Request);
   Print (L"DARWINBOOT: inputs validated; exiting boot services\n");
 
   //
