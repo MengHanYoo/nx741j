@@ -83,4 +83,9 @@
         ipa_fw@99580000       { no-map; reg = <0x0 0x99580000 0x0 0x10000>; };
         splash@fc800000       { reg = <0x0 0xfc800000 0x0 0x2b00000>; };
     };
+
+	unixnu_framebuffer: framebuffer {
+		compatible = "unixnu,gop-framebuffer";
+		status = "okay";
+	};
 };
