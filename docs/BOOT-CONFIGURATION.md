@@ -22,9 +22,47 @@
 | `[payload] kernel_args` | `[[entry]] args` | `-v serial=3 keepsyms=1 debug=0x144` |
 | `[payload] panic_screen = true` | 内核补丁 | panic 屏幕 |
 | `[payload] loader = "firmware"` | 无 `[[driver]]` | DarwinBoot 在固件卷 |
+| `[[payload.block_slice]]` | `[[block_slice]]`（partition/name/offset/length/writable/enabled） | 把 userdata 的窗口发布成整盘块设备，供分区/文件系统驱动绑定（阶段 6） |
 
 菜单项：`xnu`（`type = "xnu"`、`Payloads/kernel.macho`、`initrd = "Payloads/scratch-data.img"`），
 以及生成器追加的 `Restart` / `Power off` 两个 action。
+
+## 生成器覆盖面（官方 11 项特性）
+
+官方 `reference/boot-configuration` 列了 11 项特性（`[boot]`、`[ui]`、`[[driver]]`、`[[dt_patch]]`、
+`[[block_slice]]`、`[acpi]`、kit（`[[kit]]`+`[kits]`）、`[[entry]]`、`[entry.chosen]`、`[[entry.kext]]`、`[[entry.variable]]`）。
+`scripts/unixnu/payload.py` 的生成器覆盖 6 行（下表 ✅），另 6 行（❌）没有 `board.toml` 键；其中官方的 kit 一节拆成 `[kits]`（支持）与 `[[kit]]`（不支持）：
+
+| 官方特性 | 生成器 | 本机 | 说明 |
+|---|---|---|---|
+| `[boot]` | ✅ | ✅ 5 键 | timeout/rotate/fallback_timeout/connect_all/default |
+| `[ui]` | ✅ | ✅ 6 键 | 1216×2688 走竖屏单列布局 |
+| `[kits]` | ✅ | ✅ `autoload = false` | 设备侧不自动加载 kit（QEMU 的 ESP 才 true） |
+| `[[driver]]` | ✅ 仅当 `loader != "firmware"` | ❌ | DarwinBoot 由固件卷的 loader protocol 提供 |
+| `[[block_slice]]` | ✅ 2026-11-11 起（`[[payload.block_slice]]`） | 待阶段 6 | 根卷窗口发布 |
+| `[[entry]]` | ✅ | ✅ xnu + reset/shutdown/tools | 未用 confirm/dtb/initrd/enabled |
+| `[[dt_patch]]` | ❌ | ❌ | ADT 由 `devicetree.py` 从实机 DTB 生成；Darwin 走 `.adt` sidecar |
+| `[acpi]` | ❌ | ❌ | arm64 XNU 不消费 ACPI 表（AcpiTableDxe 只服务于 EFI/Linux 路径） |
+| `[[kit]]` | ❌ | ❌ | 显式 kit 列表未实现；`[kits]` 的 autoload 可用 |
+| `[entry.chosen]` | ❌ | ❌ | 命令行走 `args`，不需要 /chosen 注入 |
+| `[[entry.kext]]` | ❌ | ❌ | kext 预链接进内核 |
+| `[[entry.variable]]` | ❌ | ❌ | 不使用 UEFI 变量注入 |
+
+**阶段 6 的前置**：根卷需要把 userdata 的 SHNGROOT/OS/SystemOS 窗口以整盘块设备发布，
+这只能用 `[[block_slice]]`。该映射已于 2026-11-11 补进 `payload.py` 的 `render_block_slices()`：
+
+```toml
+[[payload.block_slice]]
+partition = "userdata"
+name = "SHNGROOT"
+offset = 0            # 相对分区起始的字节偏移
+length = 0x14000000   # 0 = 到分区末尾
+writable = false
+enabled = true
+```
+
+校验：`partition`/`name` 必填；`offset`/`length` 为非负整数；`writable`/`enabled` 为布尔；
+未配置时生成器输出空串，现有镜像逐字节不变。
 
 ## 菜单行为（官方）
 
@@ -64,4 +102,4 @@ console = "auto"
 ## 存疑与后续
 
 - 本机尚无 UEFI 输入设备，菜单依赖 `fallback_timeout`；按键就绪后可改为 `timeout = -1`（有输入时等待按键）。
-- `[[block_slice]]`、`[[driver]]`、`[acpi]`、kit 当前未声明：无对应负载/表/驱动文件，保持生成器默认。
+- ~~`[[block_slice]]` 未声明~~：映射已补（`[[payload.block_slice]]`），阶段 6 填窗口即生效；`[[driver]]`、`[acpi]`、`[[kit]]` 仍不适用（见上表）。
