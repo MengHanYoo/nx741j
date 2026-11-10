@@ -23,9 +23,9 @@
 | 2 | 菜单 → DarwinBoot 交接 | [启动链](/zh/concepts/boot-chain)、[Payload](/zh/concepts/payload) | ✅ 完成 | QEMU 闸门三标记（`BootEntry` / `MARK #29` / `EBS ok`）全绿；真机已进入内核 |
 | 3 | 内核启动 → 平台专家 | [启动链](/zh/concepts/boot-chain) | 进行中 | 已过 `PE_create_console`/`PE_init_platform`/`machine_startup`，停在 **kext 加载**；下一步见 [STEP5-BRINGUP.md](STEP5-BRINGUP.md) |
 | 4 | 存储（UFS）与根卷 | [UFS 存储](/zh/porting/ufs) | 进行中 | `ShengUfs` 已链接、SMMU 已绑；缺 `native-ufs-root=1` 实跑、SHNGROOT 窗口、`root_match_volume_uuid`；VerifiedRoot 信封 128 MiB > 64 MiB payload |
-| 5 | 显示/亮度 | [显示](/zh/porting/display) | 进行中 | 固件侧 ✅（GopFramebuffer、菜单/彩带/panic 屏）；**内核侧显示与背光驱动未写**，mdss/DSI 的 DT 已入库 |
+| 5 | 显示/亮度 | [显示](/zh/porting/display) | 进行中 | 固件 GOP 1216×2688 ✅；**`GopFramebuffer` 在 `[components]` 但不在 `[kernel] archives`，内核里 0 命中**；`DisplayTimingProbe`/`AppleARMBacklight`/`GeniI2c` 不在本地目录；mdss/DSI 的 DT 已入库 |
 | 6 | UEFI 按键 | [触控与按键](/zh/porting/input) | 阻塞 | TLMM 读探测：`0x0F000000`/`0x0F00FFF0` 可读，`0x0F010000` 起读崩；需 DxeCore/ArmMmuLib 建映射或改走 PMIC/SPMI |
-| 7 | 触摸 | [触控与按键](/zh/porting/input) | 未开始 | 确认面板是否 Novatek NT36532；`QcomGeniSpi` + `ShengNovatekTouch` 需板级接入 |
+| 7 | 触摸 | [触控与按键](/zh/porting/input) | 未开始 | 面板触控是 **Synaptics TCM**（SPI19 @ `1a80000`，reset GPIO `<0x33 0x42 0x00>`，见 `HARDWARE-INVENTORY.md`），**不是 Novatek**；目录里只有 `QcomGeniSpi`/`ShengNovatekTouch`/`ShengHidInput`，无 TCM 驱动 → 需自写或改通用路径 |
 | 8 | GPU/Metal | [GPU 与 Metal](/zh/porting/gpu) | 未开始 | 目录 `Adreno740`/`AdrenoMetal` 面向 SM8550/A740，SM8850 需对应实现 |
 | 9 | Wi-Fi/蓝牙 | [Wi-Fi](/zh/porting/network) | 未开始 | 确认模组型号（目录参考 WCN7850） |
 | 10 | USB/基带/音频/电源 | [USB](/zh/porting/usb)、[电源](/zh/porting/power) | 未开始 | 按驱动顺序排在存储/显示之后 |

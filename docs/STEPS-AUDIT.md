@@ -13,7 +13,7 @@
 | 3 创建设备仓库 | 格式 2、源码固定、参数明确 | ✅ 本地 | `schema_version = 2`、`board.example` 已移除、布局文件齐（112 个受控文件）；记录路径改指 `dts/nx741j.dts`（原先指向模板残留 `dts/board.dts`），本地 `porting-record.py check` 通过；**按 owner 决定不启用 GitHub Actions**，仓库不带 `.github/workflows/` |
 | 4 解析并检查构建配置 | `defconfig/fetch/status/tree` 通过，且构建结果在 QEMU 里真跑过 | ✅ | 10 组件 / 11 条归档 / 9 条设备补丁；`scripts/porting-record.py check`：14 个结构化区域通过；`scripts/build-and-test.sh` 每版真跑 QEMU（见文末） |
 | 5 准备硬件描述和固件 | 可构建固件 + 两个树输入 | ✅ | 4 MiB FD（DXE/BDS、无 LogDumpDxe）、菜单、payload/ADT、bootimg；硬件 DTB 加入 mdss/DSI 与面板。2026-11-09 在 **ext4 构建树（16 线程）**跑通全链路：`./unixnu kernel` **158 s**（kernel.macho sha256 `36a618db…`）、`./unixnu payload` 通过（`adt_sha256 be90306b…`）、`check-bringup.py` **17/17** |
-| 6 按依赖顺序适配驱动 | 每项能力有配置与验证 | 🟡 | 平台 ✅（ArmDTPlatform/ArmCpu/SoftwareAES）；存储 🟡（构建通过、运行时 fail-closed；verified-root 策略包已本地生成、主机验证并编入 `libShengUfs.a`（`Policy.o`，密钥以 `VROOTKEY` 起头），缺信封投递与 xnu-8796 补丁，见 `STORAGE-POLICY.md`）；显示 🟡（GopFramebuffer 已选 + 控制器 DT 入库，DPU/DSI/背光驱动未写）；输入、GPU、WCN、基带、音频 ⬜ |
+| 6 按依赖顺序适配驱动 | 每项能力有配置与验证 | 🟡 | 按官方 8 项能力逐条见下节「第 6 步明细」：1 平台 ✅、2 存储 🟡、3 显示 🟡（仅固件侧）、4–7 ⬜、8 🟡（3/5 已用） |
 | 7 构建并启动 | 构建输出 + 设备观测 | 🟡 | 层 1–4 ✅（层 4 在 QEMU 三标记全绿并真机交接进内核）；层 5 已过 `PE_create_console`/`PE_init_platform`/`machine_startup`，停在 kext/控制台获取（见 `STEP5-BRINGUP.md`） |
 | 8 完成并发布 | 格式 2 + unixnu topic + 设备页 | ⏸ 不发布 | owner 决定本地自用：仓库保持私有、不加 `unixnu` topic、不生成官网页面。记录本身已能渲染（中英文各 745 行），需要时再按下面的流程发布 |
 
@@ -102,3 +102,29 @@ sudo bash scripts/build-and-test.sh ~/nx741j-build/UniXNU
 `EBS ok` 之后 `Synchronous Exception 0x4B7FE52C` → NOTE。
 
 反例验证：把 `serial.log` 换成空文件后，同一段判据输出 `FAIL  no guest firmware banner`，闸门按预期转红。
+
+## 第 6 步明细（按官方 8 项能力）
+
+| 顺序 | 能力 | 官方组件 | 本地 | 证据 / 缺口 |
+|---|---|---|---|---|
+| 1 | CPU、中断、定时器、RAM、DMA | ArmDTPlatform、ArmCpu、ArmSmmu4K、SoC DTSI | ✅ | `ArmDTPlatform`/`ArmCpu` 在 `[kernel] archives`；ADT 由实机 DTB 派生（5,332 节点）；`ArmSmmu4K` 没有独立归档，以 kit 形式由 `scripts/build-storage-bringup.py` 编进 `libShengUfs.a`（`ArmSmmu4K*.o` 7 个 + `SmmuBind.o`），内核里 `ArmSmmu4K`×29 / `board_smmu`×12 |
+| 2 | 存储、根卷、持久 Data | ShengUfs、RamBlock、VirtioMmioBlock、VerifiedRoot | 🟡 | 内核里 `NativeUfs`×100、`verified_root`×3；`libShengUfs.a` 含 `NativeUfs/verified_root/xnu_crypto/Stubs/SmmuBind/ArmSmmu4K*`。运行时 fail-closed、无根卷；`RamBlock` 未选（payload 走的 `UniXNURamDiskDxe`）；缺 SM8850 clock/reset 表与信封投递 |
+| 3 | 帧缓冲、刷新、亮度 | GopFramebuffer、DisplayTimingProbe、AppleARMBacklight、GeniI2c | 🟡 仅固件侧 | 固件 GOP 1216×2688 ✅；**`GopFramebuffer` 在 `[components]` 却不在 `[kernel] archives`，`kernel.macho` 里 0 命中**；`DisplayTimingProbe`/`AppleARMBacklight`/`GeniI2c` 本地目录里不存在 |
+| 4 | 触控与实体按键 | QcomGeniSpi、ShengNovatekTouch、ShengHidInput、ButtonProbe | ⬜ | `QcomGeniSpi`/`ShengNovatekTouch`/`ShengHidInput` 在目录但未选，`ButtonProbe` 不在目录；**本机触控是 Synaptics TCM（SPI19 @ `1a80000`），目录里的参考实现是 Novatek → 需自写或改通用路径**；UEFI 按键另受 TLMM 阻塞 |
+| 5 | GPU 与 Metal | Adreno740、AdrenoMetal、Sm8550Platform、AdrenoFirmware、AdrenoPM4、AirNir | ⬜ | 六个都在目录，面向 SM8550；SM8850 需对应实现 |
+| 6 | Wi-Fi | Ath12kWifi、WifiProbe、WifiNet、MhiBoot | ⬜ | 只有 `Ath12kWifi` 在目录，其余三个不在；模组 WCN7850 |
+| 7 | DSP、音频、电池、调频、电源 | AdspProbe、AudioProbe、ShengBattery、CpuFreqProbe、ShengPlatformPower | ⬜ | 五个**都不在本快照的目录里** |
+| 8 | OS 服务与打包 | SoftwareAES、AppleKeyStoreState、XnuPrelink、DarwinBoot、ShengPreflight | 🟡 | `SoftwareAES`/`XnuPrelink`/`DarwinBoot` 已用；`AppleKeyStoreState`/`ShengPreflight` 在目录但未选 |
+
+### 本次修正的三个错项
+
+1. `SoftwareAES` 属第 8 项（OS 服务），此前被写进“平台”；
+2. “输入阻塞在 TLMM”只描述 **UEFI 固件按键**；内核触控根本没开始（`porting.toml` 的 `input = planned`、`components = []`）；
+3. “ArmSmmu4K 绑定”要写明它是 **kit**：没有独立归档，由 `build-storage-bringup.py` 编入 `libShengUfs.a`。
+
+### 存疑（要决策或验证）
+
+1. `components.toml` 里 `ShengUfs`、`VirtioMmioBlock` 的 `os_abi` 只有 `ipados-17.7.11-21H461`，**缺 `ios-16.7.16-20H392`**，与 AGENTS 的硬性要求不符；构建没拦住，但记录不合规；
+2. `porting.toml` 的 `display = implemented` 指固件侧能力，与“内核显示未实现”并存，读者会误判等级；
+3. `storage = planned` 与“驱动已编进内核”并存，等级口径不统一；
+4. 触摸 IC 是 Synaptics TCM 而参考实现是 Novatek：自写 TCM 驱动，还是走 `ShengHidInput` 的通用路径，未定。
