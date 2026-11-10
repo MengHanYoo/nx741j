@@ -129,3 +129,30 @@ nx741j 还需为 iOS 16 profile 提供对应策略目录（`scripts/policies/ios
 `scripts/build-storage-bringup.py` 提供剩余符号，框架 `build-xnu-4k-baseline.sh` 追加
 `-force_load` 入链接。运行时仍受 `native-source-storage=1` 门控；verified-root 已换成真实实现并 fail-closed，
 正式启用前需生成策略包。详见 `docs/STORAGE-BRINGUP.md`。
+
+## 阶段 6 配置现状（2026-11-11）
+
+按官方 `reference/configuration` 与 `concepts/userdata` 补齐了两处实机参数，另两处明确留待镜像生成后填：
+
+| 键 | 状态 | 依据 |
+|---|---|---|
+| `[payload.adt] cpu_regs` | ✅ 补全为 8 个 MPIDR：`0,0x100,0x200,0x300,0x400,0x500,0x10000,0x10100` | 实机 DTB `/cpus` 的 8 个节点 reg（`fdtget` 读出）。格式 2 的 ADT 生成器直接读 DT 的 `/cpus`，此键只服务格式 1 的 `--cpu-regs` |
+| `[[userdata.windows]]` | ✅ 两个窗口：`OS` → 组件 `OS`；`SystemOS` → 组件 `Cryptex1,SystemOS` | 本机 IPSW `BuildManifest.plist`（iPhone10,3 / 20H392 / Erase 身份）的 `VariantContents` 与 `Manifest`：OS → `087-86698-044.dmg`（4511 MiB），SystemOS → `087-86593-047.dmg`（2616 MiB） |
+| `[payload.adt] root_match_volume_uuid` | ⬜ 未填（已加注释） | 必须是 OS 窗口卷的 UUID（`/chosen/root-matching` 用它选根卷），只能从 `./unixnu userdata` 产出的镜像里读，DTB / BuildManifest 都推不出 |
+| `[[payload.block_slice]]` | ⬜ 未填（映射已就绪） | `payload.py` 的 `render_block_slices()` 已支持；窗口偏移/长度要等 SHNGROOT 镜像生成后才能定 |
+
+容量核对：`(248838138 - 4875048 + 1) * 4096 = 999,272,820,736 B`（**930.65 GiB**），
+OS（4.40 GiB）+ SystemOS（2.55 GiB）远小于容量。
+
+`./unixnu userdata --dry-run` 已验证配置（未解包任何字节）：
+
+```
+== userdata: OS would be extracted from 087-86698-044.dmg (4511 MiB)
+== userdata: SystemOS would be extracted from 087-86593-047.dmg (2616 MiB)
+== userdata: dry run, nothing extracted or written
+```
+
+**依赖链**：`./unixnu userdata` → `userdata/SHNGROOT.img` + `userdata-root.json`
+→ 从镜像读 OS 卷 UUID → 填 `root_match_volume_uuid`
+→ 若要按窗口发布块设备，再填 `[[payload.block_slice]]`（映射已就绪）
+→ XNU 侧 `NativeUfs` 发布 userdata，分区/文件系统驱动按 UUID 匹配根卷。
