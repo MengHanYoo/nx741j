@@ -1,0 +1,22 @@
+diff --git a/iokit/Kernel/IOService.cpp b/iokit/Kernel/IOService.cpp
+index 8559a66..b751f71 100644
+--- a/iokit/Kernel/IOService.cpp
++++ b/iokit/Kernel/IOService.cpp
+@@ -1580,9 +1580,14 @@ IOService::setPlatform( IOPlatformExpert * platform)
+ 	}
+ #endif
+ 
+-	gIOSystemStateNotificationService = IOSystemStateNotification::initialize();
+-	gIOSystemStateNotificationService->attachToParent(platform, gIOServicePlane);
+-	gIOSystemStateNotificationService->registerService();
++	/*
++	 * UniXNU,NX741J: creating the system state notification service goes through
++	 * StateNotificationItemCreate -> IOService::_Dispatch, which dereferences a
++	 * bogus pointer on this port (far 0x800000094) and stops the boot inside
++	 * IOPlatformExpert::start.  Nothing on the way to the root volume uses the
++	 * service, so leave it uncreated until the platform bring-up is further along.
++	 */
++	gIOSystemStateNotificationService = NULL;
+ 
+ 	static const char * keys[kCpuNumDelayTypes] = {
+ 		kIOPlatformMaxBusDelay,

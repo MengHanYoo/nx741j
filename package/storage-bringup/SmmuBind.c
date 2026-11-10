@@ -49,6 +49,7 @@ typedef struct {
     unsigned slots;
     unsigned ufs_slot, ufs_bank;
     int ufs_found;
+    int ufs_bypass;
     uint64_t pool_physical;
     ArmSmmu4KStatus last;
 } board_smmu_state_t;
@@ -84,6 +85,45 @@ static uint32_t board_smmu_read32(unsigned offset)
     return value;
 }
 
+static void board_smmu_write32(unsigned offset, uint32_t value)
+{
+    *(volatile uint32_t *)(board_smmu_mmio.mapping + offset) = value;
+    __sync_synchronize();
+}
+
+int board_smmu_probe(void);
+
+/* docs/SMMU-BRINGUP.md step 1/2: firmware left SID 0x60 unrouted and the SMMU
+ * globally bypassed (SCTLR.M = 0).  NativeUfs plans its own SMMU context and
+ * refuses to start without a route, so route the stream as bypass here, before
+ * IOKit probes storage.  Bypass keeps UFS DMA physical, which is how the
+ * earlier working boot ran. */
+int board_smmu_prepare_ufs(void)
+{
+    unsigned slot;
+
+    if (board_smmu_probe() != 0) {
+        return -1;
+    }
+    if (board_smmu.ufs_found && !board_smmu.ufs_bypass) {
+        return 0;
+    }
+    slot = board_smmu.ufs_slot;
+    if (slot == ~0u) {
+        return -2;
+    }
+    board_smmu_write32(REG_SMR(slot), (1u << 31) | BOARD_SMMU_UFS_SID);
+    board_smmu_write32(REG_S2CR(slot), 1u); /* type 1 = bypass */
+    board_smmu_write32(REG_SCR0, board_smmu.scr0 | 1u); /* SCTLR.M = 1 */
+    __sync_synchronize();
+    board_smmu.ufs_bank = 0;
+    board_smmu.ufs_found = 1;
+    board_smmu.ufs_bypass = 1;
+    printf("SMMU: routed sid %03x as bypass at slot %u (scr0 %08x -> %08x)\n",
+           BOARD_SMMU_UFS_SID, slot, board_smmu.scr0, board_smmu.scr0 | 1u);
+    return 0;
+}
+
 static int board_smmu_map(void)
 {
     vm_offset_t mapping;
@@ -109,6 +149,7 @@ static int board_smmu_map(void)
 static void board_smmu_scan(void)
 {
     int printed = 0;
+    unsigned free_slot = ~0u;
     unsigned exids = (board_smmu.id0 >> 8) & 1u;
     unsigned mask_bits = exids ? 0xffffu : 0x7fffu;
 
@@ -134,12 +175,30 @@ static void board_smmu_scan(void)
                    slot, smr, s2cr, sid, mask, type, bank);
             ++printed;
         }
+        if (!valid && free_slot == ~0u) {
+            free_slot = slot;
+        }
         if (sid == BOARD_SMMU_UFS_SID && type == 0 && valid) {
             board_smmu.ufs_slot = slot;
             board_smmu.ufs_bank = bank;
             board_smmu.ufs_found = 1;
         }
     }
+    if (!board_smmu.ufs_found && (board_smmu.scr0 & 1u) == 0 && free_slot != ~0u) {
+        /*
+         * docs/SMMU-BRINGUP.md step 0: firmware did not route SID 0x60.  With
+         * SCTLR.M clear the SMMU is globally bypassed, so UFS DMA is physical
+         * already (this is how the previous boot reached userland).  Report the
+         * free slot with the bypass flag instead of leaving slot = -1.
+         */
+        board_smmu.ufs_slot = free_slot;
+        board_smmu.ufs_bank = 0;
+        board_smmu.ufs_found = 1;
+        board_smmu.ufs_bypass = 1;
+        printf("SMMU: ufs sid %03x not routed; SMMU off, reporting global bypass slot %u\n",
+               BOARD_SMMU_UFS_SID, free_slot);
+    }
+
     if (board_smmu.ufs_found) {
         uint32_t cbar = board_smmu_read32(REG_CBAR(board_smmu.ufs_bank));
         printf("SMMU: ufs sid %03x slot %u bank %u cbar %08x\n",

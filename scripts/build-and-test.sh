@@ -25,11 +25,45 @@ step 'payload'
 step 'firmware'
 UNIXNU_UEFI=${UNIXNU_UEFI:-/opt/work/uefi-sheng-main} ./unixnu firmware -D "$REPO" 2>&1 | tee -a "$LOG" | tail -2
 
+# Official smoke suite (package/Scripts/smoke.sh): default entry, keyboard
+# selection, degraded no-GOP, block slice, kext staging and layout.  It needs
+# the tool's edk2 tree under package/Mu_Basecore with its submodules; when that
+# is missing the gate says so instead of silently dropping the coverage.
+step 'smoke'
+if [ -d "$TREE/package/Mu_Basecore/MdePkg/Library/BaseFdtLib/libfdt" ]; then
+  smoke_rc=0
+  ( cd "$TREE" && JOBS=8 bash package/Scripts/smoke.sh ) > "$REPO/out/qemu/smoke.log" 2>&1 || smoke_rc=$?
+  if [ "$smoke_rc" -eq 0 ]; then
+    echo 'PASS  smoke: six package scenarios'
+  else
+    echo "FAIL  smoke exited $smoke_rc (log: $REPO/out/qemu/smoke.log)"
+    fail=1
+  fi
+else
+  echo "SKIP  smoke: no edk2 tree with submodules at $TREE/package/Mu_Basecore"
+fi
+
 step 'qemu'
+# Every build must run in the model first.  no-video=1 keeps the kernel out of
+# the framebuffer path (QEMU has no panel), and QEMU_INT=1 adds -d int so the
+# log records the exception the kernel stopped on.
 SERIAL=$REPO/out/qemu/serial.log
-rm -f "$SERIAL"
+INT=$REPO/out/qemu/int.log
+rm -f "$INT" "$SERIAL"
 qemu_rc=0
-"$REPO/scripts/qemu-nx741j.sh" "$TREE" 40 | tee -a "$LOG" || qemu_rc=$?
+QEMU_INT=1 "$REPO/scripts/qemu-nx741j.sh" "$TREE" 40 | tee -a "$LOG" || qemu_rc=$?
+if [ -s "$INT" ]; then
+  python3 - "$INT" <<'PY' | tee -a "$LOG" || true
+import sys
+try:
+    lines = open(sys.argv[1], errors="ignore").read().splitlines()
+except OSError:
+    sys.exit(0)
+keep = [l for l in lines if l.startswith("Taking exception") or l.startswith("...with")]
+if keep:
+    print("MODEL kernel stopped at " + " | ".join(keep[-3:]))
+PY
+fi
 
 fail=0
 # The gate only means something if QEMU really booted the payload: the runner
@@ -54,8 +88,8 @@ done
 # A guest exception before the hand-off is ours (firmware or DarwinBoot) and
 # blocks the build. One after it is the kernel running in a machine model that
 # has none of our hardware, so it is reported but does not block.
-ebs_line=$(grep -n 'QEMU: EBS ok, entering the kernel' "$SERIAL" 2>/dev/null | head -1 | cut -d: -f1)
-exc_line=$(grep -n 'Synchronous Exception' "$SERIAL" 2>/dev/null | head -1 | cut -d: -f1)
+ebs_line=$(grep -n 'QEMU: EBS ok, entering the kernel' "$SERIAL" 2>/dev/null | head -1 | cut -d: -f1 || true)
+exc_line=$(grep -n 'Synchronous Exception' "$SERIAL" 2>/dev/null | head -1 | cut -d: -f1 || true)
 if [ -n "$exc_line" ]; then
   if [ -z "$ebs_line" ] || [ "$exc_line" -lt "$ebs_line" ]; then
     echo "FAIL  synchronous exception at line $exc_line (before the hand-off)"

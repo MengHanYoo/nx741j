@@ -1,0 +1,43 @@
+diff --git a/iokit/Kernel/IOService.cpp b/iokit/Kernel/IOService.cpp
+index 8559a66..caca150 100644
+--- a/iokit/Kernel/IOService.cpp
++++ b/iokit/Kernel/IOService.cpp
+@@ -6435,6 +6435,11 @@ IOService::waitForMatchingServiceWithToken( OSDictionary * matching,
+ 		return NULL;
+ 	}
+ 
++	/* UniXNU,NX741J: same watchdog for every caller that asked to wait forever. */
++	if (timeout == UINT64_MAX) {
++		timeout = 60ULL * NSEC_PER_SEC;
++	}
++
+ 	result = NULL;
+ 	cancelArgs.ref = &result;
+ 	cancelArgs.canceled = false;
+@@ -6547,11 +6552,25 @@ IOService::waitForService( OSDictionary * matching,
+ 		timeoutNS *= kSecondScale;
+ 		timeoutNS += timeout->tv_nsec;
+ 	} else {
+-		timeoutNS = UINT64_MAX;
++		/*
++		 * UniXNU,NX741J: waitForService watchdog.  An unbounded wait hides the
++		 * failure the porting guide describes ("missing platform or storage
++		 * driver" should panic and name the provider); bound it so the board
++		 * reports which provider never showed up instead of hanging silently.
++		 */
++		timeoutNS = 60ULL * kSecondScale;
+ 	}
+ 
+ 	result = waitForMatchingService(matching, timeoutNS);
+ 
++	if (!result && !timeout) {
++		OSString * providerClass = OSDynamicCast(OSString, matching->getObject("IOProviderClass"));
++		OSString * nameMatch = OSDynamicCast(OSString, matching->getObject("IONameMatch"));
++		panic("waitForService timed out: no provider (class=%s name=%s)",
++		    providerClass ? providerClass->getCStringNoCopy() : "?",
++		    nameMatch ? nameMatch->getCStringNoCopy() : "?");
++	}
++
+ 	matching->release();
+ 	if (result) {
+ 		result->release();

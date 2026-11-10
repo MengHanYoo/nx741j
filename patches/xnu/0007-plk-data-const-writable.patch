@@ -1,0 +1,29 @@
+diff --git a/osfmk/arm64/arm_vm_init.c b/osfmk/arm64/arm_vm_init.c
+index d89b0f1..2d671af 100644
+--- a/osfmk/arm64/arm_vm_init.c
++++ b/osfmk/arm64/arm_vm_init.c
+@@ -1645,7 +1645,14 @@ arm_vm_prot_finalize(boot_args * args __unused)
+ 
+ 	/* tighten permissions on kext read only data and code */
+ 	arm_vm_page_granular_RNX(segPRELINKTEXTB, segSizePRELINKTEXT, ARM64_GRANULE_ALLOW_BLOCK);
+-	arm_vm_page_granular_RNX(segPLKDATACONSTB, segSizePLKDATACONST, ARM64_GRANULE_ALLOW_BLOCK);
++	/*
++	 * UniXNU,NX741J: keep both const segments writable.  A kext writes into
++	 * the kernel __DATA_CONST through a kernel helper (panic far
++	 * 0xFFFFFFF0071AF778, ESR 0x9600004F) and the prelinked segment has the
++	 * same problem; tighten them once the prelink places those objects in a
++	 * writable segment.
++	 */
++	arm_vm_page_granular_RWNX(segPLKDATACONSTB, segSizePLKDATACONST, ARM64_GRANULE_ALLOW_BLOCK);
+ 
+ 	cpu_stack_alloc(&BootCpuData);
+ 	arm64_replace_bootstack(&BootCpuData);
+@@ -1715,7 +1722,7 @@ arm_vm_prot_finalize(boot_args * args __unused)
+ 	 */
+ #endif
+ 
+-	arm_vm_page_granular_RNX(segDATACONSTB, segSizeDATACONST, ARM64_GRANULE_ALLOW_BLOCK);
++	arm_vm_page_granular_RWNX(segDATACONSTB, segSizeDATACONST, ARM64_GRANULE_ALLOW_BLOCK);
+ 
+ 	__builtin_arm_dsb(DSB_ISH);
+ 	flush_mmu_tlb();

@@ -9,9 +9,12 @@ description = "Nubia Z80 Ultra (NX741J), SM8850 canoe (Kaanapali)"
 kit = "nx741j"
 
 [components]
-# SoftwareAES：arch profile 的 [kernel].archives 里写了 component:SoftwareAES，
+# SoftwareAES 暂时不选：内核里 NativeAES 与预链接的 IOAESAccelerator 重复，
+# 实测在 NativeAES::alloc -> IOAESAccelerator ctor 处以 instr=0 崩（未定义指令）。
+# 先只用预链接提供者，等安全栈接好再决定归属。
+# 原注释：arch profile 的 [kernel].archives 里写了 component:SoftwareAES，
 # 且 common.config 打开 CONFIG_XNU_NATIVE_AES，必须选中才能在归档阶段解析到它。
-include = ["ArmDTPlatform", "ArmCpu", "SoftwareAES", "XnuPrelink", "DarwinBoot", "GopFramebuffer", "ShengUfs", "VirtioMmioBlock", "VerifiedRoot", "ArmSmmu4K"]
+include = ["ArmDTPlatform", "ArmCpu", "XnuPrelink", "DarwinBoot", "GopFramebuffer", "ShengUfs", "VirtioMmioBlock", "VerifiedRoot", "ArmSmmu4K"]
 
 [kernel]
 defconfig = "nx741j_defconfig"
@@ -21,11 +24,9 @@ archives = [
   "build-corecrypto-14.py --namespace",
   "component:ArmDTPlatform",
   "component:ArmCpu",
-  "component:SoftwareAES",
   "component:ShengUfs",
   "component:VirtioMmioBlock",
   "build-storage-bringup.py",
-  "build-software-aes-bindings.py",
   "build-mockfs-fixture.py",
   "build-libpthread-kernel.py",
 ]
@@ -37,7 +38,10 @@ patch_series = ["arch:patches/xnu/series", "soc:patches/xnu/series", "os:patches
 tool = "kits/XnuPrelink/emit_prelink.py"
 kernel = "build/xnu/ios-obj/DEVELOPMENT_ARM64_BCM2837/mach.development.bcm2837"
 # 保留原始 kernelcache 中的组件树；匹配器再按依赖补全其余组件。
-roots = ["com.apple.driver.AppleARMPlatform", "com.apple.filesystems.apfs"]
+# AppleARMPlatform 负责发布 CPU nub 和 /arm-io 的各子节点（官方第 5 阶段明确要求），
+# 去掉它之后 IOKit 匹配会一直等待、无 panic 无输出。它当初的崩溃是写自己的 const
+# 数据（pc 0x46DFDB4），已由 0008 关掉粒度权限收紧解决。
+roots = ["com.apple.driver.AppleARMPlatform", "com.apple.driver.ApplePMGR", "com.apple.security.AppleImage4", "com.apple.filesystems.apfs"]
 # 本配置的 roots 不含 AppleMobileFileIntegrity，prelink 报告 early_security_initializers={}，
 # 因此显式置空以覆盖 profile 的 REQUIRED_EARLY_SECURITY_INIT 占位；接入 AMFI 时再填 identifier=address。
 early_security_init = ""
@@ -92,24 +96,28 @@ volume = "NX741J"
 size_mib = 64
 loader = "firmware"
 title = "NX741J"
+# 加载器（efisp loader + Mu SEC）交给内核的连续 RAM 范围。必须放在 [payload]：
+# 格式 2 的 payload 走 devicetree.generate，它在 devicetree.py:306 读 payload.dram_size
+# 与 DT /memory 比较，不一致就报 “payload.dram_size differs from the hardware DTS”；
+# 格式 1 的 --dram-size 也取 spec["dram_size"]（payload.py:171）。
+dram_size = "0x140000000"
 # 阶段 5 已越过控制台（根因是 BCM2837 的 PLATFORM_PANIC_LOG_PADDR，见
 # patches/xnu/0002-bcm2837-drop-panic-log-paddr.patch）。恢复真实面板帧缓冲：
 # 彩带在 MMU 关闭时写物理地址 0xFC800000，内核在 initialize_screen 里自己映射。
 # kextlog=0xffff：让 OSKext 把"正在启动哪个 kext"打到控制台（屏幕上能看见），
 # 用来定位 loadSecurityExtensions 里第一个失败的 Apple kext。
-kernel_args = ["-v", "serial=3", "keepsyms=1", "debug=0x144", "kextlog=0xffff"]
-# 阶段 5 二分探针：内核入口后 delay 秒复位（复位点在 FUNCTION 调 SYMBOL 之后）。
-# 阶段 5 二分探针：内核入口后 delay 秒复位（复位点在 FUNCTION 调 SYMBOL 之后）。
-# 阶段 5 二分探针：内核入口后 delay 秒复位（复位点在 FUNCTION 调 SYMBOL 之后）。
-# 阶段 5 二分探针：内核入口后 delay 秒复位（复位点在 FUNCTION 调 SYMBOL 之后）。
-# 阶段 5 二分探针：内核入口后 delay 秒复位（复位点在 FUNCTION 调 SYMBOL 之后）。
-# 阶段 5 二分探针：内核入口后 delay 秒复位（复位点在 FUNCTION 调 SYMBOL 之后）。
-# 阶段 5 二分探针：内核入口后 delay 秒复位（复位点在 FUNCTION 调 SYMBOL 之后）。
+# 去掉 debug=0x144：它让 panic() 进入内核调试器等待，屏幕不打印文本，随后硬件
+# 看门狗把设备复位成 memorydump 模式。去掉后 panic 会直接把文本画到面板上。
+# 去掉 serial=3：本机没有串口设备，带上它反而让控制台走串口分支，屏幕上收不到
+# 内核 print。让它走视频控制台，配合 kextlog 就能在面板上看到内核输出。
+# native-ufs-probe=10：只读自查（GPT → userdata → 首块），让 NativeUfs 绑定
+# /arm-io/ufshc（IOPlatformDevice + IONameMatch），不写任何数据。
+kernel_args = ["-v", "keepsyms=1", "kextlog=0xffff", "native-ufs-probe=4", "native-ufs-diagnostics=1"]
+# 文档：panic 屏与入口探针不能同时启用；这里用探针二分 IOKit 初始化。
+panic_screen = true
 # panic 屏和 stage-4 复位代码洞放不下（0xa1f vs 剩余 0x970），二分阶段先关掉；
 # 彩带仍随探针注入（stage 1/2 与复位洞穴是分开的）。
-# 阶段 5 二分探针：内核入口后 delay 秒复位（复位点在 FUNCTION 调 SYMBOL 之后）。
 # machine_startup 不返回，所以复位点放在调用之前：看到复位 = 已经走到 IOKit 门口。
-panic_screen = true
 timeout = 5
 rotate = 0
 fallback_timeout = 10
@@ -136,11 +144,13 @@ chip_id = "207"
 unique_chip_id = "required"
 # 平台输入：SM8850 的 PSCI 走 SMC（dts sm8850.dtsi 的 /psci method = "smc"）。
 psci_method = "smc"
-# 加载器（efisp loader + Mu SEC）交给内核的连续 RAM 范围；取自板级 DTS memory 节点，
-# 与固件内存映射的一致性待内核启动后核对（docs/STEP6-PLATFORM.md 存疑项）。
-dram_size = "0x140000000"
 owned_memory_size = "0x10000000"
-cpu_regs = "0,0x100"
+# root_match_volume_uuid 仍未填：它必须是 OS 窗口卷的 UUID（/chosen/root-matching 用它选根卷），
+# 只能从 ./unixnu userdata 产出的镜像里读，不能从 DTB 或 BuildManifest 推。阶段 6 生成镜像后补。
+# 实机 DTB 的 /cpus 有 8 个节点，reg 依次为 (0,0) (0,0x100) (0,0x200) (0,0x300)
+# (0,0x400) (0,0x500) (0,0x10000) (0,0x10100)。格式 2 的 ADT 生成器直接读 DT 的
+# /cpus，不用这个键；它只在格式 1 的 --cpu-regs 路径生效，这里按实机值补全以免误导。
+cpu_regs = "0,0x100,0x200,0x300,0x400,0x500,0x10000,0x10100"
 
 [userdata]
 # From the dumped LUN0 GPT (The device uses 4096-byte logical sectors):
@@ -148,6 +158,20 @@ cpu_regs = "0,0x100"
 first_lba = 4875048
 last_lba = 248838138
 lba_bytes = 4096
+# 阶段 6：userdata 承载 Darwin 根文件系统，两个窗口按官方 concepts/userdata 定义。
+# 组件名取自本机 IPSW 的 BuildManifest（iPhone10,3 / 20H392，Erase 身份）：
+#   OS                -> 087-86698-044.dmg 4,730,814,044 B（4.40 GiB）
+#   Cryptex1,SystemOS -> 087-86593-047.dmg 2,743,074,816 B（2.55 GiB）
+# userdata 容量 243963091 * 4096 = 999,272,820,736 B（930.65 GiB），两个窗口装得下。
+# ./unixnu userdata 会把这两个组件按字节复制进 SHNGROOT 镜像并写 userdata-root.json。
+
+[[userdata.windows]]
+name = "OS"
+component = "OS"
+
+[[userdata.windows]]
+name = "SystemOS"
+component = "Cryptex1,SystemOS"
 
 [bootimg.image]
 # 必须是 TOML 整数：unixnu 的 verify() 直接用这些值做整数加法（字符串会 TypeError）。

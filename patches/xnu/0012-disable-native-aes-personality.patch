@@ -1,0 +1,19 @@
+--- a/iokit/KernelConfigTables.cpp
++++ b/iokit/KernelConfigTables.cpp
+@@ -39,7 +39,15 @@
+     "     'IOProviderClass' = IOPlatformExpertDevice;"
+     "     'IOProbeScore'    = 0:32;"
+     "   }"
+-#if defined(XNU_NATIVE_AES) && XNU_NATIVE_AES
++/*
++ * UniXNU,NX741J: keep the NativeAES personality out of the kernel.  The
++ * prelinked IOCryptoAcceleratorFamily extent is zero-filled at
++ * IOAESAccelerator::IOAESAccelerator (0xFFFFFFF004A80038 holds 0x00000000), so
++ * NativeAES::alloc() jumps into an empty constructor and the kernel panics with
++ * "Undefined kernel instruction instr=0".  Re-enable once the prelink copies
++ * that component properly.
++ */
++#if defined(XNU_NATIVE_AES) && XNU_NATIVE_AES && 0
+     "   ,{"
+     "     'IOClass'         = NativeAES;"
+     "     'IOProviderClass' = IOResources;"

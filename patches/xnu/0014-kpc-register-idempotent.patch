@@ -1,0 +1,20 @@
+diff --git a/osfmk/kern/kpc_common.c b/osfmk/kern/kpc_common.c
+index a52bbb0..37d8f36 100644
+--- a/osfmk/kern/kpc_common.c
++++ b/osfmk/kern/kpc_common.c
+@@ -86,6 +86,15 @@ boolean_t
+ kpc_register_cpu(struct cpu_data *cpu_data)
+ {
+ 	assert(cpu_data);
++	/*
++	 * UniXNU,NX741J: the boot CPU is registered by the kernel's own CPU
++	 * bring-up and again when ArmCpu::start() walks the platform CPU nubs, so
++	 * this is hit twice per boot and the assert below panics the machine.
++	 * Re-registration is a no-op: the buffers already belong to this cpu_data.
++	 */
++	if (cpu_data->cpu_kpc_buf[0] != NULL) {
++		return TRUE;
++	}
+ 	assert(cpu_data->cpu_kpc_buf[0] == NULL);
+ 	assert(cpu_data->cpu_kpc_buf[1] == NULL);
+ 	assert(cpu_data->cpu_kpc_shadow == NULL);

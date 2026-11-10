@@ -1,0 +1,20 @@
+diff --git a/osfmk/arm64/arm_vm_init.c b/osfmk/arm64/arm_vm_init.c
+index d89b0f1..cd9ccf7 100644
+--- a/osfmk/arm64/arm_vm_init.c
++++ b/osfmk/arm64/arm_vm_init.c
+@@ -1094,6 +1094,15 @@ arm_vm_page_granular_prot(vm_offset_t start, unsigned long size, pmap_paddr_t pa
+ 	vm_offset_t _end = start + size;
+ 	vm_offset_t align_start = (start + ARM_TT_L2_OFFMASK) & ~ARM_TT_L2_OFFMASK;
+ 
++	/*
++	 * UniXNU,NX741J: bring-up only.  Every granular protection change funnels
++	 * through here; on this port a kext writes a pointer into its own const data
++	 * from start() (fault at 0xFFFFFFF005CAA320, ESR permission fault level 3),
++	 * so keep the initial permissions until the prelink places that object in a
++	 * writable segment.
++	 */
++	return;
++
+ 	if (size == 0x0UL) {
+ 		return;
+ 	}

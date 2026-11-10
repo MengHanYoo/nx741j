@@ -1,0 +1,22 @@
+diff --git a/libkern/c++/OSKext.cpp b/libkern/c++/OSKext.cpp
+index 82661cf..59ea37d 100644
+--- a/libkern/c++/OSKext.cpp
++++ b/libkern/c++/OSKext.cpp
+@@ -5932,6 +5932,17 @@ OSKext::loadKextWithIdentifier(
+ 		goto finish;
+ 	}
+ 
++	/*
++	 * UniXNU,NX741J: AppleImage4 needs AMFI, which this port has not wired yet;
++	 * IOCatalogue asks for it during service matching and its start() panics with
++	 * "failed to get crypto algorithm: 2".  Report it as not found so the match
++	 * simply finds no provider (the porting guide's documented failure shape).
++	 */
++	if (kextIdentifier->isEqualTo("com.apple.security.AppleImage4")) {
++		result = kOSReturnError;
++		goto finish;
++	}
++
+ 	OSKext::recordIdentifierRequest(kextIdentifier);
+ 
+ 	theKext = OSDynamicCast(OSKext, sKextsByID->getObject(kextIdentifier));

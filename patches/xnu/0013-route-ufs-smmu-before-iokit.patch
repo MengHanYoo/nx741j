@@ -1,0 +1,27 @@
+diff --git a/iokit/Kernel/IOStartIOKit.cpp b/iokit/Kernel/IOStartIOKit.cpp
+index d74c063..9382496 100644
+--- a/iokit/Kernel/IOStartIOKit.cpp
++++ b/iokit/Kernel/IOStartIOKit.cpp
+@@ -182,6 +182,22 @@ StartIOKitMatching(void)
+ {
+ 	SOCD_TRACE_XNU(START_IOKIT);
+ 	assert(gRootNub != NULL);
++
++	/*
++	 * UniXNU,NX741J: route SID 0x60 before matching runs.  NativeUfs plans
++	 * its own SMMU context and refuses to start while the stream has no
++	 * route, but the boot chain leaves the SMMU globally bypassed.  This
++	 * runs after IOLibInit so the MMIO mapping API is available, and before
++	 * startIOServiceMatching so storage sees the route.
++	 */
++	{
++		extern int board_smmu_prepare_ufs(void) __attribute__((weak));
++
++		if (board_smmu_prepare_ufs) {
++			(void)board_smmu_prepare_ufs();
++		}
++	}
++
+ 	bool ok = gRootNub->startIOServiceMatching();
+ 	if (__improbable(!ok)) {
+ 		panic("Failed to start IOService matching");

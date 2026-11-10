@@ -59,7 +59,7 @@ id = "xnu"
 title = "NX741J (QEMU model)"
 type = "xnu"
 path = "Payloads/kernel.macho"
-args = "keepsyms=1 debug=0x144 -v serial=3 qemu-mark=1 scratch-video=1"
+args = "keepsyms=1 -v qemu-mark=1 no-video=1"
 CFG
 
 MNT=$(mktemp -d)
@@ -69,17 +69,29 @@ cp "$MNT/EFI/UniXNU/Payloads/kernel.macho.adt" "$ESP/EFI/UniXNU/Payloads/"
 cp "$MNT/EFI/UniXNU/Payloads/kernel.macho.trustcache" "$ESP/EFI/UniXNU/Payloads/"
 umount "$MNT"; rmdir "$MNT"
 
+# Per the QEMU guide the kernel is exercised with the generated QEMU
+# device tree, not the device ADT (its DRAM base does not exist here).
+python3 "$TREE/out/nx741j/ios-16.7.16-20H392/nx741j/tree/scripts/qemu-entry/make-dt.py" \
+  --armvirt --armcpu --smp 8 --owned-memory-size 0x10000000 \
+  --trust-cache --nvram-proxy \
+  --output "$ESP/EFI/UniXNU/Payloads/kernel.macho.adt" >/dev/null
+
 FW=$(ls /usr/share/AAVMF/AAVMF_CODE.fd /usr/share/qemu-efi-aarch64/QEMU_EFI.fd 2>/dev/null | head -1)
 [ -f "$FW" ] || { echo 'no AArch64 UEFI firmware found' >&2; exit 1; }
 
 echo "esp: $ESP"
 echo "firmware: $FW"
 set +e
+INT_ARGS=()
+if [ "${QEMU_INT:-0}" = "1" ]; then
+  INT_ARGS=(-d int -D "$OUT/int.log")
+fi
 timeout "$TIMEOUT" qemu-system-aarch64 \
   -M virt -cpu cortex-a72 -m 16G -smp 8 \
   -drive if=pflash,format=raw,readonly=on,file="$FW" \
   -drive format=raw,file=fat:rw:"$ESP" \
   -nographic -serial mon:stdio \
+  "${INT_ARGS[@]}" \
   > "$LOG" 2>&1
 STATUS=$?
 set -e
@@ -90,3 +102,11 @@ for m in 'UNIXNU: BootEntry' 'DARWINBOOT: Boot called' 'MARK #' 'EBS ok' 'ArmDTP
   printf '%-28s %s\n' "$m" "$n"
 done
 tail -20 "$LOG"
+
+# A timeout is how a healthy run ends: the kernel keeps running in a machine
+# model that has none of our hardware, so QEMU is killed instead of exiting.
+# Only a crash before the hand-off counts as a runner failure.
+if [ "$STATUS" -ne 0 ] && [ "$STATUS" -ne 124 ]; then
+  exit "$STATUS"
+fi
+exit 0

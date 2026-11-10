@@ -1,0 +1,23 @@
+diff --git a/libkern/c++/OSMetaClass.cpp b/libkern/c++/OSMetaClass.cpp
+index 4ad2fc7..ef6950f 100644
+--- a/libkern/c++/OSMetaClass.cpp
++++ b/libkern/c++/OSMetaClass.cpp
+@@ -885,10 +885,15 @@ OSMetaClass::postModLoad(void * loadHandle)
+ 					/* Log this error here so we can include the class name.
+ 					 * xxx - we should look up the other kext that defines the class
+ 					 */
+-#if defined(XNU_TARGET_OS_OSX)
++#if 1
++					/*
++					 * UniXNU,NX741J: IOStorageFamily is both built into this kernel and
++					 * pulled in from the original kernelcache, so every class it defines
++					 * collides with the built-in one.  The built-in classes are the ones
++					 * in use, so report the duplicate and keep booting instead of
++					 * panicking; the kext simply fails to register its copy.
++					 */
+ 					OSKextLog(myKext, kOSMetaClassLogSpec,
+-#else
+-					panic(
+ #endif /* defined(XNU_TARGET_OS_OSX) */
+ 					    "OSMetaClass: Kext %s class %s is a duplicate;"
+ 					    "kext %s already has a class by that name.",

@@ -1,14 +1,17 @@
 # Device XNU patch series (one patch path per line, applied in order, # starts a comment).
 #
-# 0002: BCM2837.h hardcodes PLATFORM_PANIC_LOG_PADDR = 0x3c0fc000, a Raspberry Pi
-# address that does not exist on NX741J. check_for_panic_log() maps it and reads
-# a magic word, which takes an external abort inside PE_create_console() before the
-# console exists. With the macro undefined the device tree path is used and returns
-# immediately (our ADT has no pram node).
-#
-# 0003: skip KLDBootstrap::loadSecurityExtensions(). AppleImage4 is in the security
-# extension list, its start() fails with "failed to get crypto algorithm: 2" and
-# panics, which blocks the boot before the root volume. AMFI's early_security_init
-# is not wired in this port yet, so the pass has nothing to do anyway.
+# 0002: BCM2837 panic log address; 0003: skip security extensions;
+# 0004: trust cache without Image4/AMFI; 0005: skip system state notifications;
+# 0006: duplicate class -> log; 0007/0008: keep prelinked const writable and
+# disable granular protection rewrites (bring-up); 0009: waitForService watchdog;
+# 0010: PE_create_console uses kPEAcquireScreen so kprintf reaches the panel.
 0002-bcm2837-drop-panic-log-paddr.patch
 0003-skip-security-extensions.patch
+0004-trustcache-without-image4.patch
+0005-skip-system-state-notifications.patch
+0006-duplicate-class-log.patch
+0007-plk-data-const-writable.patch
+0009-waitforservice-watchdog.patch
+0011-skip-image4-load.patch
+0012-disable-native-aes-personality.patch
+0014-kpc-register-idempotent.patch

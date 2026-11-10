@@ -1,0 +1,71 @@
+diff --git a/bsd/kern/kern_trustcache.c b/bsd/kern/kern_trustcache.c
+index 4c22764..4bafe37 100644
+--- a/bsd/kern/kern_trustcache.c
++++ b/bsd/kern/kern_trustcache.c
+@@ -77,16 +77,15 @@ trust_cache_runtime_init(void)
+ 	allow_engineering_caches = true;
+ #endif
+ 
+-	/* Image4 interface needs to be available */
+-	if (img4if == NULL) {
+-		panic("image4 interface not available");
+-	}
+-
+-	/* AMFI interface needs to be available */
+-	if (amfi == NULL) {
+-		panic("amfi interface not available");
+-	} else if (amfi->TrustCache.version < 2) {
+-		panic("amfi interface is stale: %u", amfi->TrustCache.version);
++	/*
++	 * UniXNU,NX741J: this port does not bring up AppleImage4 and AMFI yet (the
++	 * security extension pass is skipped, see patches/xnu/0003), so both
++	 * interfaces are NULL here.  Panicking would stop the boot before the root
++	 * volume is even considered; instead leave the runtime trust cache empty and
++	 * keep going, which is the same state as a device without a trust cache.
++	 */
++	if (img4if == NULL || amfi == NULL || amfi->TrustCache.version < 2) {
++		return;
+ 	}
+ 
+ 	trustCacheInitializeRuntime(
+@@ -248,16 +247,15 @@ trust_cache_runtime_init(void)
+ 	allow_legacy_caches = true;
+ #endif
+ 
+-	/* Image4 interface needs to be available */
+-	if (img4if == NULL) {
+-		panic("image4 interface not available");
+-	}
+-
+-	/* AMFI interface needs to be available */
+-	if (amfi == NULL) {
+-		panic("amfi interface not available");
+-	} else if (amfi->TrustCache.version < 2) {
+-		panic("amfi interface is stale: %u", amfi->TrustCache.version);
++	/*
++	 * UniXNU,NX741J: this port does not bring up AppleImage4 and AMFI yet (the
++	 * security extension pass is skipped, see patches/xnu/0003), so both
++	 * interfaces are NULL here.  Panicking would stop the boot before the root
++	 * volume is even considered; instead leave the runtime trust cache empty and
++	 * keep going, which is the same state as a device without a trust cache.
++	 */
++	if (img4if == NULL || amfi == NULL || amfi->TrustCache.version < 2) {
++		return;
+ 	}
+ 
+ 	trustCacheInitializeRuntime(
+@@ -766,6 +764,14 @@ load_static_trust_cache(void)
+ 	/* Mark this function as having been called */
+ 	trust_cache_static_init = true;
+ 
++	/*
++	 * UniXNU,NX741J: without AMFI there is no static trust cache to link against;
++	 * the dereference of amfi->TrustCache below faults at 0x118 otherwise.
++	 */
++	if (img4if == NULL || amfi == NULL) {
++		return;
++	}
++
+ 	/* Nothing to do when the runtime isn't set */
+ 	if (trust_cache_rt == NULL) {
+ 		return;
