@@ -65,7 +65,7 @@ PY
 | 仓库 | 可见性 | 默认分支 | 说明 |
 |---|---|---|---|
 | `MengHanYoo/UniXNU-nx741j` | 私有（404） | main | 设备仓库 origin；发布应以它为准 |
-| `MengHanYoo/nx741j` | 公开 | `main`（旧项目树） | 设备树在 `unixnu-nx741j` 分支（`0ec7b5b`），默认分支没有 `board.toml`/porting.toml，因此不会被发现 |
+| `MengHanYoo/nx741j` | 公开 | `main`（**已是设备树**，2026-11-09 合并） | `main` 与 `unixnu-nx741j` 指向同一提交，`board.toml`/`porting.toml` 都在默认分支上，具备被 `sync-devices` 发现的条件 |
 | `MengHanYoo/UniXNU-sm8850-common` | 私有（404） | main | SoC 共享支持，不影响发现 |
 
 要做：公开 `UniXNU-nx741j`（或把 `nx741j` 的默认分支切到设备树分支）→ 加 `unixnu` topic → 推送本次提交 →
@@ -124,7 +124,7 @@ sudo bash scripts/build-and-test.sh ~/nx741j-build/UniXNU
 
 ### 存疑（要决策或验证）
 
-1. `components.toml` 里 `ShengUfs`、`VirtioMmioBlock` 的 `os_abi` 只有 `ipados-17.7.11-21H461`，**缺 `ios-16.7.16-20H392`**，与 AGENTS 的硬性要求不符；构建没拦住，但记录不合规；
+1. ~~`ShengUfs`、`VirtioMmioBlock` 的 `os_abi` 缺 `ios-16.7.16-20H392`~~ **已修复（2026-11-10 23:55）**：框架树 `components.toml` 的这两个条目已补上本机 profile，`./unixnu status --json` 解析确认，`porting-record.py check` 仍 14 区通过。**仍存疑**：`ShengUfs` 的 `hardware`/`board_dependencies`/`function` 仍写 SM8550（实现限制，先用板级补 SM8850 clock/reset 表），`verified_devices` 仍只有 `sheng`——os_abi 是 ABI 兼容声明，不等于本机验证过；
 2. `porting.toml` 的 `display = implemented` 指固件侧能力，与“内核显示未实现”并存，读者会误判等级；
 3. `storage = planned` 与“驱动已编进内核”并存，等级口径不统一；
 4. 触摸 IC 是 Synaptics TCM 而参考实现是 Novatek：自写 TCM 驱动，还是走 `ShengHidInput` 的通用路径，未定。
