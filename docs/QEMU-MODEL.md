@@ -30,6 +30,40 @@ sudo ./scripts/qemu-nx741j.sh ~/nx741j-build/UniXNU 60      # 第二个参数是
 | payload | `kernel.macho` 49.4 MB + ADT 13 KB + trustcache 1.5 KB | **原样**从真机 payload 取 |
 | DarwinBoot | 真机同一份 DEBUG 二进制 | 同 |
 | ADT | 真机 ADT（含 `dram-base`/`dram-size`/NVRAM proxy/CPU 节点） | 同 |
+| ADT 内容 | fixture 模式用 `make-dt.py --armvirt` 生成；**real 模式用本机 5,332 节点树**（见下） | 两种都支持 |
+
+## 真实 DTB 参数模式（2026-11-11）
+
+```sh
+QEMU_ADT=real sudo ./scripts/qemu-nx741j.sh ~/nx741j-build/UniXNU 40
+```
+
+`scripts/mk-qemu-adt.py` 用本机 `dts/nx741j-adt.dts`（5,332 节点）生成 ADT 喂给客户机，
+**只把 `/memory` 改写到 QEMU 的 RAM**——这是机器模型唯一搬不动的参数，其余地址一律保留真机值：
+
+| 真实 DTB 参数 | 真机值 | QEMU 里的处理 |
+|---|---|---|
+| DRAM | `0x8C0000000 + 5 GiB`（21 段，最大连续 5 GiB） | **改写**为 `0x40000000 + 16 GiB`（virt 的固定 RAM 窗口） |
+| CPUs | 8 个（MPIDR `0/0x100/0x200/0x300/0x400/0x500/0x10000/0x10100`） | ADT 保留真值；机器 `-smp 8`（同核数，拓扑不同） |
+| GIC | `interrupt-controller@17000000`（两段 reg、redistributor-stride 0x40000） | ADT 保留；模型只有 virt GIC（`0x08000000`），读真地址会 external abort |
+| UFS | `ufshc@1d84000`（`ufs_mem`/`ice`/`mcq_sqd`/`mcq_vs` 四段） | ADT 保留；无模型 |
+| SMMU | `apps-smmu@15000000`，stream `0x60` | ADT 保留；无模型 |
+| 时钟/复位 | GCC `clock-controller@100000`，9 个 UFS 时钟 | ADT 保留；无模型 |
+| 交接窗口 | `owned_memory_size = 0x10000000`（256 MiB） | 保留 |
+| 身份 | `/chosen` 的 `dram-base`/`dram-size`、`chip-id`、NVRAM proxy | 生成器按改写后的 DRAM 重算 |
+
+判读：三个标记仍应出现（加载器与 ADT 内容无关）；随后内核会在真机地址上取外部中止，
+这就是「模型里没有该设备」的证据：
+
+```sh
+grep -A3 'Taking exception' out/qemu/int.log | tail -8
+```
+
+2026-11-11 01:41 实测：`BootEntry`/`MARK #29`/`EBS ok` 各 1 次，串口无异常；`int.log` 记录 979 次中止，
+最后一次为 `Data Abort, ESR 0x96000010（external abort）, FAR 0xfffffff693b38fe8, ELR 0xfffffff0079a3138`。
+
+与 fixture 模式的差别：fixture 是「纯 QEMU 机器」，用来证明内核本身能跑；real 是「真机地址 + QEMU 内存」，
+用来证明 ADT 的每个参数都来自本机、并暴露模型缺哪台设备。两者都不替代真机。
 
 ## 判读
 

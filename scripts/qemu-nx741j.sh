@@ -12,7 +12,8 @@ set -eu
 
 TREE=${1:?usage: qemu-nx741j.sh <build-tree> [seconds]}
 TIMEOUT=${2:-90}
-OUT=$(cd "$(dirname "$0")/.." && pwd)/out/qemu
+REPO=$(cd "$(dirname "$0")/.." && pwd)
+OUT=$REPO/out/qemu
 UEFI=${UNIXNU_UEFI:-/opt/work/uefi-sheng-main}
 DEV=$TREE/out/nx741j/ios-16.7.16-20H392/nx741j
 ESP=$OUT/esp
@@ -69,12 +70,19 @@ cp "$MNT/EFI/UniXNU/Payloads/kernel.macho.adt" "$ESP/EFI/UniXNU/Payloads/"
 cp "$MNT/EFI/UniXNU/Payloads/kernel.macho.trustcache" "$ESP/EFI/UniXNU/Payloads/"
 umount "$MNT"; rmdir "$MNT"
 
-# Per the QEMU guide the kernel is exercised with the generated QEMU
-# device tree, not the device ADT (its DRAM base does not exist here).
-python3 "$TREE/out/nx741j/ios-16.7.16-20H392/nx741j/tree/scripts/qemu-entry/make-dt.py" \
-  --armvirt --armcpu --smp 8 --owned-memory-size 0x10000000 \
-  --trust-cache --nvram-proxy \
-  --output "$ESP/EFI/UniXNU/Payloads/kernel.macho.adt" >/dev/null
+# QEMU_ADT=fixture (default) follows the QEMU guide: the generated armvirt tree.
+# QEMU_ADT=real feeds the phone's own 5,332-node tree instead, with only the
+# DRAM window moved to QEMU RAM; every other address is the real one, so the
+# kernel stops where the model has no device (scripts/mk-qemu-adt.py).
+if [ "${QEMU_ADT:-fixture}" = "real" ]; then
+  python3 "$REPO/scripts/mk-qemu-adt.py" --device "$REPO" \
+    --out "$ESP/EFI/UniXNU/Payloads/kernel.macho.adt"
+else
+  python3 "$TREE/out/nx741j/ios-16.7.16-20H392/nx741j/tree/scripts/qemu-entry/make-dt.py" \
+    --armvirt --armcpu --smp 8 --owned-memory-size 0x10000000 \
+    --trust-cache --nvram-proxy \
+    --output "$ESP/EFI/UniXNU/Payloads/kernel.macho.adt" >/dev/null
+fi
 
 FW=$(ls /usr/share/AAVMF/AAVMF_CODE.fd /usr/share/qemu-efi-aarch64/QEMU_EFI.fd 2>/dev/null | head -1)
 [ -f "$FW" ] || { echo 'no AArch64 UEFI firmware found' >&2; exit 1; }
