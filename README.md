@@ -7,146 +7,129 @@ Target: **iOS 16.7.16 (20H392)**, XNU **8796.141.3**, arm64, 4 KiB pages. The OS
 [board.toml](board.toml) (`os_profile = "ios-16.7.16-20H392"`); it is the only IPSW available for this
 port, so the iPadOS 17 / 10063 line is not a valid substitute.
 
+All build inputs come from the UniXNU project itself (board.toml, components.toml,
+patches/xnu/series, the official docs). Other device projects are read for reference only and never
+enter the build.
+
 ## 本地开发
 
-本机路径与 SoC 本地检出写在 Git 忽略的 `local.toml` 中，步骤与验证命令见 [docs/LOCAL-DEVELOPMENT.md](docs/LOCAL-DEVELOPMENT.md)。
+本机路径与 SoC 本地检出写在 Git 忽略的 `local.toml` 中，步骤与验证命令见
+[docs/LOCAL-DEVELOPMENT.md](docs/LOCAL-DEVELOPMENT.md)。
 
 ## 当前进度 / Current status
 
-**2026-11-10 更新**：内核已越过 `PE_create_console` 与平台专家，进入 `KLDBootstrap` 的 **kext 加载**；
-阶段 6（存储 / 根卷）尚未开始。
+**2026-11-11**：阶段 5 已全部通过，**阶段 6（存储）正在进行**——「NativeUfs」已匹配
+「/arm-io/ufshc」、完成控制器接管并装好自己的请求列表；第一条 SCSI 命令（TEST UNIT READY）
+在门铃之后让总线挂起，这是当前唯一的阻塞点。
 
-**2026-11-10 update**: the kernel now gets past `PE_create_console` and the platform expert and is
-loading kexts in `KLDBootstrap`; stage 6 (storage / root volume) has not started.
+**2026-11-11**: stage 5 is complete and **stage 6 (storage) is in progress**. `NativeUfs` matches
+`/arm-io/ufshc`, takes over the controller and installs its own request list; the first SCSI command
+(TEST UNIT READY) stalls the bus after the doorbell. That stall is the only blocker.
 
 | 层 / Layer | 状态 / State |
 |---|---|
-| 1 启动镜像 / boot image | ✅ efisp loader 从 `rawdump` 读 payload 与 FD，校验后把 FD 拷到 `0xFF300000`，`x0` 带 DT 进 SEC / efisp loader reads payload + FD from `rawdump`, verifies both, copies the FD to `0xFF300000` and enters SEC with the DT in `x0` |
-| 2 UEFI 固件 / firmware | ✅ 4 MiB FD 起得来：DXE/BDS、GOP、输入、RAM 盘 + FAT、`AcpiTableDxe` 都在；厂商 UFS 栈未启用（见下）/ the 4 MiB FD reaches BDS with GOP, input, RAM-disk + FAT and `AcpiTableDxe`; the vendor UFS stack stays disabled (see below) |
-| 3 UniXNU 启动管理器 / boot manager | ✅ 菜单出现、`unixnu.toml` 解析、kit/驱动/ACPI 注入可用 / the menu comes up, `unixnu.toml` parses, kit/driver/ACPI injection works |
-| 4 DarwinBoot | ✅ QEMU 闸门三标记全绿（`BootEntry` / `MARK #29` / `EBS ok`），真机已交接进内核 / the QEMU gate's three markers pass and the device reaches the kernel hand-off |
-| 5 内核 / kernel | 🟡 过 `PE_create_console`、`PE_init_platform(TRUE)`、`machine_startup`，停在 kext 加载 / past `PE_create_console`, `PE_init_platform(TRUE)` and `machine_startup`, now in kext loading |
-| 6 用户态 / user land | ⬜ 未开始 / not started |
+| 1 启动镜像 | ✅ efisp loader 从 `rawdump` 读 payload 与 FD，校验后把 FD 拷到 `0xFF300000`，`x0` 带 DT 进 SEC |
+| 2 UEFI 固件 | ✅ 4 MiB FD 起得来：DXE/BDS、GOP、输入、RAM 盘 + FAT、`AcpiTableDxe` 都在；厂商 UFS 栈保持关闭 |
+| 3 UniXNU 启动管理器 | ✅ 菜单、`unixnu.toml` 解析、kit/驱动/ACPI 注入 |
+| 4 DarwinBoot | ✅ QEMU 三标记 + 真机交接（`p12/p13 map`、`EBS ok`） |
+| 5 内核 | ✅ 入口 → MMU → `pmap_bootstrap` → `arm_vm_init` → `PE_create_console` → 平台专家 → `ArmCpu` → IOKit 匹配 |
+| 6 存储 / 根卷 | 🟡 控制器接管完成；首条命令后总线挂起 |
+| 7 用户态 | ⬜ 未开始 |
 
-### 关键修复 / The fix that unblocked it
+## 阶段 5 的关键修复（存证）
 
-阶段 5 卡了整整一夜的“视频控制台崩溃”是假象：`pexpert/arm64/BCM2837.h` 把
-`PLATFORM_PANIC_LOG_PADDR` 硬编码成树莓派地址 `0x3c0fc000`，`check_for_panic_log()` 在建控制台前
-就映射并读取它。补丁 `patches/xnu/0002-bcm2837-drop-panic-log-paddr.patch` 去掉该宏后，
-`PE_create_console` → `PE_init_platform(TRUE)` → `machine_startup` 依次通过（各用 3 秒 PSCI 复位探针确认）。
+整整一夜的「视频控制台崩溃」是假象：`pexpert/arm64/BCM2837.h` 把 `PLATFORM_PANIC_LOG_PADDR`
+硬编码成树莓派地址 `0x3c0fc000`，`check_for_panic_log()` 在建控制台前就映射并读取它。
+补丁 `0002` 去掉该宏后，`PE_create_console` → `PE_init_platform(TRUE)` → `machine_startup`
+依次通过（每步用 3 秒 PSCI 复位探针确认）。
 
-The stage-5 “video console crash” that cost a night was a red herring: `pexpert/arm64/BCM2837.h`
-hardcodes `PLATFORM_PANIC_LOG_PADDR` to the Raspberry Pi address `0x3c0fc000`, and
-`check_for_panic_log()` maps and reads it before the console exists. With
-`patches/xnu/0002-bcm2837-drop-panic-log-paddr.patch` the macro is gone and `PE_create_console`,
-`PE_init_platform(TRUE)` and `machine_startup` all pass, each confirmed by a 3 second PSCI reset probe.
+之后 kext 阶段又依次暴露并修掉：类重复注册（`0006`）、预链接常量段写保护（`0007`）、
+未实现 prototype 的 selector、`IOService::waitForService` 的无界等待（`0009` 看门狗，
+缺 provider 时直接 panic 报名字）、IOCatalogue 按需加载 AppleImage4（`0011`）、
+空构造器 `IOAESAccelerator`（`0012`）、`ArmCpu` 重复注册 CPU 触发的 KPC 断言（`0014`）。
 
-### 正在打 / In flight
+## 存储（阶段 6）现状
 
-- kext 加载期的崩溃：类重复注册、`ArmPlatform` 顺序、未实现 prototype、常量写保护，以及
-  `IOService::waitForService` 的无界等待（看门狗补丁让缺失 provider 直接 panic 报名字）。
-  / kext-stage crashes: duplicate class registration, `ArmPlatform` ordering, unimplemented prototypes,
-  constant write protection, and the unbounded `IOService::waitForService` wait (a watchdog patch makes a
-  missing provider panic by name instead of hanging).
-- 存储：`ShengUfs` 已链接、`ArmSmmu4K` 已绑进 `libShengUfs.a`、VerifiedRoot 策略本地生成，
-  正在核对 ADT 的 `ufshc` 与 SM8850 寄存器差异。
-  / storage: `ShengUfs` links, `ArmSmmu4K` is bound into `libShengUfs.a`, the VerifiedRoot policy is generated
-  locally, and the ADT `ufshc` node is being checked against the SM8850 registers.
-- ADT 现在由实机 DTB 派生（`scripts/mk-adt-dts.py`，5,332 节点），带真实 `clocks`/`iommus`/`dma-coherent`。
-  / the ADT is now derived from the device's own DTB (`scripts/mk-adt-dts.py`, 5,332 nodes) and carries real
-  `clocks`, `iommus` and `dma-coherent`.
+### 已完成
 
-厂商 UFS 栈（`UFSDxe` + `HALIOMMU`）在固件里保持关闭：它依赖本机不存在的 `DTBExtn`/`NPA`/`HWIO` 提供者，
-官方路径是内核侧的 `ShengUfs`（[UFS 移植](https://unixnu.com/zh/porting/ufs)）。
-/ The vendor UFS stack (`UFSDxe` + `HALIOMMU`) stays off in firmware: it needs `DTBExtn`/`NPA`/`HWIO`
-providers this device does not ship, and the documented path is `ShengUfs` inside XNU
-([UFS porting](https://unixnu.com/zh/porting/ufs)).
+- `ShengUfs` 以 `XNU_NATIVE_UFS=1` 链接进内核（`llvm-nm` 可见 `NativeUfs` 符号），
+  本地覆盖 `work-local/ShengUfs-canoe` 已按 canoe 的 GCC 偏移修正；
+- `NativeUfs` 匹配 `/arm-io/ufshc`（`IOPlatformDevice` + `IONameMatch`），进入 `start()`；
+- 控制器寄存器可读：`cap=d5c7031f`、`ver=00000400`、`hcs=0000010f`、`hce=00000001`；
+- `probe=3` 成功：停掉固件的请求队列、装上自己的列表（`ba=c3aff000` 读回一致）、
+  SMMU 旁路完成。
 
-Per-area evidence, findings and remaining inputs live in [porting.toml](porting.toml); the long-form
-record is [docs/PORTING-RECORD.md](docs/PORTING-RECORD.md), the current open list is
-[docs/OPEN-ITEMS.md](docs/OPEN-ITEMS.md) and the stage-5 log is [docs/STEP5-BRINGUP.md](docs/STEP5-BRINGUP.md).
+### SMMU 实测（apps-smmu @0x15000000，stream 0x60）
 
-## Local build (no GitHub Actions)
+| 寄存器 | 值 | 说明 |
+|---|---|---|
+| IDR0 | `0x4c017e7a` | 122 个 stream group，AArch64 stage 1 支持位已置 |
+| IDR1 | `0x50000051` | 81 个 context bank、64 页 CB 数组 |
+| IDR2 | `0x5211` | stage 1 支持位已置 |
+| SCTLR | `0` | **SMMU 全局旁路**，UFS DMA 本来就是物理地址 |
 
-```sh
-scripts/ci-local.sh            # defconfig → fetch → status → tree → record check
-                                # → kernel → payload → bootimg → package → firmware
-scripts/ci-local.sh --check    # resolve + assemble + record check only
-```
+两个坑：IDR1 的 bit29 在块稳定前会读成 1（使 pages 变 128，几何检查拒绝），本地覆盖已屏蔽该位
+并重试规划；SCTLR.M=0 时不再编程 context bank（canoe 未实现的 CB 偏移会触发外部中止），
+直接把这条 stream 报告为旁路。
 
-The pipeline uses the local WSL UniXNU checkout (`UNIXNU=/path/to/UniXNU`, default `../UniXNU`).
-The repository deliberately has no `.github` workflows.
+### 当前阻塞：首条命令后总线挂起
 
-## Prerequisites
+`probe=4`（TEST UNIT READY LUN0）在门铃之后没有任何 panic——CPU 卡在随后的 MMIO 读上，
+说明控制器发起取描述符的 DMA 之后事务不再返回。已经排除：
 
-- Linux (WSL2) root shell with 32 parallel jobs available.
-- UniXNU toolchain at `/opt/unixnu-linux` (`scripts/linux/setup-toolchain.py`), XNU sources served from
-  the local mirror cache — see [AGENTS.md](AGENTS.md).
-- The NX741J IPSW `iPhone10,3,iPhone10,6_16.7.16_20H392_Restore.ipsw` (kernel cache, trust cache).
-- Vendor UEFI tree (`uefi-nx741j`) for the firmware step. Its location is a local input, never a
-  repository path.
+- 请求列表用的是固件自己的 16 KiB（`adoptAndRead` 从 `0x50/0x54` 读出并映射，不是自分配缓冲）；
+- 等待循环有界（10 万次 `IODelay(1)`），且超时已改为带状态 panic；
+- 列表地址 4 KiB 对齐、位于 4 GiB 以下的 DMA 可达区。
 
-Local build inputs (paths, `jobs`, kernel command line) belong in a Git-ignored `local.toml` copied from
-[local.toml.example](local.toml.example); they never enter `board.toml`.
+正在验证的方向：设备电源态（`START STOP UNIT` 唤醒，`probe=5`）、UFS 链路/DME
+（`PA_PWRMode`/`PA_TxGear`）、以及 UHCI 的参考时钟状态（`rsr=00000001`）。
 
-## Build
+## 模型闸门（每次构建必跑）
 
-```sh
-./unixnu defconfig nx741j_defconfig -D ../UniXNU-nx741j
-./unixnu fetch -D ../UniXNU-nx741j
-./unixnu status --json -D ../UniXNU-nx741j      # components, sources, patch order
-./unixnu tree -D ../UniXNU-nx741j
-```
+`scripts/build-and-test.sh` 现在按顺序执行：
 
-Kernel and image steps, from the UniXNU checkout:
+1. `./unixnu kernel` → `payload` → `firmware`（都成功才继续）；
+2. **官方 smoke 套件**（`package/Scripts/smoke.sh`）六个场景：默认项、键盘选择、无 GOP 降级、
+   块切片、kext 暂存、布局；缺 edk2 树时打印 `SKIP` 并写明路径；
+3. **QEMU**：真实 payload + `make-dt.py` 生成的 fixture ADT + `no-video=1` + `-d int`，
+   每次打印 `MODEL kernel stopped at …`；
+4. 三个标记 + 两道新鲜度检查（客户机固件横幅、runner 退出码），任一不满足即失败、不刷机。
 
-```sh
-./unixnu build kernel -D ../UniXNU-nx741j
-./unixnu prelink      -D ../UniXNU-nx741j       # requires [kernel.prelink] in board.toml
-./unixnu payload      -D ../UniXNU-nx741j
-./unixnu bootimg      -D ../UniXNU-nx741j
-```
+## 配置修复记录
 
-One command for a clean checkout, per the [packaging guide](https://unixnu.com/zh/porting/packaging):
-
-```sh
-scripts/package.sh --check --os ios-16.7.16-20H392   # deps, preflight, patch order, then stop
-scripts/package.sh --no-deps                         # build + pack + verify
-```
-
-Artifacts land in `out/nx741j/ios-16.7.16-20H392/nx741j/`: `kernel/kernel.macho`,
-`payload/payload.img`, `boot/boot.img`, plus `package.manifest.json`.
-
-## Layout
-
-| Path | Contents |
+| 项 | 变化 |
 |---|---|
-| `board.toml` | SoC/OS selection, components, kernel fragments and patch series, firmware, payload, boot image, packaging inputs |
-| `porting.toml` | maintainer and agent record: hardware inventory, firmware versions, component plan, per-layer status |
-| `configs/nx741j_defconfig` | `CONFIG_XNU_*` values (`y`/`n` to `XNU_*` for the kernel build) |
-| `dts/nx741j.dts` | hand-written board tree (firmware `FdtBlob`, `soc:dts` include path) |
-| `dts/nx741j-adt.dts` | ADT source derived from the device's own 5,332-node DTB, generated by `scripts/mk-adt-dts.py` |
-| `patches/xnu/series` | board-level XNU patches, in application order |
-| `package/` | board packaging; becomes `kits/nx741j` in the build tree |
-| `proprietary-files.txt` | firmware file sources and hashes |
-| `scripts/package.sh` | the packaging entry point (see below) |
-| `scripts/mk-adt-dts.py` | regenerates `dts/nx741j-adt.dts` from `stock/dt/live_fdt.dtb` |
-| `unixnu.lock` | resolved source commits; `sm8850` is pinned here |
+| `[payload] dram_size` | 从 `[payload.adt]` 移到 `[payload]`；「ADT 内存必须等于硬件 DTS」的守护从此真正执行 |
+| `[payload.adt] cpu_regs` | 按实机 DTB `/cpus` 填 8 个 MPIDR |
+| `[[userdata.windows]]` | 依据本机 IPSW `BuildManifest.plist` 填 `OS` 与 `SystemOS` |
+| `[[payload.block_slice]]` | `payload.py` 已支持生成 `[[block_slice]]`（阶段 6 发布 SHNGROOT/OS/SystemOS 窗口用） |
+| Components `os_abi` | `ShengUfs`/`VirtioMmioBlock` 补上 `ios-16.7.16-20H392`（框架树，未提交） |
 
-`package/firmware-overlay/` carries the board's firmware delta (DSC/FDF/APRIORI/DXE.inc, `MemoryMapLib`,
-`SmemStubDxe`, `KernelStubDxe`, `AndroidDxe`, …) and is applied to the vendor UEFI tree by
-`scripts/apply-firmware-overlay.py`; `package/upstream/` holds the files that shadow the shared UniXNU
-tree (DarwinBoot, UniXNULib, the ACPI and RAM-disk drivers).
+## 问题清单 / Problems
 
-## Documentation
+1. **UFS 首条命令挂起总线**（当前唯一阻塞）。
+2. **预链接空洞**：报告里声明了 `IOCryptoAcceleratorFamily` 的 `__TEXT_EXEC` 段，
+   但 `kernel.macho` 里 `IOAESAccelerator::IOAESAccelerator` 是 16 个零字节。
+3. **可复现性**：`./unixnu status` 报告两个本地源未被 `unixnu.lock` 固定
+   （`ShengUfs` 覆盖与 `sm8850` feed）。
+4. **内核显示驱动缺失**：`GopFramebuffer` 已选中但没进 `[kernel] archives`，内核侧还没有显示驱动。
+5. **输入**：面板是 Synaptics TCM（SPI19 @ `0x1a80000`），目录里的参考实现是 Novatek，
+   需要自己写 TCM 驱动。
+6. **PMGR 私有 ABI**：`ShengPlatformPower` 的实现锁在 24A446 的 `ApplePMGR` 布局上
+   （`static_assert(sizeof(ApplePMGR)==0x4b8a8)`），本机 profile 无法直接使用；
+   其构建还依赖 Sheng 参考工程的 candidate 产物。
 
-- [Port a device](https://unixnu.com/zh/porting/steps) — the eight-step flow this repository follows
-- [Device repository](https://unixnu.com/zh/porting/device-repository) — field reference and completion list
-- [Packaging](https://unixnu.com/zh/porting/packaging) — `scripts/package.sh` contract
-- [Bring-up order](https://unixnu.com/zh/porting/bring-up) — firmware, menu, loader, kernel, root volume
-- [Porting record](https://unixnu.com/zh/porting/records) — record format and evidence levels
+## TODO（按序）
 
-`scripts/package.sh` here follows the documented six steps (`deps`, `preflight`, `patches`, `build`,
-`pack`, `verify`) but is a local implementation: this UniXNU snapshot predates `unixnu release` and
-`templates/package.sh`, so the script drives the equivalent `unixnu` subcommands directly. Replace it
-verbatim once the upstream template is available.
+1. UFS：`probe=5` 唤醒路径 → 若仍挂起，核对链路/DME 与参考时钟。
+2. UFS：GPT 读取、`userdata` 窗口、首块校验（`probe=9/10`）。
+3. 根卷：生成 userdata 镜像 → 读 OS 卷 UUID → 填 `root_match_volume_uuid` →
+   发布 `[[block_slice]]` 窗口 → `NativeUfs` 出根设备。
+4. 内核显示驱动（`GopFramebuffer` 进 `[kernel] archives`），随后输入（Synaptics TCM）。
+5. 把两个本地源固定进 `unixnu.lock`。
+6. 预链接空洞与 PMGR ABI 两项，按后续需要再处理。
+
+## 厂商 UFS 栈为何保持关闭
+
+厂商 `UFSDxe` + `HALIOMMU` 依赖本机不存在的 `DTBExtn`/`NPA`/`HWIO` 提供者，官方路径是
+内核侧的 `ShengUfs`（[UFS 移植](https://unixnu.com/zh/porting/ufs)）。
