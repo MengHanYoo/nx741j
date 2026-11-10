@@ -7,6 +7,8 @@
 # payload. Exits non-zero if a marker is missing, so a broken build never
 # reaches 9008.
 set -eu
+# A failing QEMU step must fail the gate, not be swallowed by the pipeline below.
+set -o pipefail
 
 TREE=${1:-/home/loongko/nx741j-build/UniXNU}
 REPO=$(cd "$(dirname "$0")/.." && pwd)
@@ -24,10 +26,23 @@ step 'firmware'
 UNIXNU_UEFI=${UNIXNU_UEFI:-/opt/work/uefi-sheng-main} ./unixnu firmware -D "$REPO" 2>&1 | tee -a "$LOG" | tail -2
 
 step 'qemu'
-"$REPO/scripts/qemu-nx741j.sh" "$TREE" 40 | tee -a "$LOG"
-
 SERIAL=$REPO/out/qemu/serial.log
+rm -f "$SERIAL"
+qemu_rc=0
+"$REPO/scripts/qemu-nx741j.sh" "$TREE" 40 | tee -a "$LOG" || qemu_rc=$?
+
 fail=0
+# The gate only means something if QEMU really booted the payload: the runner
+# truncates serial.log before its own checks, so a bail-out leaves an empty log,
+# and the firmware banner below can only come from a guest that actually ran.
+if [ "$qemu_rc" -ne 0 ]; then
+  echo "FAIL  qemu runner exited $qemu_rc (it never booted the payload)"
+  fail=1
+fi
+if ! grep -q 'UEFI firmware (version' "$SERIAL" 2>/dev/null; then
+  echo "FAIL  no guest firmware banner in $SERIAL (QEMU did not run the payload)"
+  fail=1
+fi
 for marker in 'UNIXNU: BootEntry' 'MARK #29' 'QEMU: EBS ok, entering the kernel'; do
   if grep -q "$marker" "$SERIAL" 2>/dev/null; then
     printf 'PASS  %s\n' "$marker"

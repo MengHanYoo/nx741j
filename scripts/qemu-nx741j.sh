@@ -17,6 +17,9 @@ UEFI=${UNIXNU_UEFI:-/opt/work/uefi-sheng-main}
 DEV=$TREE/out/nx741j/ios-16.7.16-20H392/nx741j
 ESP=$OUT/esp
 LOG=$OUT/serial.log
+# Truncate before the checks: if this script bails out early, the gate must see an
+# empty log (no stale PASS from a previous run) rather than yesterday's markers.
+: > "$LOG"
 
 UNIXNU_EFI=$(ls "$UEFI"/Build/nx741jPkg/DEBUG_CLANGPDB/AARCH64/UniXNUPkg/Application/UniXNU/UniXNU/DEBUG/UniXNU.efi 2>/dev/null | head -1)
 DARWIN_EFI=$(ls "$UEFI"/Build/nx741jPkg/DEBUG_CLANGPDB/AARCH64/DarwinBootPkg/Driver/DarwinBoot/DEBUG/DarwinBoot.efi 2>/dev/null | head -1)
