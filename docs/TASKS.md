@@ -66,3 +66,39 @@ UNIXNU_ADT_NO_INTERRUPTS=1 XNU_NATIVE_UFS=1 \
 ```
 
 kernel → payload → firmware → 官方 smoke（6 场景，`KEXT_TIMEOUT=180`，失败重试一次）→ QEMU（fixture ADT，三标记）→ 新鲜度检查。**未过闸门不刷机。**
+
+## 2026-11-11 晚：MCQ 路径的实验结论（重要）
+
+今天把 UFS 从「传统门铃」一路推到「MCQ」，每一步都有屏幕读数支撑，结论如下：
+
+| 实验 | 读数 | 结论 |
+|---|---|---|
+| 传统门铃 0x58（自分配缓冲） | 写门铃后总线锁死，panic 画屏也被堵 | 传统门铃不可用 |
+| 传统门铃（固件列表页 0xc3afc000） | 同样锁死 | 不是缓冲位置问题 |
+| MCQ（按厂商配方，队列在自分配内存） | 同样锁死 | MCQ 门铃写下去也挂 |
+| MCQ（队列放固件页 0xc3afc000） | `far=sq+3`、`esr=0x96000047`（translation fault，写） | **内核无法通过 IO 映射写那段 DRAM**，该实验做不了 |
+| 链路状态 | `hcs 0000010F -> 0000010F`（接管前）、`PA_PWRMode=FAST` | 链路本身正常 |
+| GCC（canoe 偏移） | `gdsc=fa22f800`、`ahb=08000001` | 时钟/电源正常 |
+| MCQ 配置（Android 活参考） | `use_mcq_mode=Y`、`mcq_sqd@0x1da5000`、8 条 `qcom-mcq-esi` 计数在涨 | 厂商确实跑 MCQ |
+
+### 冒烟结果汇总
+
+- `probe=6` 实际被 `dumpFirmwareList` 占用（旧的固件列表转储），MCQ 代码从未执行；已改用 `probe=14`。
+- 传统路径写 `UTRLBA/UTMRLBA + run-stop` 后 `hcs` 从 `0x10F` 掉到 `0x08`（`UTRLRDY/UTMRLRDY` 清零）。
+- 无论门铃写哪条路径，都表现为「写下去不返回、总线锁死」。
+
+### 尚未排除的根因（按可能性）
+
+1. **UFS master 的 DMA 被 SMMU/防火墙拦住**：我们读到的 `SCTLR=0`（全局旁路）可能只对 apps_smmu 有效，UFS 可能走另一路或需要显式建立映射。
+2. **控制器仍处于固件留下的 MCQ 配置**，其 MCA 指向固件内存；我们改指自己的队列时，硬件未接受（未回读校验）。
+3. **SM8850 的 UFS 电源域**（`mcq_vs` 段 / 额外时钟）未就绪，硬件在门铃后进入错误状态。
+
+### 下一步（需要你选）
+
+| 方案 | 内容 | 代价 | 信息量 |
+|---|---|---|---|
+| **A（推荐）** | 在 Android 侧写一个极小的内核模块，在真实 I/O 进行中把 MCA/SQTP/CQ/`mcq_vs` 与 SMMU 相关寄存器导出（`adb root` 已有 KSU），得到**工作中**的寄存器快照 | 需要匹配 vermagic/KMI 编译一次模块 | 最高：直接给出可用配置 |
+| B | 继续在固件侧排列组合（队列位置、MCA 回读校验、ESI） | 每次 ~30 分钟 | 低 |
+| C | 架构改道：由引导器提供块设备服务给内核 | 数天 | 绕开驱动但不解决根因 |
+
+> 今天的代码与配方已分别落在 `docs/UFS-MCQ-RECIPE.md`、`docs/UFS-VENDOR-DIFF.md`、本文件与本地组件覆盖里。
