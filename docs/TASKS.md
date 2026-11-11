@@ -1,54 +1,68 @@
-# NX741J 任务 / 待办 / 问题归档（2026-11-08 快照）
+# 任务总表（当前工作区：`E:\default-workspace\z80u-collect`）
 
-> 本文替代 2026-11-06 版本。旧版的"卡在 RpmhDxe/TzDxeLA""阶段 3 未上机"等结论已被实机结果取代，
-> 详细证据见 `STAGE2-CONFORMANCE.md`、`HARDWARE-INVENTORY.md` §5–6、`ANALYSIS-EFISP-VENDORBOOT.md` §20–24。
+> 把此前四个工作区里的任务、产物线索与未完成项，统一收敛到这里。
+> 更新：2026-11-11 14:35（Asia/Shanghai）
 
-## 一、总体进度（按官方六层）
+## 1. 工作区清单与归属
 
-| 层 | 状态 | 说明 |
-|---|---|---|
-| 1 启动镜像 | ✅ | efisp loader（p5）替代 BootShim：读 rawdump 的 payload + FD，拷 FD 到 `0xFF300000`，关 MMU 跳入 SEC |
-| 2 UEFI 固件 | ✅ | 32 驱动最小 FV；`SEC: TLMM MMIO HOB` 已发布；BDS 正常 |
-| 3 UniXNU | ✅ | 菜单显示 `NX741J` 条目；payload 卷由 `UniXNURamDiskDxe` 从 x0 FDT 发布，FAT 挂载成功 |
-| 4 DarwinBoot | ❌ | 菜单启动 `xnu` 后黑屏 → `ZTE MemoryDump Mode`（崩溃在内核之前）；已启用 `panic_screen` 仍无 panic 文本 |
-| 5 内核 | ❌ 未开始 | 未观察到内核早期日志 |
-| 6 用户态 | ❌ 未开始 | — |
-
-## 二、已验证的关键结论
-
-| 结论 | 证据 |
-|---|---|
-| `APRIORI DXE { INF }` 只定优先级，**不会**把模块加入 FV；必须同时在 `DXE.inc` 普通列表 | `FVMAIN.inf` 清单 + V22 前后字符串计数 |
-| payload 卷链路成立 | `UNIXNURAMDISK: initrd block device 0xDFF7000 size 0x4000000 Success` + `Installed Fat filesystem` |
-| 厂商 `PmicDxeLa` 在本入口下必崩 | `rpmh protocol is not initialized` → `ASSERT pm_rpmh.c:659`；RPMH 依赖 RSC/SCM |
-| SCM 提供者与 TzDxeLA 是同一二进制 | `ScmDxeCompat.efi` 与 `TzDxeLA.efi` sha256 相同（`ecd7bdff…`）；恢复 SCM 即回到 `TzLoaderDxe.c:1150` 断言 |
-| 平台内存映射表声明 TLMM 16 MiB | `MemoryMapLib.c`：`{"TLMM",0x0F000000,0x01000000,AddDev,MMAP_IO,...}`；但实测 `0x0F010000` 读取异常，`0x65000` 等待 V41 探针确认 |
-
-## 三、待办（按优先级）
-
-| # | 任务 | 前置 | 说明 |
+| # | 工作区 | 内容 | 处理 |
 |---|---|---|---|
-| 1 | **唯一待办**：V86 探针上机取 `pN` | — | 本机走 efisp 路线，刷 rawdump 两段（payload `a68ebc4e…` @LBA 4743976、FD `dea20e0d…` @LBA 4760360），命令见 `BOOT-FIRST.md`；**不写 boot_a**。判读表见 `LAYER4-PROBE.md` |
-| 2 | 按键（UEFI） | V41 探针结果 | 若 TLMM 可读 → 直接写死三键映射；不可读 → 改页表/映射层 |
-| 3 | `DTBExtnProtocol` provider | — | 步骤 6 驱动适配前置；影响 `DALTLMM`/`PmicDxe`/`Ucx/Rng`/`HALIOMMU` |
-| 4 | 音频/USB/基带驱动 | 步骤 6 | 输入已在 `HARDWARE-INVENTORY.md` §6 登记 |
-| 5 | userdata 与根卷 | 阶段 4 通过后 | 官方 userdata 布局 |
+| 1 | `C:\Users\MengHanYooo\Documents\deepseek-harness\default-workspace` | 旧 UniXNU 克隆（`UniXNU/`）、git 辅助脚本（`_tools/gh.ps1`、`gitcache.ps1`）、`port_trace.txt` | 只保留 `port_trace.txt` 作证据，已复制到 `_tmp/consolidated/`；其余不再是工作副本 |
+| 2 | `E:\default-workspace` | iOS 固件 `ipsw/`（16.7.16 20H392 与三个 dmg）、`tools/`（platform-tools、ffmpeg）、`FMMT_Build.log`、`x.bin`、`分配` | 固件与工具就地保留（体积大、只读）；日志复制到 `_tmp/consolidated/` |
+| 3 | WSL：`/opt/work`、`/home/loongko` | UEFI 树 `/opt/work/uefi-sheng-main`、构建树 `/home/loongko/nx741j-build/UniXNU`、本地组件覆盖 `/opt/work/work-local/ShengUfs-canoe` | 构建必须就地运行；**唯一权威源码副本**是 `work-local` 与设备仓库，已在本文档登记 |
+| 4 | `E:\default-workspace\z80u-collect` | **当前工作区**：`repos/UniXNU-nx741j`（设备仓库）、`repos/UniXNU`（框架）、`stock/`、`wsl/`（刷机脚本）、`_tmp/`（镜像与证据） | 全部新产物、脚本、证据只写这里 |
 
-## 四、已放弃的旧方案（保留记录避免重复）
+## 2. 阶段状态
 
-| 方案 | 放弃原因 |
-|---|---|
-| 换根到 `uefi_a`（FD_BASE=0xC6800000） | 已由 efisp loader 路线替代，且 rawdump 方案可无损回滚 |
-| 恢复 `TzDxeLA`/`ScmDxeCompat` | 同一二进制内 `TzLoaderDxe.c:1150` 断言，DEBUG 构建直接停机 |
-| 恢复厂商 UFS/时钟/电源链 | 依赖 DTBExtn/HWIO/NPA/RPMH/SCM，本平台缺 provider |
-| 在 DXE 用 `gDS->AddMemorySpace` 补 TLMM 映射 | 调用即崩（V34/V36/V37），AArch64 DxeCore 不接受动态 MMIO 映射 |
-
-## 五、已知问题
-
-| # | 问题 | 状态 |
+| 阶段 | 状态 | 依据 |
 |---|---|---|
-| 1 | 阶段 4 黑屏 + MemoryDump | ❌ 待定位 |
-| 2 | UEFI 实体按键 | ❌ 待 V41 结论 |
-| 3 | `DTBExtnProtocol` 无 provider | ❌ 确认 Binaries 中不存在 |
-| 4 | SMEM 数据内容读 0（协议可用） | 🟡 |
-| 5 | WCN7850 IMEM board_id 未读 | 🟡 |
+| 1 启动镜像（efisp → payload + FD） | ✅ | 三段刷入并校验；`readback match` |
+| 2 UEFI 固件 | ✅ | DXE/BDS、GOP、输入、RAM 盘 + FAT、ACPI 注入 |
+| 3 UniXNU | ✅ | 菜单、`unixnu.toml`、kit/驱动/ACPI |
+| 4 DarwinBoot | ✅ | QEMU 三标记 + 真机 `p12/p13 map`、`EBS ok` |
+| 5 内核 | ✅ | 入口 → MMU → pmap → console → 平台专家 → `ArmCpu` → IOKit 匹配 |
+| 6 存储/根卷 | 🟡 | 控制器接管 ✅；**首条 SCSI 命令仍锁死总线** |
+| 7 用户态 | ⬜ | — |
+
+## 3. 阶段 6 的全部已知事实（2026-11-11 实测）
+
+| 项 | 读数 / 结论 |
+|---|---|
+| 控制器 | `cap=d5c7031f`（64 位寻址）、首次 `hcs=0000010f`（三队列就绪） |
+| GCC（canoe 偏移） | GDSCR `0x77004`、AXI `0x77018`、**AHB `0x77028`**、UniPro `0x7706c`；`gdsc=fa22f800`（bit31 已置）、`ahb=08000001`（已使能、门控已关） |
+| 链路 | UIC 可用，`DME_HIBER_EXIT` 成功，`PA_PWRMode=FAST`；link bring-up 前后 `hcs` 均为 `0x10F` |
+| MCQ | Android 活参考 `use_mcq_mode=Y`、`mcq_sqd@0x1da5000`、8 条 `qcom-mcq-esi` 在计数；但本机启动链下 `mcqcfg=0`（未启用），关 MCQ 是空操作 |
+| 关键现象 | 写入 `UTRLBA + UTRLRSR=1` 后 `hcs` 由 `0x10F` 掉到 `0x08`（UTRLRDY/UTMRLRDY 未置位）；敲门铃 `0x58` 即总线锁死（连 panic 画屏都被堵） |
+| 已排除 | 描述符三版首字（`0x10000000` / bit0 / 厂商 bit28\|bit24）、DMA 两种取址（`pa` 与 `pa+0x8C0000000`，`ptoa==pa`）、自分配缓冲与固件列表、HCE 重启、`0x4C`、UTMRL、AHB 门控、低/高窗口 |
+
+## 4. 待办（按序）
+
+1. **UTMRL 就绪**：本版已给 UTMRL 独立页（`dmaPa+0x1000`）与 `0x80=1`，UCD 移到 `+0x2000`；判据是 `hcs & 0x0E == 0x0E`。
+2. **若 `hcs` 仍为 `0x08`**：说明控制器拒绝我们给的队列基址 → 改走 **MCQ 门铃**（`mcq_sqd+0x8`，值 `(slot+1)<<5`），并按 `mcq`/`mcq_vs` 两段配置队列。
+3. **GPT 读取**（`probe=9`）：主 GPT 头在 LBA1，校验 `EFI PART` 与 CRC32。
+4. **根卷**：`userdata` 镜像 → OS 卷 UUID → `root_match_volume_uuid` → `[[block_slice]]` → `NativeUfs` 出根设备。
+5. 内核显示驱动（`GopFramebuffer` 进 `[kernel] archives`），随后 Synaptics TCM 输入驱动。
+6. 把两个本地源（`ShengUfs` 覆盖、`sm8850` feed）固定进 `unixnu.lock`。
+7. 预链接空洞（`IOAESAccelerator` 16 字节零）与 PMGR 私有 ABI 两项，按需处理。
+
+## 5. 产物索引（本工作区）
+
+| 路径 | 内容 |
+|---|---|
+| `repos/UniXNU-nx741j/` | 设备仓库（README、docs、patches、board.toml、scripts） |
+| `repos/UniXNU-nx741j/docs/STATUS-2026-11-11.md` | 阶段 5/6 完整分析与问题清单 |
+| `repos/UniXNU-nx741j/docs/UFS-VENDOR-DIFF.md` | 厂商内核反汇编对照 + Android 活参考 |
+| `repos/UniXNU-nx741j/docs/STEP6-UFS.md` | canoe GCC 偏移表 |
+| `_tmp/payload-*.img` | 各实验 payload（`utmr2` 为当前） |
+| `_tmp/fd-*.bin` | 固件 FD 变体（当前用 `fd-rev.bin`） |
+| `_tmp/vendor/` | 厂商内核 `vendor-kernel.bin/.elf`（反汇编用） |
+| `_tmp/consolidated/` | 从旧工作区收敛来的日志证据 |
+
+## 6. 闸门（每次构建必跑）
+
+```
+UNIXNU_ADT_NO_INTERRUPTS=1 XNU_NATIVE_UFS=1 \
+  repos/UniXNU-nx741j/scripts/build-and-test.sh /home/loongko/nx741j-build/UniXNU
+```
+
+kernel → payload → firmware → 官方 smoke（6 场景，`KEXT_TIMEOUT=180`，失败重试一次）→ QEMU（fixture ADT，三标记）→ 新鲜度检查。**未过闸门不刷机。**
