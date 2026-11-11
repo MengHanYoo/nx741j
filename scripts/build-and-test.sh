@@ -19,7 +19,8 @@ step() { printf '\n=== %s ===\n' "$1" | tee -a "$LOG"; }
 
 cd "$TREE"
 step 'kernel'
-./unixnu kernel -D "$REPO" -j 16 2>&1 | tee -a "$LOG" | tail -2
+JOBS=${JOBS:-$(nproc)}
+./unixnu kernel -D "$REPO" -j "$JOBS" 2>&1 | tee -a "$LOG" | tail -2
 step 'payload'
 ./unixnu payload -D "$REPO" 2>&1 | tee -a "$LOG" | tail -2
 step 'firmware'
@@ -33,10 +34,10 @@ fail=0
 step 'smoke'
 if [ -d "$TREE/package/Mu_Basecore/MdePkg/Library/BaseFdtLib/libfdt" ]; then
   smoke_rc=0
-  ( cd "$TREE" && KEXT_TIMEOUT=${KEXT_TIMEOUT:-180} JOBS=8 bash package/Scripts/smoke.sh ) > "$REPO/out/qemu/smoke.log" 2>&1 || smoke_rc=$?
+  ( cd "$TREE" && KEXT_TIMEOUT=${KEXT_TIMEOUT:-180} JOBS=${SMOKE_JOBS:-$(nproc)} bash package/Scripts/smoke.sh ) > "$REPO/out/qemu/smoke.log" 2>&1 || smoke_rc=$?
   if [ "$smoke_rc" -ne 0 ]; then
     smoke_rc=0
-    ( cd "$TREE" && KEXT_TIMEOUT=${KEXT_TIMEOUT:-180} JOBS=8 bash package/Scripts/smoke.sh ) >> "$REPO/out/qemu/smoke.log" 2>&1 || smoke_rc=$?
+    ( cd "$TREE" && KEXT_TIMEOUT=${KEXT_TIMEOUT:-180} JOBS=${SMOKE_JOBS:-$(nproc)} bash package/Scripts/smoke.sh ) >> "$REPO/out/qemu/smoke.log" 2>&1 || smoke_rc=$?
   fi
   if [ "$smoke_rc" -eq 0 ]; then
     echo 'PASS  smoke: six package scenarios'
