@@ -19,7 +19,7 @@ gMemoryDescriptor[] = {
   {"PIL_Reserved",       0x8AA00000, 0x1D300000, AddMem, MEM_RES, UNCACHEABLE, Reserv, UNCACHED_UNBUFFERED_XN},
   {"Display_Demura",     0xA7D00000, 0x02C80000, AddMem, MEM_RES, SYS_MEM_CAP, Reserv, WRITE_THROUGH_XN},
   {"DBI_Dump",           0xAA980000, 0x05770000, NoHob,  MMAP_IO, INITIALIZED, Conv,   UNCACHED_UNBUFFERED_XN},
-  {"CPU_Vectors",       0xC6E00000, 0x00001000, AddMem, SYS_MEM, SYS_MEM_CAP, BsData, WRITE_BACK_XN},
+    {"CPU_Vectors",       0xC6E00000, 0x00001000, AddMem, SYS_MEM, SYS_MEM_CAP, BsData, WRITE_BACK_XN},
   {"DXE_Heap",           0xB00F0000, 0x16D10000, AddMem, SYS_MEM, SYS_MEM_CAP, Conv,   WRITE_BACK_XN},  // 0xC32B0000..0xC6E00000 is real free DDR the vendor table left undeclared; without it  // the largest Conventional run is 231.7 MiB and the 256 MiB kernel window cannot fit.
   {"FD_Reserved", 0xFFBA0000, 0x00100000, AddMem, SYS_MEM, SYS_MEM_CAP, BsData, WRITE_BACK_XN},
   {"UEFI_FD",          0xFF300000, 0x00400000, AddMem, SYS_MEM, SYS_MEM_CAP, BsData, WRITE_BACK},
