@@ -717,6 +717,7 @@ AllocateWindow (KERNEL *Kernel, UINT64 WindowSize, EFI_PHYSICAL_ADDRESS *Address
   Status = GetMap (&Map, &Capacity, &Size, &Key, &Stride);
   if (EFI_ERROR (Status)) { if (Map != NULL) { FreePool (Map); } return Status; }
   Status = EFI_OUT_OF_RESOURCES;
+  Status = EFI_OUT_OF_RESOURCES;
   for (Offset = 0; Offset + Stride <= Size; Offset += Stride) {
     Descriptor = (EFI_MEMORY_DESCRIPTOR *)((UINT8 *)Map + Offset);
     if ((Descriptor->Type != EfiConventionalMemory) || (Descriptor->NumberOfPages == 0)) { continue; }
@@ -1031,6 +1032,7 @@ Boot (
   if (EFI_ERROR (Status)) { goto Fail; }
   Mark (L"[3] window", 0);
   Print (L"DARWINBOOT: p3 window at %lx size %lx\r\n", (UINT64)Address, (UINT64)WindowSize);
+
   ArgsAddress = ALIGN_VALUE (Address + Kernel.End - Kernel.Base, SIZE_16KB);
   TreeAddress = ArgsAddress + EFI_PAGE_SIZE;
   RamdiskAddress = ALIGN_VALUE (TreeAddress + TreeSize, EFI_PAGE_SIZE);

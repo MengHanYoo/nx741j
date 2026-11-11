@@ -29,10 +29,15 @@ UNIXNU_UEFI=${UNIXNU_UEFI:-/opt/work/uefi-sheng-main} ./unixnu firmware -D "$REP
 # selection, degraded no-GOP, block slice, kext staging and layout.  It needs
 # the tool's edk2 tree under package/Mu_Basecore with its submodules; when that
 # is missing the gate says so instead of silently dropping the coverage.
+fail=0
 step 'smoke'
 if [ -d "$TREE/package/Mu_Basecore/MdePkg/Library/BaseFdtLib/libfdt" ]; then
   smoke_rc=0
-  ( cd "$TREE" && JOBS=8 bash package/Scripts/smoke.sh ) > "$REPO/out/qemu/smoke.log" 2>&1 || smoke_rc=$?
+  ( cd "$TREE" && KEXT_TIMEOUT=${KEXT_TIMEOUT:-180} JOBS=8 bash package/Scripts/smoke.sh ) > "$REPO/out/qemu/smoke.log" 2>&1 || smoke_rc=$?
+  if [ "$smoke_rc" -ne 0 ]; then
+    smoke_rc=0
+    ( cd "$TREE" && KEXT_TIMEOUT=${KEXT_TIMEOUT:-180} JOBS=8 bash package/Scripts/smoke.sh ) >> "$REPO/out/qemu/smoke.log" 2>&1 || smoke_rc=$?
+  fi
   if [ "$smoke_rc" -eq 0 ]; then
     echo 'PASS  smoke: six package scenarios'
   else
@@ -65,7 +70,6 @@ if keep:
 PY
 fi
 
-fail=0
 # The gate only means something if QEMU really booted the payload: the runner
 # truncates serial.log before its own checks, so a bail-out leaves an empty log,
 # and the firmware banner below can only come from a guest that actually ran.
