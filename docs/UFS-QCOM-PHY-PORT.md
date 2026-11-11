@@ -75,3 +75,44 @@ ufs_link_startup()               // UIC DME_LINKSTARTUP (0x16) + 等 UPMCRS=PWR_
 2. PHY 复位脚（tlmm 0xd9）与 GCC reset 0x19 的极性需实机确认；
 3. 重写 PHY 时若固件仍在跑 UFS 命令，必须先确保控制器空闲（HCE=0、UTRLDBR=0）；
 4. 表值 106 条里有 lane 相关项（0x05fc、0x0420 等），两 lane 配置与 `lanes-per-direction=2` 一致。
+
+## 7. 接入 ShengUfs 与 QEMU 闸门（2026-11-12 01:0x）
+
+### 接线方式
+
+| 件 | 位置 | 作用 |
+|---|---|---|
+| `scripts/patch-native-ufs-cold-init.py` | 设备仓库 `scripts/` | 构建期在 `NativeUfs::start` 开头注入 `board_ufs_cold_init()` 调用（幂等，锚点缺失即报错） |
+| `package/storage-bringup/ufs-cold-init.c` | 设备仓库 | 门控 `native-ufs-cold-init=1`；映射 PHY(0x1d80000)/HOST(0x1d84000)，按 calibrate → start_serdes → PCS ready → HCE → DME_LINKSTARTUP → UPMCRS 执行 |
+| `package/storage-bringup/Stubs.c` | 同上 | `#include "ufs-cold-init.c"`，随现有 `Stubs.o` 归档成员进内核，**无需改归档脚本** |
+| `board.toml` | 设备仓库 | `[kernel] archives` 在 `component:ShengUfs` 之前插入 patch 步骤；`kernel_args` 增加 `native-ufs-cold-init=1` |
+
+### 构建结果
+
+| 产物 | sha256 |
+|---|---|
+| `kernel.macho` | `5b650712d360926ab4bd3012103058802a142f61b80c9113cec2e6edc5c29c33` |
+| `payload.img` | `53d93b6ba66eb2f4509e43945ddfa55e551f26866e4afe7430a8f392ea47a4d8` |
+| `SILICIUM_UEFI.fd` | `c6520ada215d8e79d8259c7fb117d81fae08dc718879df925c15fe098931a2f1` |
+
+`kernel.macho` 里已确认 `_board_ufs_cold_init` 存在；`NativeUfs.cpp:48` 有声明、`:2740` 有调用。
+
+### QEMU 闸门
+
+```
+PASS  smoke: six package scenarios
+PASS  UNIXNU: BootEntry
+PASS  MARK #29
+PASS  QEMU: EBS ok, entering the kernel
+qemu gate passed: the payload reaches ExitBootServices and the kernel entry
+```
+
+五阶段未受影响（QEMU 不建模 UFS，冷启动路径默认不触发，且本次 QEMU 启动参数不含 `native-ufs-cold-init`）。
+
+### 真机测试步骤（待执行）
+
+1. efisp 已由用户刷好；
+2. 9008 写 `payload.img` 到 `rawdump`+0（64 MiB）、`SILICIUM_UEFI.fd` 到 `rawdump`+16384 扇区；
+3. 启动后观察屏幕 `UFS cold:` 四行（calibrating / PCS ready / link rc / link up）；
+4. 若 `PCS not ready` → PHY 序列或 ref_clk 问题；若 `UPMCRS != 1` → 链路启动参数问题；
+5. 冷启动路径成功后，再把 `native-ufs-probe` 调到 14 走接管读块。

@@ -23,3 +23,8 @@ uint8_t verified_root_key[VR_KEY_BYTES];
 uint64_t verified_root_policy_count;
 void *verified_root_policies[16];
 #endif
+
+// Board cold-start path (native-ufs-cold-init=1). NativeUfs::start calls
+// board_ufs_cold_init() through the patch-native-ufs-cold-init step; the definition
+// rides in this member so the archive build needs no extra object.
+#include "ufs-cold-init.c"
