@@ -72,17 +72,24 @@ enter the build.
 并重试规划；SCTLR.M=0 时不再编程 context bank（canoe 未实现的 CB 偏移会触发外部中止），
 直接把这条 stream 报告为旁路。
 
-### 当前阻塞：首条命令后总线挂起
+### 当前阻塞：门铃写下去总线就锁死
 
-`probe=4`（TEST UNIT READY LUN0）在门铃之后没有任何 panic——CPU 卡在随后的 MMIO 读上，
-说明控制器发起取描述符的 DMA 之后事务不再返回。已经排除：
+`probe=4`（TEST UNIT READY LUN0）在敲门铃之后没有任何 panic，连「只轮询内存、不读寄存器」的版本
+也一样——说明卡的不是读，而是**写门铃本身**（AXI 写永不返回）。2026-11-11 已逐项排除：
 
-- 请求列表用的是固件自己的 16 KiB（`adoptAndRead` 从 `0x50/0x54` 读出并映射，不是自分配缓冲）；
-- 等待循环有界（10 万次 `IODelay(1)`），且超时已改为带状态 panic；
-- 列表地址 4 KiB 对齐、位于 4 GiB 以下的 DMA 可达区。
+| 已验证正确 | 证据 |
+|---|---|
+| 控制器接管 | `probe=3`：固件队列停掉、请求列表装好、`ba=c3afa000` 读回一致 |
+| 时钟 / 电源 | `gdsc=fa22f800->fa22f800`（bit31 已置）、`aggre=08000000`（无 halt） |
+| UIC 链路 | `link why=ok mode=11`：DME_HIBER_EXIT 成功、`DME_GET PA_PWRMode = FAST` |
+| 请求描述符 | `utrd=00000001 00000000 0000000f 00000000 c3afb000 00000000 00800080 01000000`，首字已按 UFSHCI 改为 bit0 |
+| 基址 | `utrlba == phys`，4 KiB 对齐，位于 4 GiB 以下 |
 
-正在验证的方向：设备电源态（`START STOP UNIT` 唤醒，`probe=5`）、UFS 链路/DME
-（`PA_PWRMode`/`PA_TxGear`）、以及 UHCI 的参考时钟状态（`rsr=00000001`）。
+已证伪：DRAM 低位别名（加 `native-ufs-dma-offset=0x8C0000000` 后同样挂起）。
+
+下一步（有依据的两条）：从本机 `boot_a` 提取的厂商内核已重建出 kallsyms
+（`ufshcd_probe_hba` / `ufshcd_send_command` / `ufshcd_make_hba_operational` / `__ufshcd_send_uic_cmd`
+均可反汇编），对照它的 HBA 初始化与门铃写序列；或在 Android 运行时用 `devmem` 读同一组寄存器作活参考。
 
 ## 模型闸门（每次构建必跑）
 
