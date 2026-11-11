@@ -160,3 +160,22 @@ SMMU gr0=00ee0406（bypass）
 3. **队列放在低物理地址** `SQ=0x71000 / CQ=0x72000 / UCD=0x73000`，用 `IOMemoryDescriptor::withPhysicalAddress` 映射（对齐厂商实测地址段）。
 
 闸门：kernel → payload → smoke(6) → QEMU 全过；待刷入 payload `_tmp/payload-mcqv2.img`（`7dcec075…`）。
+
+## 2026-11-12 凌晨：六份官方文档对照审计（子智能体）
+
+| 文档 | 提交 | 结论 |
+|---|---|---|
+| requirements / configuration / building / log-capture / security | `31ddb90` | 主机走 Linux 路线；输入 8/11；`fastboot boot` 前提不满足（用 efisp 替代）；日志卡在 QR；安全绕过 Image4/AMFI |
+| concepts/payload | `8442769` | 布局 4/5（无 Data 种子）；卷容量 81%；交付通道 rawdump → FDT initrd |
+| concepts/boot-chain | `03ae27e` | 交接 2/4 逐条一致；三处刻意偏差；阶段 6 卡存储 |
+| reference/boot-configuration | `05b7d8f` | 用 4/12 表全部合规；只差 `[[block_slice]]` |
+| drivers/kexts | `450e2df` | 发布版 DarwinBoot 拒绝暂存 kext → 预链接内置是正确路线 |
+| drivers/xnu-drivers | `86b4452` | 12 条要求 11 条一致；唯一偏差：ShengUfs 用轮询、无 IOInterruptEventSource |
+
+### 优先级（按对当前阶段是否阻塞）
+
+1. **阻塞**：阶段 6 的 UFS 接管；下一步是 pandora 同款序列（清 `MCQCFG` bit0、不写 UTMRL、`dw0` 去 bit0）——payload `449bd302…` 已刷入待判读。
+2. **高危**：`unique_chip_id` 仍是占位 `00000000098EE0C3`；需在 Android 上 `getprop ro.boot.unique_chip_id` 取真值。
+3. **阶段 7 前**：Data 种子 → `userdata`/`SHNGROOT` 镜像；`[[block_slice]]` 映射已就绪。
+4. **结构性约束**：固件 FV 只剩 **112 B**、FD 已满 4 MiB；任何新模块（厂商 UFS 栈、新驱动、额外 ACPI）都必须先删减组件。
+5. **bring-up 临时策略**：0003/0004/0011 绕过 Image4/AMFI；日志导出器受限于 Mu 的 `LocateHandleBuffer(AllHandles)` 返回 0；正式启用前需恢复官方路径。
