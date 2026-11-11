@@ -102,3 +102,27 @@ kernel → payload → firmware → 官方 smoke（6 场景，`KEXT_TIMEOUT=180`
 | C | 架构改道：由引导器提供块设备服务给内核 | 数天 | 绕开驱动但不解决根因 |
 
 > 今天的代码与配方已分别落在 `docs/UFS-MCQ-RECIPE.md`、`docs/UFS-VENDOR-DIFF.md`、本文件与本地组件覆盖里。
+
+## 2026-11-11 晚续：T1 与 S1 的结果
+
+| 实验 | 内容 | 结果 |
+|---|---|---|
+| T1 | 队列条目**全零**，只写 `SQTP` | **仍然锁死**（无字） → 写门铃/取指通路本身不可用，与描述符、UCD、缓冲内容无关 |
+| S1 | 敲铃前把 apps_smmu 的 stream `0x60` 强制写成 S2CR TYPE=bypass | 仍然锁死 |
+| SQ 启动 | 敲铃前写 `SQRTC=0`（start）并等 `SQRTS` | 仍然锁死 |
+
+结论：门铃写下去不返回这一现象，与模式（传统/MCQ）、队列位置、SMMU 旁路、队列启动都无关。
+剩余候选：该 master 的 DMA 被固件级 XPU/防火墙拦在可用窗口之外，或控制器处于半初始化状态。
+
+### 待做（下次继续）
+
+1. **MCA 回读验收**（payload 已构建：`_tmp/payload-mcaread.img`，diagnostics=5）：只在敲铃前 panic，打印 MCA 各字段回读值、`hcs/hce/mcqcfg/cap/mcqcap`——判断我们的 MCA 写入是否真被硬件接受。
+2. 若 MCA 回读一致 → 转 T2（Android 侧内核模块取工作中配置）。
+3. 若 MCA 回读不一致 → 修 MCA 写入顺序（先 `0x300` bit0、再 MCA、最后 ATTR）即可复测。
+
+### 设备恢复记录
+
+- 官方镜像备份：`E:\Nubia_Flash_Brick\backup\ZTEToolBoxParBak_2026.11.09_14.05.38.363\images`（含 `efisp.img`、`misc.img`、`boot_a.img`、`init_boot_a.img`）
+- 分区映射（从 `for_ROM_maker/orig/gpt_main*.bin` 解析）：`misc` LUN0 LBA 8200（128 KiB）、`boot_a` LUN4 LBA 119078、`init_boot_a` LUN4 LBA 360742、`efisp` LUN4 LBA 748894
+- 本次故障原因：反复失败启动使 `misc` 里 `slot-unbootable:a=yes`；写回官方 `misc` 后由用户自行恢复 Android
+- 官方 `efisp.img` 的 SHA256 = `4df18359…`，与仓库内 `efisp-stock-rollback.img` 一致
