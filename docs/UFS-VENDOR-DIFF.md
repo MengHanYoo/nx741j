@@ -75,3 +75,38 @@ adb shell 'devmem 0x1da5000'   # MCQ 空间首字（判断 MCQ 是否启用）
 若 `0x60/0x80` 与 `0x30` 的 ready 位对不上 → H3。
 
 拿到这份 dump 后，再决定是“复刻 MCQ 门铃”还是“显式退出 MCQ 走传统门铃”。
+
+## 6. 第 2 步结果：Android 活参考（2026-11-11 13:0x，官方 efisp 已还原）
+
+设备已恢复原厂 efisp（`sha256 4df18359…` 写回 LBA 748894 并读回校验），Android 正常启动、`adb root` 可用。
+
+| 观测 | 值 | 含义 |
+|---|---|---|
+| `/sys/module/ufshcd_core/parameters/use_mcq_mode` | `Y` | **厂商内核用 MCQ 模式** |
+| `/proc/iomem` | `1d84000-1d86fff ufs_mem`、`1d88000-1d9ffff ice`、**`1da0000-1da023f mcq`**、`1da4000 mcq_vs`、`1da5000-1da6fff mcq_sqd` | MCQ 配置窗口在 `ufs_mem + 0x1C000`，SQ 门铃区在 `+0x21000` |
+| `/proc/interrupts` | 8 条 `qcom-mcq-esi`（计数 29010/4155/2725/2381/3342/3062/16015/7643）+ 1 条 `ufshcd` GIC 297 | 运行中的系统靠 **MCQ ESI（MSI）** 收完成，传统门铃不在用 |
+| `qcom/power_mode` | `Gear[2,2] Lane[2,2] PWR[FAST,FAST] Rate-B` | 链路已 HS-Gear2 ×2 lane、双向 FAST，与我们的 UIC 探测一致 |
+| `devmem` | `/dev/mem` 不存在；debugfs 未挂载 | 无法直接读裸寄存器，只能靠 sysfs/proc |
+
+### 厂商关 MCQ 的确切写法（`ufshcd_mcq_disable` @ `0xffffffc080cf27ec`）
+
+```
+w = readl(hba->mmio_base + 0x300)     // MCQCFG，bit0 = Enable
+writel(w & ~1, hba->mmio_base + 0x300)
+hba->mcq_enabled = 0                  // hba[0x131d]
+```
+
+`ufshcd_mcq_config_esi` 写 `mmio + 0x384/0x388`（ESI base/control）；`ufshcd_mcq_make_queues_operational`
+从 `hba->mcq_base`（`0x1da0000`）出发，每队列 0x40 步进写 `0x0/0x4/0x8/0xC/0x10/0x20`。
+
+### 结论与下一个实验
+
+**H1 已被活数据确认**：本机 UFS 运行在 **MCQ 模式**（`use_mcq_mode=Y` + 8 条 `qcom-mcq-esi` 在计数），
+而我们 `NativeUfs::adoptAndRead()` 只写传统门铃 `0x58`——这正是「敲门铃后总线挂死」的最大嫌疑。
+
+下一步（二选一，先做 A）：
+
+- **A. 关掉 MCQ 走传统路径**：在 `adoptAndRead()` 停固件队列之后、装自己的 UTRLBA 之前，加
+  `writel(readl(mmio+0x300) & ~1, mmio+0x300)`，然后再走 0x50/0x54/0x60，最后敲 0x58；
+- **B. 接管 MCQ**：按 `make_queues_operational` 的布局（`mcq_base = mmio + 0x1c000`，每队列 0x40）
+  配 SQ/CQ，再写 `mcq_sqd`（`+0x21000`）里的 SQ 门铃。工作量大，先不做。
