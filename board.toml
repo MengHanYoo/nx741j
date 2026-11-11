@@ -41,7 +41,7 @@ kernel = "build/xnu/ios-obj/DEVELOPMENT_ARM64_BCM2837/mach.development.bcm2837"
 # AppleARMPlatform 负责发布 CPU nub 和 /arm-io 的各子节点（官方第 5 阶段明确要求），
 # 去掉它之后 IOKit 匹配会一直等待、无 panic 无输出。它当初的崩溃是写自己的 const
 # 数据（pc 0x46DFDB4），已由 0008 关掉粒度权限收紧解决。
-roots = ["com.apple.driver.AppleARMPlatform", "com.apple.driver.ApplePMGR", "com.apple.security.AppleImage4", "com.apple.filesystems.apfs"]
+roots = ["com.apple.driver.AppleARMPlatform", "com.apple.driver.ApplePMGR", "com.apple.security.AppleImage4", "com.apple.filesystems.apfs", "com.apple.driver.AppleJPEGDriver"]
 # 本配置的 roots 不含 AppleMobileFileIntegrity，prelink 报告 early_security_initializers={}，
 # 因此显式置空以覆盖 profile 的 REQUIRED_EARLY_SECURITY_INIT 占位；接入 AMFI 时再填 identifier=address。
 early_security_init = ""
@@ -112,7 +112,7 @@ dram_size = "0x140000000"
 # 内核 print。让它走视频控制台，配合 kextlog 就能在面板上看到内核输出。
 # native-ufs-probe=10：只读自查（GPT → userdata → 首块），让 NativeUfs 绑定
 # /arm-io/ufshc（IOPlatformDevice + IONameMatch），不写任何数据。
-kernel_args = ["-v", "keepsyms=1", "kextlog=0xffff", "native-ufs-probe=4", "native-ufs-diagnostics=3", "native-ufs-dma-offset=0"]
+kernel_args = ["-v", "keepsyms=1", "kextlog=0xffff", "native-ufs-probe=14", "native-ufs-diagnostics=5", "native-ufs-dma-offset=0"]
 # 文档：panic 屏与入口探针不能同时启用；这里用探针二分 IOKit 初始化。
 panic_screen = true
 # panic 屏和 stage-4 复位代码洞放不下（0xa1f vs 剩余 0x970），二分阶段先关掉；

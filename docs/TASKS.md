@@ -126,3 +126,37 @@ kernel → payload → firmware → 官方 smoke（6 场景，`KEXT_TIMEOUT=180`
 - 分区映射（从 `for_ROM_maker/orig/gpt_main*.bin` 解析）：`misc` LUN0 LBA 8200（128 KiB）、`boot_a` LUN4 LBA 119078、`init_boot_a` LUN4 LBA 360742、`efisp` LUN4 LBA 748894
 - 本次故障原因：反复失败启动使 `misc` 里 `slot-unbootable:a=yes`；写回官方 `misc` 后由用户自行恢复 Android
 - 官方 `efisp.img` 的 SHA256 = `4df18359…`，与仓库内 `efisp-stock-rollback.img` 一致
+
+## 2026-11-11 深夜：预链接空洞的结论 + MCQ v2
+
+### 预链接空洞（按官方 prelink 文档核对）
+
+| 项 | 结果 |
+|---|---|
+| 空洞位置 | `__PLK_TEXT_EXEC` 内共 13 个空洞；最大三个 3.4 MB / 6.5 MB / 646 KB |
+| 崩溃地址归属 | `0xfffffff004a80038` 在原始 kernelcache 里属于 `com.apple.driver.AppleJPEGDriver.__TEXT_EXEC`（0x5a68000..0x5a87a54） |
+| 填充验证 | 把该组件加入 roots 后：组件 12→14、extent 覆盖该地址、字节为真实指令、闸门全过 |
+| 全填代价 | 13 个空洞共需 **126 个组件**，`kernel.macho` 增大约 10.7 MB |
+| 决策 | **保留现状**（只加 AppleJPEGDriver），不追求填满空洞 |
+| 遗留问题 | `__LINKINFO` 里 `IOAESAccelerator` 等符号仍是 `A` 型绝对地址、未按 slide 修正 → 记为独立问题 |
+
+### MCQ v2（照抄厂商实测配置）
+
+用只读内核模块从运行中的 Android 取到的真实值（`_tmp/t2/mcq_live_dump.txt`）：
+
+```
+CAP=d5c7033f MCQCAP=20e0071f HCS=0000010f HCE=00000003
+MCQCFG=00000003 MAC=00003f00
+mca[i] sqattr=800X0207 sqlba=0x71000+0x2000*i cqattr=80000207 cqlba=0x72000+0x2000*i
+       sqdao=0x21000+0x100*i cqdao=0x21080+0x100*i
+UTRLBA=0x38000 UTMRLBA=0x39000
+SMMU gr0=00ee0406（bypass）
+```
+
+对应改动（`NativeUfs::ufsMcqTurV2`，probe=14）：
+
+1. `HCE=3`、`MCQCFG=3`、`MAC=0x3f00`（N=64）、`qsize=0x207`、`nutrs=64`；
+2. 配 9 个队列（0 号带 CQ id），`SQATTR/CQATTR` 按 `0x80000000|qsize`；
+3. **队列放在低物理地址** `SQ=0x71000 / CQ=0x72000 / UCD=0x73000`，用 `IOMemoryDescriptor::withPhysicalAddress` 映射（对齐厂商实测地址段）。
+
+闸门：kernel → payload → smoke(6) → QEMU 全过；待刷入 payload `_tmp/payload-mcqv2.img`（`7dcec075…`）。
