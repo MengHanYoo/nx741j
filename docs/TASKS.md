@@ -260,3 +260,31 @@ MMU: 46 regions
 
 - 内核 IO 窗口只映射 MMIO，不映射窗口外 DRAM：`0x71000`、`0xc3afc000`、`0x83000000` 均写入 fault；
 - 队列必须落在内核**已管理**的内存里，而该窗口地址受固件布局限制。
+
+## 2026-11-12 00:3x：低段内核窗口的尝试与回退（结论）
+
+| 步骤 | 结果 |
+|---|---|
+| 窗口 0x83000000 + 256 MiB | 固件拒绝：与 `PIL_Reserved` (0x8AA00000) 重叠 |
+| 窗口 0x83000000 + 128 MiB | payload 工具拒绝：最小 256 MiB |
+| 放宽工具到 128 MiB + 窗口 0x82600000 | DarwinBoot 校验拒绝 → `[FAIL] Compromised Data` |
+| 放宽 `DarwinWindowSizeValid` | 通过校验，但**静默回退**到 0xB4（候选地址加内核偏移后差 0.8 MiB） |
+| 低段常规内存扩到 132 MiB | 窗口真的落到 `0x827C8000`，但固件在搬运时异常，交给内核 **fdt 0/0**，内核在错误 PC 崩溃 |
+
+→ **低段窗口路线终止**：不是配置问题，而是该固件在低段没有足够的连续可分配内存，强行放入会破坏固件自身的搬运。
+
+### 已回退
+
+- `board.toml` `owned_memory_size` → 0x10000000
+- `MemoryMapLib` 去掉 `Kernel_Window`
+- `DarwinBoot` 去掉低窗口优先逻辑
+- `WindowSize.h` / `devicetree.py` 恢复 256 MiB 下限
+
+### 下一步设计（不动固件布局）
+
+让 UFS 队列落在**控制器已证明会使用的页**（固件自己的 UTRL 页 `0xc3afa000` 一带）：
+
+1. 在 ADT 里为 `0xc3af0000..0xc3b00000` 增加一个 reserved-memory 节点，使内核 pmap 覆盖它；
+2. 用 `IOMemoryDescriptor::withPhysicalAddress` 映射该页（此前失败是因为不在 ADT 内）；
+3. 把 UTRD/UCD 放进该页，敲传统门铃；
+4. 完成状态也可直接读该页（OSC/UPIU 都在里面）。
