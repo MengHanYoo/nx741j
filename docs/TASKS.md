@@ -179,3 +179,33 @@ SMMU gr0=00ee0406（bypass）
 3. **阶段 7 前**：Data 种子 → `userdata`/`SHNGROOT` 镜像；`[[block_slice]]` 映射已就绪。
 4. **结构性约束**：固件 FV 只剩 **112 B**、FD 已满 4 MiB；任何新模块（厂商 UFS 栈、新驱动、额外 ACPI）都必须先删减组件。
 5. **bring-up 临时策略**：0003/0004/0011 绕过 Image4/AMFI；日志导出器受限于 Mu 的 `LocateHandleBuffer(AllHandles)` 返回 0；正式启用前需恢复官方路径。
+
+## 2026-11-12 00:0x：pandora 同款序列的结论（重要）
+
+payload `449bd302…`（同 SoC 上实机跑进 iOS 的序列：清 MCQCFG bit0、不写 UTMRL、不碰 SMMU、
+按位门控 `HCE&1`/`HCS_DP`/`HCS_UTRLRDY`/`UTRLDBR==0`、`UTRLBA` 回读校验、`dw0=bit28|bit24`、门铃 `0x58`）
+在本机同样表现为**写门铃后总线锁死**（只有彩带，无 panic）。
+
+### 由此可以判定
+
+| 类别 | 状态 |
+|---|---|
+| 描述符编码（三种写法） | 排除 |
+| 门铃路径（传统 0x58 / MCQ SQTP） | 排除 |
+| 队列数量与深度（1/9 队列、nutrs 32/64） | 排除 |
+| SMMU（旁路 / 不碰） | 排除 |
+| 时钟与链路（gdsc/ahb/hcs=0x10F/PA_FAST） | 正常 |
+| **驱动写法** | **排除**（同 SoC 成功序列也挂） |
+
+### 剩余假设（都需要固件/平台层信息）
+
+1. **互连（ICC/RPMh）带宽投票缺失**：厂商内核通过 ICC 为 UFS↔DDR 路径投票；我们的内核没有 RPMh 驱动，
+   若该路径在 ABL 之后被回收，控制器 DMA 会永远等不到响应——与“写门铃不返回”完全吻合。
+2. **XPU/防火墙**：UFS master 只被允许访问固件为它划定的 DDR 窗口，我们的分配不在其中。
+3. 控制器处于我们未复现的初始化状态（ABL 与我们启动链的差异）。
+
+### 下一步（需新信息，不再盲刷）
+
+- 用 Android 侧内核模块（T2 路径已打通：ACK 6.12.23 树 + 设备 config + 3372 条 CRC，`this_module=0x640`、
+  vermagic 完全一致）读 **ICC/RPMh 相关寄存器**与 `apps_smmu` 的 S2CR，确认 UFS 路径是否被投票/放行；
+- 或在我们的内核里补一个最小的 RPMh/ICC 投票（把 `ufs_phy_axi`/`ufs_phy_ahb` 的带宽请求拉满）再试门铃。
