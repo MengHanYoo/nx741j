@@ -21,3 +21,4 @@
 0017-kext-failure-panic.patch
 0018-prelinked-duplicate-class.patch
 0019-skip-image4-start.patch
+0020-console-log-capture.patch

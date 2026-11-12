@@ -331,6 +331,21 @@ static void capture_previous_log(void)
         p = (volatile UINT64 *)addr;
         if (p[0] == 0x0031474F4C584EULL) { found = addr; break; }
     }
+    {
+        static UINT8 st[4096];
+        UINT8 *q = st;
+        UINTN bs3 = gRawBs ? gRawBs : 4096;
+        for (UINTN z = 0; z < sizeof(st); z++) st[z] = 0;
+        q[0] = 'N'; q[1] = 'X'; q[2] = 'L'; q[3] = 'G'; q[4] = 'S'; q[5] = 'T'; q[6] = '1';
+        *(UINT64 *)(st + 8) = found;
+        if (found) {
+            UINT32 l2 = *(volatile UINT32 *)(found + 8);
+            *(UINT32 *)(st + 16) = l2;
+            for (UINTN z = 0; z < 64 && z + 12 < l2; z++) st[32 + z] = *(UINT8 *)(found + 12 + z);
+        }
+        ((EFI_STATUS (*)(EFI_BLOCK_IO_PROTOCOL *, UINT32, UINT64, UINTN, void *))gIo->WriteBlocks)
+            (gIo, gIo->Media->MediaId, gRawBase + (80ULL * 1024 * 1024) / bs3, 4096, st);
+    }
     if (!found) { out_ascii("nxlog none\r\n"); return; }
     UINT32 len = *(volatile UINT32 *)(found + 8);
     if (len > 0x1FFF0U) len = 0x1FFF0U;
