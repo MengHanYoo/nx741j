@@ -18,7 +18,7 @@ SOURCE = ROOT / 'drivers/ShengUfs/NativeUfs.cpp'
 DECLARATION = 'extern "C" int board_ufs_cold_init (void);'
 ANCHOR_DECL = 'void boot_progress_poll (void) __attribute__((weak));'
 ANCHOR_CALL = '  native_ufs_probe_requested = probe != 0;'
-CALL = '  if (probe || rootMode) {\n    board_ufs_cold_init ();\n  }'
+CALL = '  board_ufs_cold_init ();   /* the callee checks native-ufs-cold-init itself */'
 
 if not SOURCE.is_file():
     raise SystemExit(f'patch-native-ufs-cold-init: missing {SOURCE}')

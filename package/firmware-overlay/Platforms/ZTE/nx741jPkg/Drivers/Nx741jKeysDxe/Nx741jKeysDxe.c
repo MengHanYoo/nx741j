@@ -76,12 +76,11 @@ TlmmMapped (
   EFI_GCD_MEMORY_SPACE_DESCRIPTOR Desc;
 
   /*
-    Read-only path: mapping the window ourselves (AddMemorySpace) and writing
-    GPIO_CONFIG both assert on this board, so only read GPIO_IN_OUT and rely on
-    the bootloader having configured the lines as inputs already.
+    Every access to the TLMM window (GCD mapping, GPIO config writes and even a
+    plain read of GPIO_IN_OUT) makes the firmware assert on this board, so keep
+    the input device published and the TLMM path off until the PMIC route exists.
   */
-  mTlmmMapped = TRUE;
-  return TRUE;
+  return FALSE;
 
   if (mTlmmMapped) {
     return TRUE;
