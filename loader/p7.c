@@ -329,7 +329,10 @@ static void capture_previous_log(void)
     out_ascii("nxlog scan\r\n");
     for (UINT64 addr = 0xB0000000ULL; addr < 0xC8000000ULL; addr += 0x1000ULL) {
         p = (volatile UINT64 *)addr;
-        if (p[0] == 0x0031474F4C584EULL) { found = addr; break; }
+        if (p[0] == 0x0031474F4C584EULL) {
+            UINT32 probe = *(volatile UINT32 *)(addr + 8);
+            if (probe > 0 && probe < 0x1FFF0U) { found = addr; break; }
+        }
     }
     {
         static UINT8 st[4096];
@@ -341,21 +344,25 @@ static void capture_previous_log(void)
         if (found) {
             UINT32 l2 = *(volatile UINT32 *)(found + 8);
             *(UINT32 *)(st + 16) = l2;
-            for (UINTN z = 0; z < 64 && z + 12 < l2; z++) st[32 + z] = *(UINT8 *)(found + 12 + z);
+            for (UINTN z = 0; z < 64; z++) st[32 + z] = *(UINT8 *)(found + 12 + z);
         }
         ((EFI_STATUS (*)(EFI_BLOCK_IO_PROTOCOL *, UINT32, UINT64, UINTN, void *))gIo->WriteBlocks)
-            (gIo, gIo->Media->MediaId, gRawBase + (80ULL * 1024 * 1024) / bs3, 4096, st);
+            (gIo, gIo->Media->MediaId, 4764464ULL, 4096, st);   // absolute LBA, verified readable over 9008
     }
     if (!found) { out_ascii("nxlog none\r\n"); return; }
     UINT32 len = *(volatile UINT32 *)(found + 8);
     if (len > 0x1FFF0U) len = 0x1FFF0U;
     UINTN bs = gRawBs ? gRawBs : 4096;
-    UINT64 lba = gRawBase + (82ULL * 1024 * 1024) / bs;
+    // Keep the log immediately after the status block: that LBA is proven writable.
+    UINT64 lba = 4764465ULL;
     UINT8 *src = (UINT8 *)(found + 12);
+    static __attribute__((aligned(4096))) UINT8 tmp[4096];
     for (UINT32 off = 0; off < len; off += (UINT32)bs) {
         UINTN chunk = (len - off > bs) ? bs : (UINTN)(len - off);
+        /* BlockIo needs a block-aligned buffer, which found+12 is not. */
+        for (UINTN z = 0; z < bs; z++) tmp[z] = (z < chunk) ? src[off + z] : 0;
         ((EFI_STATUS (*)(EFI_BLOCK_IO_PROTOCOL *, UINT32, UINT64, UINTN, void *))gIo->WriteBlocks)
-            (gIo, gIo->Media->MediaId, lba + off / bs, chunk, src + off);
+            (gIo, gIo->Media->MediaId, lba + off / bs, bs, tmp);
     }
     out_ascii("nxlog captured "); out_hex(len); out_ascii("\r\n");
 }

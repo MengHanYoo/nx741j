@@ -1,0 +1,37 @@
+diff --git a/osfmk/console/serial_general.c b/osfmk/console/serial_general.c
+index b1ca47a..177ffb9 100644
+--- a/osfmk/console/serial_general.c
++++ b/osfmk/console/serial_general.c
+@@ -155,9 +155,32 @@ console_printbuf_state_init(struct console_printbuf_state * data, int write_on_n
+ 	}
+ }
+ 
++/*
++ * UniXNU,NX741J: in-memory console capture (this board has no UART).
++ * The buffer lives in BSS, so the magic is written on the first character
++ * instead of being a static initialiser; the efisp loader scans DRAM for
++ * that magic on the next boot and copies the buffer to rawdump.
++ */
++volatile unsigned char nxl_console_log[0x20000] __attribute__((aligned(4096)));
++static unsigned int nxl_console_len;
++
+ void
+ console_printbuf_putc(int ch, void * arg)
+ {
++	if (nxl_console_len < sizeof(nxl_console_log) - 12) {
++		if (nxl_console_len == 0) {
++			nxl_console_log[0] = 0x4E; nxl_console_log[1] = 0x58;
++			nxl_console_log[2] = 0x4C; nxl_console_log[3] = 0x4F;
++			nxl_console_log[4] = 0x47; nxl_console_log[5] = 0x31;
++			nxl_console_log[6] = 0;    nxl_console_log[7] = 0;
++		}
++		nxl_console_log[12 + nxl_console_len] = (unsigned char)ch;
++		nxl_console_len++;
++		nxl_console_log[8] = (unsigned char)(nxl_console_len);
++		nxl_console_log[9] = (unsigned char)(nxl_console_len >> 8);
++		nxl_console_log[10] = (unsigned char)(nxl_console_len >> 16);
++		nxl_console_log[11] = (unsigned char)(nxl_console_len >> 24);
++	}
+ 	struct console_printbuf_state * info = (struct console_printbuf_state *)arg;
+ 	info->total += 1;
+ 	if (info->pos < (SERIAL_CONS_BUF_SIZE - 1)) {

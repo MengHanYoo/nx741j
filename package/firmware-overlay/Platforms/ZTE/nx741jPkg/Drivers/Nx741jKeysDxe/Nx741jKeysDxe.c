@@ -75,6 +75,14 @@ TlmmMapped (
   EFI_STATUS                     Status;
   EFI_GCD_MEMORY_SPACE_DESCRIPTOR Desc;
 
+  /*
+    Read-only path: mapping the window ourselves (AddMemorySpace) and writing
+    GPIO_CONFIG both assert on this board, so only read GPIO_IN_OUT and rely on
+    the bootloader having configured the lines as inputs already.
+  */
+  mTlmmMapped = TRUE;
+  return TRUE;
+
   if (mTlmmMapped) {
     return TRUE;
   }
@@ -107,6 +115,7 @@ TlmmMapped (
 
 STATIC
 VOID
+__attribute__((unused))
 TlmmConfigureInput (
   IN UINT32  Pin
   )
@@ -154,14 +163,6 @@ QueueChar (
   gBS->SignalEvent (mWaitEvent);
 }
 
-STATIC BOOLEAN  mStatusWritten;
-
-STATIC
-VOID
-KeysStatusWrite (
-  IN EFI_STATUS  InstallStatus
-  );
-
 STATIC
 VOID
 EFIAPI
@@ -172,17 +173,6 @@ PollKeys (
 {
   UINTN    Index;
   BOOLEAN  Down;
-
-  /*
-    BlockIo only appears once the disk stack is dispatched, which is after this
-    driver runs, so keep retrying here until the status record lands once.
-  */
-  if (!mStatusWritten) {
-    if (!TlmmMapped ()) {
-      TlmmMapped ();
-    }
-    KeysStatusWrite (EFI_SUCCESS);
-  }
 
   if (!TlmmMapped ()) {
     return;
@@ -272,48 +262,6 @@ ConInUnregisterKeyNotify (
   return EFI_UNSUPPORTED;
 }
 
-/*
-  The panel font is too small to read driver diagnostics and this board has no
-  UART, so drop a status record into rawdump where the host can read it over 9008.
-*/
-STATIC
-VOID
-KeysStatusWrite (
-  IN EFI_STATUS  InstallStatus
-  )
-{
-  EFI_STATUS              Status;
-  EFI_BLOCK_IO_PROTOCOL  *BlockIo;
-  STATIC UINT8            Rec[4096];
-  UINT64                  T101;
-  UINT64                  T95;
-  UINT64                  T179;
-
-  ZeroMem (Rec, sizeof (Rec));
-  CopyMem (Rec, "KEYSTAT1", 8);
-  T101 = 0;
-  T95  = 0;
-  T179 = 0;
-  if (mTlmmMapped) {
-    T101 = *(volatile UINT32 *)(UINTN)(TLMM_BASE + (UINT64)mKeyPin[0] * TLMM_GPIO_STRIDE + TLMM_IN_OUT);
-    T95  = *(volatile UINT32 *)(UINTN)(TLMM_BASE + (UINT64)mKeyPin[1] * TLMM_GPIO_STRIDE + TLMM_IN_OUT);
-    T179 = *(volatile UINT32 *)(UINTN)(TLMM_BASE + (UINT64)mKeyPin[2] * TLMM_GPIO_STRIDE + TLMM_IN_OUT);
-  }
-  *(UINT64 *)(Rec + 8)  = EFI_ERROR (InstallStatus) ? 0 : 1;
-  *(UINT64 *)(Rec + 16) = mTlmmMapped ? 1 : 0;
-  *(UINT64 *)(Rec + 24) = T101;
-  *(UINT64 *)(Rec + 32) = T95;
-  *(UINT64 *)(Rec + 40) = T179;
-  *(UINT64 *)(Rec + 48) = (UINT64)InstallStatus;
-  Status = gBS->LocateProtocol (&gEfiBlockIoProtocolGuid, NULL, (VOID **)&BlockIo);
-  if (EFI_ERROR (Status) || (BlockIo == NULL)) {
-    return;
-  }
-  if (!EFI_ERROR (BlockIo->WriteBlocks (BlockIo, BlockIo->Media->MediaId, 4764480ULL, sizeof (Rec), Rec))) {
-    mStatusWritten = TRUE;
-  }
-}
-
 EFI_STATUS
 EFIAPI
 Nx741jKeysDxeEntry (
@@ -327,7 +275,6 @@ Nx741jKeysDxeEntry (
     UINTN Index;
     UINT32 Bits = 0;
     for (Index = 0; Index < KEY_COUNT; Index++) {
-      TlmmConfigureInput (mKeyPin[Index]);
       Bits |= TlmmInOut (mKeyPin[Index]) & 1U;
       DEBUG ((DEBUG_ERROR, "KEYS: pin %u cfg 0x%08x in 0x%08x\n", mKeyPin[Index],
               *(volatile UINT32 *)(UINTN)(TLMM_BASE + (UINT64)mKeyPin[Index] * TLMM_GPIO_STRIDE),
@@ -365,7 +312,6 @@ Nx741jKeysDxeEntry (
                   NULL);
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "KEYS: install %r\n", Status));
-    KeysStatusWrite (Status);
     return Status;
   }
 
@@ -380,6 +326,5 @@ Nx741jKeysDxeEntry (
   }
 
   DEBUG ((DEBUG_INFO, "KEYS: input device published\n"));
-  KeysStatusWrite (EFI_SUCCESS);
   return EFI_SUCCESS;
 }
