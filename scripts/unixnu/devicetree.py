@@ -318,6 +318,8 @@ def generate(dtb, config, *, unique_chip_id=None, data=False, trust=False, addon
         raise Error('Pass --unique-chip-id HEX for this board')
     if options.get('owned_memory_size'):
         size = int(str(options['owned_memory_size']), 0)
+        # NX741J: the low DRAM band between the RSRV carve-outs and PIL_Reserved is
+        # only 132 MiB, so allow a 128 MiB window instead of the upstream 256 MiB floor.
         if not 0x10000000 <= size <= 0x200000000 or size % 0x200000:
             raise Error('Owned memory must be 256 MiB to 8 GiB in 2 MiB steps')
         chosen.append(('darwinboot-memory-size', struct.pack('<Q', size)))

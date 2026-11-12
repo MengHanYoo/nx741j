@@ -96,6 +96,42 @@ def skip_setup_seed(ctx, base, tool_path, tool_args=()):
     return seed
 
 
+def render_block_slices(spec):
+    """[[block_slice]] blocks from board.toml [[payload.block_slice]] entries.
+
+    reference/boot-configuration lists [boot], [ui], [[driver]], [[dt_patch]],
+    [[block_slice]], [acpi], kit, [[entry]], [entry.chosen], [[entry.kext]] and
+    [[entry.variable]]. This generator writes [boot], [ui], [kits], [[driver]]
+    (non-firmware loader), [[entry]] and now [[block_slice]]; the rest have no
+    board.toml key because the Darwin path does not need them (the ADT sidecar
+    carries the device tree, kexts are prelinked and ACPI is not consumed on
+    arm64 XNU). Stage 6 publishes the userdata windows through this table.
+    """
+    slices = spec.get('block_slice') or []
+    if not isinstance(slices, list):
+        raise Error('board.toml [[payload.block_slice]] must be an array of tables')
+    text = ''
+    for index, entry in enumerate(slices):
+        if not isinstance(entry, dict):
+            raise Error(f'payload.block_slice[{index}] is not a table')
+        for required in ('partition', 'name'):
+            if not entry.get(required):
+                raise Error(f'payload.block_slice[{index}] needs {required}')
+        lines = [f'partition = {json.dumps(entry["partition"])}', f'name = {json.dumps(entry["name"])}']
+        for key in ('offset', 'length'):
+            value = entry.get(key, 0)
+            if not isinstance(value, int) or isinstance(value, bool) or value < 0:
+                raise Error(f'payload.block_slice[{index}].{key} must be a non-negative integer')
+            lines.append(f'{key} = {value}')
+        for key in ('writable', 'enabled'):
+            value = entry.get(key, key == 'enabled')
+            if not isinstance(value, bool):
+                raise Error(f'payload.block_slice[{index}].{key} must be true or false')
+            lines.append(f'{key} = {str(value).lower()}')
+        text += '[[block_slice]]\n' + '\n'.join(lines) + '\n'
+    return text
+
+
 def build(ctx, kernel=None):
     log('payload')
     spec = ctx.board.get('payload')
@@ -215,10 +251,12 @@ def build(ctx, kernel=None):
     kit_lines = [f'autoload = {str(kits.get("autoload", False)).lower()}']
     if kits.get('directory'):
         kit_lines.append(f'directory = {json.dumps(kits["directory"])}')
+    slices = render_block_slices(spec)
+    entry_dtb = f'dtb = {json.dumps(spec["dtb"])}\n' if spec.get('dtb') else ''
     config = ('version = 1\n[boot]\n' + '\n'.join(boot_lines) + '\n[ui]\n' + '\n'.join(ui_lines) +
-              '\n[kits]\n' + '\n'.join(kit_lines) + '\n' + loader +
+              '\n[kits]\n' + '\n'.join(kit_lines) + '\n' + slices + loader +
               f'[[entry]]\nid = "xnu"\ntitle = {json.dumps(spec.get("title", "UniXNU"))}\ntype = "xnu"\n'
-              f'path = "Payloads/kernel.macho"\n{initrd}args = "{line}"\n')
+              f'path = "Payloads/kernel.macho"\n{entry_dtb}{initrd}args = "{line}"\n')
     install = spec.get('install')
     if install:
         if not data:
