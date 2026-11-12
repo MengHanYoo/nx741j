@@ -1,0 +1,19 @@
+diff --git a/iokit/Kernel/IODeviceTreeSupport.cpp b/iokit/Kernel/IODeviceTreeSupport.cpp
+--- a/iokit/Kernel/IODeviceTreeSupport.cpp
++++ b/iokit/Kernel/IODeviceTreeSupport.cpp
+@@ -599,6 +599,15 @@ IODTMapOneInterrupt( IORegistryEntry * regEntry, UInt32 * intSpec, UInt32 index,
+ 	bool                        cmp, ok = false;
+ 
+ 	parent = IODTFindInterruptParent( regEntry, index );
++	/*
++	 * UniXNU,NX741J: an interrupt-controller node has no interrupt parent, and a
++	 * missing interrupt-parent phandle also resolves to NULL.  The original code
++	 * passed that NULL straight into IODTGetICellCounts() and panicked during
++	 * InitIOKit, which masked every later boot stage on this board.
++	 */
++	if (NULL == parent) {
++		return 0;
++	}
+ 	IODTGetICellCounts( parent, &icells, &acells );
+ 	addrCmp = NULL;
+ 	if (acells) {

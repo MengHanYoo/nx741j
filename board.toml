@@ -114,7 +114,7 @@ dram_size = "0x140000000"
 # 内核 print。让它走视频控制台，配合 kextlog 就能在面板上看到内核输出。
 # native-ufs-probe=10：只读自查（GPT → userdata → 首块），让 NativeUfs 绑定
 # /arm-io/ufshc（IOPlatformDevice + IONameMatch），不写任何数据。
-kernel_args = ["-v", "keepsyms=1", "kextlog=0xffff", "native-ufs-probe=0", "native-ufs-diagnostics=0", "native-ufs-dma-offset=0", "native-ufs-cold-init=1"]
+kernel_args = ["cpus=1", "-v", "keepsyms=1", "kextlog=0xffff", "native-ufs-probe=0", "native-ufs-diagnostics=0", "native-ufs-dma-offset=0", "native-ufs-cold-init=1"]
 # 文档：panic 屏与入口探针不能同时启用；这里用探针二分 IOKit 初始化。
 panic_screen = true
 # panic 屏和 stage-4 复位代码洞放不下（0xa1f vs 剩余 0x970），二分阶段先关掉；

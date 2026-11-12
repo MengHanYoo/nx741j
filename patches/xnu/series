@@ -12,6 +12,8 @@
 0006-duplicate-class-log.patch
 0007-plk-data-const-writable.patch
 0009-waitforservice-watchdog.patch
+0010-console-acquire-screen.patch
 0011-skip-image4-load.patch
 0012-disable-native-aes-personality.patch
 0014-kpc-register-idempotent.patch
+0015-iodevicetree-null-interrupt-parent.patch
