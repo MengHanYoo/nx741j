@@ -326,7 +326,8 @@ static void capture_previous_log(void)
 {
     volatile UINT64 *p;
     UINT64 found = 0;
-    for (UINT64 addr = 0x80000000ULL; addr < 0xD0000000ULL; addr += 0x1000ULL) {
+    out_ascii("nxlog scan\r\n");
+    for (UINT64 addr = 0xB0000000ULL; addr < 0xC8000000ULL; addr += 0x1000ULL) {
         p = (volatile UINT64 *)addr;
         if (p[0] == 0x0031474F4C584EULL) { found = addr; break; }
     }
