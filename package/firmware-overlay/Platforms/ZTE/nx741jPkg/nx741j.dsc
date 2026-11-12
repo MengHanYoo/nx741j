@@ -103,7 +103,7 @@
   Binaries/nx741j/QcomPkg/Drivers/TLMMDxe/TLMMDxe.inf
   Binaries/nx741j/QcomPkg/Drivers/DALSYSDxe/DALSYSDxe.inf
   Binaries/nx741j/QcomPkg/Drivers/SPMIDxe/SPMIDxe.inf
-#   nx741jPkg/Drivers/Nx741jKeysDxe/Nx741jKeysDxe.inf
+  nx741jPkg/Drivers/Nx741jKeysDxe/Nx741jKeysDxe.inf
   nx741jPkg/Drivers/SmemDumpDxe/SmemDumpDxe.inf
   UniXNUPkg/Application/UniXNU/UniXNU.inf
   UniXNUPkg/Driver/UniXNUDxe/UniXNUDxe.inf

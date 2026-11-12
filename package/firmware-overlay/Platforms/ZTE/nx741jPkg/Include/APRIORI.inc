@@ -80,6 +80,12 @@ APRIORI DXE {
   INF UniXNUPkg/Driver/UniXNURamDiskDxe/UniXNURamDiskDxe.inf
 # V41 disabled: INF SiliciumPkg/Drivers/KeypadDxe/KeypadDxe.inf
   INF DarwinBootPkg/Driver/DarwinBoot.inf
+  # Keys and the console splitter must exist before BDS connects ConIn.
+  INF nx741jPkg/Drivers/Nx741jKeysDxe/Nx741jKeysDxe.inf
+  INF EmbeddedPkg/SimpleTextInOutSerial/SimpleTextInOutSerial.inf
+  INF MdeModulePkg/Universal/Console/ConPlatformDxe/ConPlatformDxe.inf
+  INF MdeModulePkg/Universal/Console/ConSplitterDxe/ConSplitterDxe.inf
+  INF MdeModulePkg/Universal/Console/GraphicsConsoleDxe/GraphicsConsoleDxe.inf
   INF MdeModulePkg/Universal/BdsDxe/BdsDxe.inf
 
 # V15 pruned: INF Binaries/nx741j/QcomPkg/Drivers/SPIDxe/SPIDxe.inf
@@ -114,10 +120,10 @@ APRIORI DXE {
 # V33 disabled (needs DTBExtn/HWIO/NPA): INF Binaries/nx741j/QcomPkg/Drivers/UCDxe/UCDxe.inf
 # V33 disabled (needs DTBExtn/HWIO/NPA): INF Binaries/nx741j/QcomPkg/Drivers/RNGDxe/RngDxe.inf
 
-  INF EmbeddedPkg/SimpleTextInOutSerial/SimpleTextInOutSerial.inf
-  INF MdeModulePkg/Universal/Console/ConPlatformDxe/ConPlatformDxe.inf
-  INF MdeModulePkg/Universal/Console/ConSplitterDxe/ConSplitterDxe.inf
-  INF MdeModulePkg/Universal/Console/GraphicsConsoleDxe/GraphicsConsoleDxe.inf
+# moved before BdsDxe: INF EmbeddedPkg/SimpleTextInOutSerial/SimpleTextInOutSerial.inf
+# moved before BdsDxe: INF MdeModulePkg/Universal/Console/ConPlatformDxe/ConPlatformDxe.inf
+# moved before BdsDxe: INF MdeModulePkg/Universal/Console/ConSplitterDxe/ConSplitterDxe.inf
+# moved before BdsDxe: INF MdeModulePkg/Universal/Console/GraphicsConsoleDxe/GraphicsConsoleDxe.inf
 #   INF nx741jPkg/Drivers/Nx741jKeysDxe/Nx741jKeysDxe.inf
 # V27 disabled: INF nx741jPkg/Drivers/TlmmProbeDxe/TlmmProbeDxe.inf
 # V23 disabled (probe removed): INF nx741jPkg/Drivers/TlmmProbeDxe/TlmmProbeDxe.inf
