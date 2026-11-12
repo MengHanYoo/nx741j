@@ -26,6 +26,7 @@
 #include <Library/DxeServicesTableLib.h>
 #include <Library/BaseMemoryLib.h>
 #include <Library/DebugLib.h>
+#include <Protocol/BlockIo.h>
 
 #define TLMM_BASE        0x0F000000ULL
 #define TLMM_WINDOW      0x100000ULL
@@ -80,18 +81,45 @@ TlmmMapped (
 
   ZeroMem (&Desc, sizeof (Desc));
   Status = gDS->GetMemorySpaceDescriptor ((EFI_PHYSICAL_ADDRESS)TLMM_BASE, &Desc);
-  if (EFI_ERROR (Status) ||
-      (Desc.GcdMemoryType != EfiGcdMemoryTypeMemoryMappedIo) ||
-      (Desc.Length < TLMM_WINDOW)) {
-    DEBUG ((DEBUG_WARN, "KEYS: TLMM not described (type %u len 0x%lx); keys off\n",
-            EFI_ERROR (Status) ? 0xFFu : (UINT32)Desc.GcdMemoryType,
-            EFI_ERROR (Status) ? 0ULL : (UINT64)Desc.Length));
+  if (EFI_ERROR (Status) || (Desc.GcdMemoryType == EfiGcdMemoryTypeNonExistent)) {
+    /* The firmware may have described TLMM only to the PEI phase; add an
+       uncached MMIO window ourselves instead of touching undescribed pages. */
+    Status = gDS->AddMemorySpace (EfiGcdMemoryTypeMemoryMappedIo,
+                                  (EFI_PHYSICAL_ADDRESS)TLMM_BASE,
+                                  (UINT64)TLMM_WINDOW, EFI_MEMORY_UC);
+    DEBUG ((DEBUG_WARN, "KEYS: add TLMM space %r\n", Status));
+    if (EFI_ERROR (Status) && (Status != EFI_ACCESS_DENIED) && (Status != EFI_ALREADY_STARTED)) {
+      return FALSE;
+    }
+  }
+
+  Status = gDS->SetMemorySpaceAttributes ((EFI_PHYSICAL_ADDRESS)TLMM_BASE,
+                                          (UINT64)TLMM_WINDOW, EFI_MEMORY_UC);
+  if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_WARN, "KEYS: TLMM attributes %r\n", Status));
     return FALSE;
   }
 
   mTlmmMapped = TRUE;
   DEBUG ((DEBUG_INFO, "KEYS: TLMM mapped, polling pins 101/95/179\n"));
   return TRUE;
+}
+
+STATIC
+VOID
+TlmmConfigureInput (
+  IN UINT32  Pin
+  )
+{
+  volatile UINT32  *Cfg;
+  UINT32           Value;
+
+  Cfg = (volatile UINT32 *)(UINTN)(TLMM_BASE + (UINT64)Pin * TLMM_GPIO_STRIDE);
+  Value = *Cfg;
+  /* GPIO function 0, pull-up (3), input (output enable clear); keep drive bits. */
+  Value &= ~((UINT32)(0x7U | (0x3U << 3) | (0x1U << 9)));
+  Value |= (UINT32)((0x3U << 3));
+  *Cfg = Value;
 }
 
 STATIC
@@ -126,6 +154,14 @@ QueueChar (
   gBS->SignalEvent (mWaitEvent);
 }
 
+STATIC BOOLEAN  mStatusWritten;
+
+STATIC
+VOID
+KeysStatusWrite (
+  IN EFI_STATUS  InstallStatus
+  );
+
 STATIC
 VOID
 EFIAPI
@@ -136,6 +172,17 @@ PollKeys (
 {
   UINTN    Index;
   BOOLEAN  Down;
+
+  /*
+    BlockIo only appears once the disk stack is dispatched, which is after this
+    driver runs, so keep retrying here until the status record lands once.
+  */
+  if (!mStatusWritten) {
+    if (!TlmmMapped ()) {
+      TlmmMapped ();
+    }
+    KeysStatusWrite (EFI_SUCCESS);
+  }
 
   if (!TlmmMapped ()) {
     return;
@@ -225,6 +272,48 @@ ConInUnregisterKeyNotify (
   return EFI_UNSUPPORTED;
 }
 
+/*
+  The panel font is too small to read driver diagnostics and this board has no
+  UART, so drop a status record into rawdump where the host can read it over 9008.
+*/
+STATIC
+VOID
+KeysStatusWrite (
+  IN EFI_STATUS  InstallStatus
+  )
+{
+  EFI_STATUS              Status;
+  EFI_BLOCK_IO_PROTOCOL  *BlockIo;
+  STATIC UINT8            Rec[4096];
+  UINT64                  T101;
+  UINT64                  T95;
+  UINT64                  T179;
+
+  ZeroMem (Rec, sizeof (Rec));
+  CopyMem (Rec, "KEYSTAT1", 8);
+  T101 = 0;
+  T95  = 0;
+  T179 = 0;
+  if (mTlmmMapped) {
+    T101 = *(volatile UINT32 *)(UINTN)(TLMM_BASE + (UINT64)mKeyPin[0] * TLMM_GPIO_STRIDE + TLMM_IN_OUT);
+    T95  = *(volatile UINT32 *)(UINTN)(TLMM_BASE + (UINT64)mKeyPin[1] * TLMM_GPIO_STRIDE + TLMM_IN_OUT);
+    T179 = *(volatile UINT32 *)(UINTN)(TLMM_BASE + (UINT64)mKeyPin[2] * TLMM_GPIO_STRIDE + TLMM_IN_OUT);
+  }
+  *(UINT64 *)(Rec + 8)  = EFI_ERROR (InstallStatus) ? 0 : 1;
+  *(UINT64 *)(Rec + 16) = mTlmmMapped ? 1 : 0;
+  *(UINT64 *)(Rec + 24) = T101;
+  *(UINT64 *)(Rec + 32) = T95;
+  *(UINT64 *)(Rec + 40) = T179;
+  *(UINT64 *)(Rec + 48) = (UINT64)InstallStatus;
+  Status = gBS->LocateProtocol (&gEfiBlockIoProtocolGuid, NULL, (VOID **)&BlockIo);
+  if (EFI_ERROR (Status) || (BlockIo == NULL)) {
+    return;
+  }
+  if (!EFI_ERROR (BlockIo->WriteBlocks (BlockIo, BlockIo->Media->MediaId, 4764480ULL, sizeof (Rec), Rec))) {
+    mStatusWritten = TRUE;
+  }
+}
+
 EFI_STATUS
 EFIAPI
 Nx741jKeysDxeEntry (
@@ -233,6 +322,24 @@ Nx741jKeysDxeEntry (
   )
 {
   EFI_STATUS  Status;
+
+  if (TlmmMapped ()) {
+    UINTN Index;
+    UINT32 Bits = 0;
+    for (Index = 0; Index < KEY_COUNT; Index++) {
+      TlmmConfigureInput (mKeyPin[Index]);
+      Bits |= TlmmInOut (mKeyPin[Index]) & 1U;
+      DEBUG ((DEBUG_ERROR, "KEYS: pin %u cfg 0x%08x in 0x%08x\n", mKeyPin[Index],
+              *(volatile UINT32 *)(UINTN)(TLMM_BASE + (UINT64)mKeyPin[Index] * TLMM_GPIO_STRIDE),
+              TlmmInOut (mKeyPin[Index])));
+    }
+    /* A real TLMM with pull-ups reads 1 on idle lines; all-zero means the window
+       is a hole (QEMU) or not powered, and polling would inject phantom keys. */
+    if (Bits == 0) {
+      DEBUG ((DEBUG_ERROR, "KEYS: all lines read 0; TLMM unusable, keys off\n"));
+      mTlmmMapped = FALSE;
+    }
+  }
 
   ZeroMem (&mQueue, sizeof (mQueue));
   ZeroMem (mPressed, sizeof (mPressed));
@@ -258,6 +365,7 @@ Nx741jKeysDxeEntry (
                   NULL);
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "KEYS: install %r\n", Status));
+    KeysStatusWrite (Status);
     return Status;
   }
 
@@ -272,5 +380,6 @@ Nx741jKeysDxeEntry (
   }
 
   DEBUG ((DEBUG_INFO, "KEYS: input device published\n"));
+  KeysStatusWrite (EFI_SUCCESS);
   return EFI_SUCCESS;
 }

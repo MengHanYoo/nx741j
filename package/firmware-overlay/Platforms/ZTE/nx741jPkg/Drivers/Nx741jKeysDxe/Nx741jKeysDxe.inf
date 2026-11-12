@@ -29,6 +29,7 @@
 [Protocols]
   gEfiSimpleTextInputExProtocolGuid
   gEfiDevicePathProtocolGuid
+  gEfiBlockIoProtocolGuid
 
 [Depex]
   TRUE
