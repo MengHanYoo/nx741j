@@ -317,6 +317,33 @@ static int find_partition(const char *want, UINT64 *out_lba)
     return 0;
 }
 
+// ---------------------------------------------------------------------------
+// NX741J console log capture: the kernel keeps its whole console output in a
+// static buffer that starts with the "NXLOG1" magic.  Scanning DRAM for that
+// magic and dropping the payload into rawdump+82 MiB gives the host a log
+// channel on a board with no UART.
+static void capture_previous_log(void)
+{
+    volatile UINT64 *p;
+    UINT64 found = 0;
+    for (UINT64 addr = 0x80000000ULL; addr < 0xD0000000ULL; addr += 0x1000ULL) {
+        p = (volatile UINT64 *)addr;
+        if (p[0] == 0x0031474F4C584EULL) { found = addr; break; }
+    }
+    if (!found) { out_ascii("nxlog none\r\n"); return; }
+    UINT32 len = *(volatile UINT32 *)(found + 8);
+    if (len > 0x1FFF0U) len = 0x1FFF0U;
+    UINTN bs = gRawBs ? gRawBs : 4096;
+    UINT64 lba = gRawBase + (82ULL * 1024 * 1024) / bs;
+    UINT8 *src = (UINT8 *)(found + 12);
+    for (UINT32 off = 0; off < len; off += (UINT32)bs) {
+        UINTN chunk = (len - off > bs) ? bs : (UINTN)(len - off);
+        ((EFI_STATUS (*)(EFI_BLOCK_IO_PROTOCOL *, UINT32, UINT64, UINTN, void *))gIo->WriteBlocks)
+            (gIo, gIo->Media->MediaId, lba + off / bs, chunk, src + off);
+    }
+    out_ascii("nxlog captured "); out_hex(len); out_ascii("\r\n");
+}
+
 EFI_STATUS EFIAPI EfiMain(EFI_HANDLE image, EFI_SYSTEM_TABLE *st)
 {
     (void)image;
@@ -402,6 +429,9 @@ EFI_STATUS EFIAPI EfiMain(EFI_HANDLE image, EFI_SYSTEM_TABLE *st)
 
     out_ascii("el "); out_hex(current_el()); out_ascii(" sctlr "); out_hex(read_sctlr()); out_ascii("\r\n");
 
+
+
+    capture_previous_log();
     for (int i = 0; i < 400000; i++) __asm__ volatile("" ::: "memory");   // let the console flush
     out_ascii("mask irq, own stack, mmu off\r\n");
     for (int i = 0; i < 200000; i++) __asm__ volatile("" ::: "memory");
