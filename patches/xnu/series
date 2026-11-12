@@ -17,3 +17,7 @@
 0012-disable-native-aes-personality.patch
 0014-kpc-register-idempotent.patch
 0015-iodevicetree-null-interrupt-parent.patch
+0016-kext-load-heartbeat.patch
+0017-kext-failure-panic.patch
+0018-prelinked-duplicate-class.patch
+0019-skip-image4-start.patch

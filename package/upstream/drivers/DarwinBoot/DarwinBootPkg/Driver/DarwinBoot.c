@@ -877,10 +877,27 @@ Boot (
   if ((Request == NULL) || (Request->Volume == NULL) || (Request->KernelPath == NULL)) { return EFI_INVALID_PARAMETER; }
   mDbProbe.Step = 2; DbProbeWrite (Request);
   Mark (L"[0c] probe2", 0);
-  if ((Request->KextCount != 0) || (Request->DeviceTree != NULL) || (Request->DeviceTreeSize != 0) ||
-      (DarwinCurrentEl () != 4)) {
+  if ((Request->KextCount != 0) || (DarwinCurrentEl () != 4)) {
     Print (L"DARWINBOOT: unsupported inputs or exception level; firmware retained\n");
     return EFI_UNSUPPORTED;
+  }
+  //
+  // UniXNU may pass the device tree it prepared (boot-chain step 3). Accept and validate
+  // it, but keep boot_args.DeviceTree on the ADT sidecar: the platform expert matches the
+  // ADT root, not the hardware tree.
+  //
+  if ((Request->DeviceTree != NULL) || (Request->DeviceTreeSize != 0)) {
+    if ((Request->DeviceTree == NULL) || (Request->DeviceTreeSize == 0)) {
+      Print (L"DARWINBOOT: request tree pointer/size disagree; firmware retained\n");
+      return EFI_INVALID_PARAMETER;
+    }
+    if ((Request->DeviceTreeSize >= 8) &&
+        (SwapBytes32 (*(UINT32 *)Request->DeviceTree) != 0xd00dfeedu)) {
+      Print (L"DARWINBOOT: request tree is not a flattened device tree\n");
+      return EFI_VOLUME_CORRUPTED;
+    }
+    Print (L"DARWINBOOT: request tree %lx/%lu received; boot_args tree stays the ADT sidecar\n",
+           (UINT64)(UINTN)Request->DeviceTree, (UINT64)Request->DeviceTreeSize);
   }
   Mark (L"[0d] ramlayout", 0);
   if (!RamdiskLayout (Request->Ramdisk, Request->RamdiskSize, &RamdiskExpandedSize, &RamdiskPacked)) {

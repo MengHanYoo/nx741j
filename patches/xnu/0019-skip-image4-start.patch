@@ -1,0 +1,12 @@
+diff --git a/libkern/c++/OSKext.cpp b/libkern/c++/OSKext.cpp
+--- a/libkern/c++/OSKext.cpp
++++ b/libkern/c++/OSKext.cpp
+@@ -8301,3 +8301,8 @@
+ 	flags.starting = 1;
++	if (getIdentifier() && getIdentifier()->isEqualTo("com.apple.security.AppleImage4")) {
++		flags.starting = 0;
++		result = KERN_SUCCESS;
++		goto finish;
++	}
+ 
+ 	// Drop a log message so logd can grab the needed information to decode this kext

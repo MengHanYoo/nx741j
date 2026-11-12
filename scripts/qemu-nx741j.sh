@@ -95,7 +95,7 @@ if [ "${QEMU_INT:-0}" = "1" ]; then
   INT_ARGS=(-d int -D "$OUT/int.log")
 fi
 timeout "$TIMEOUT" qemu-system-aarch64 \
-  -M virt -cpu cortex-a72 -m 16G -smp 8 \
+  -M virt -cpu cortex-a72 -m "${QEMU_MEM:-16G}" -smp "${QEMU_SMP:-8}" \
   -drive if=pflash,format=raw,readonly=on,file="$FW" \
   -drive format=raw,file=fat:rw:"$ESP" \
   -nographic -serial mon:stdio \

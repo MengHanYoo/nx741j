@@ -10,6 +10,7 @@
 // The PHY tables come from ufs-qcom-phy.c, which is a byte-for-byte dump of the
 // vendor phy-qcom-ufs-qmp-v4-canoe module. Only the PHY and the host controller
 // registers are touched; the request lists stay owned by ShengUfs.
+extern void panic(const char *fmt, ...) __attribute__((noreturn));
 #include <stdint.h>
 
 #include <kern/clock.h>
@@ -87,7 +88,7 @@ int board_ufs_cold_init(void)
 	phy = (volatile uint32_t *)ml_io_map(UFS_PHY_BASE, UFS_PHY_BYTES);
 	host = (volatile uint32_t *)ml_io_map(UFS_HOST_BASE, UFS_HOST_BYTES);
 	if (phy == 0 || host == 0) {
-		printf("UFS cold: mmio map failed phy %p host %p\n", (void *)phy, (void *)host);
+		panic("NX741J UFS cold: mmio map failed phy %p host %p", (void *)phy, (void *)host);
 		return -1;
 	}
 
@@ -95,20 +96,20 @@ int board_ufs_cold_init(void)
 	ufs_qcom_phy_qmp_v4_calibrate(phy, true, false);
 	ufs_qcom_phy_qmp_v4_start_serdes(phy);
 	if (poll_bit(phy, 0x400u, 1u) != 0) {
-		printf("UFS cold: PCS not ready (0x400 %08x)\n", phy[0x400u >> 2]);
+		panic("NX741J UFS cold: PCS not ready (0x400 %08x)", phy[0x400u >> 2]);
 		return -2;
 	}
 	printf("UFS cold: PCS ready (0x400 %08x)\n", phy[0x400u >> 2]);
 
 	host_write(host, HOST_HCE, host_read(host, HOST_HCE) | 1u);
 	if (poll_bit(host, HOST_HCS, HCS_UCRDY) != 0) {
-		printf("UFS cold: HCE on, UCRDY never set (HCS %08x)\n",
+		panic("NX741J UFS cold: HCE on, UCRDY never set (HCS %08x)",
 		    host_read(host, HOST_HCS));
 		return -3;
 	}
 
 	if (uic_command(host, UIC_DME_LINKSTARTUP, 0, &result) != 0) {
-		printf("UFS cold: DME_LINKSTARTUP timeout (IS %08x)\n",
+		panic("NX741J UFS cold: DME_LINKSTARTUP timeout (IS %08x)",
 		    host_read(host, HOST_IS));
 		return -4;
 	}
@@ -116,8 +117,9 @@ int board_ufs_cold_init(void)
 	printf("UFS cold: link rc %u, HCS %08x UPMCRS %u\n", result & 0xffu, hcs,
 	    (hcs >> 8) & 7u);
 	if ((result & 0xffu) != 0 || ((hcs >> 8) & 7u) != 1u) {
+	panic("NX741J UFS cold: link not up rc %u HCS %08x UPMCRS %u", result & 0xffu, hcs, (hcs >> 8) & 7u);
 		return -5;
 	}
-	printf("UFS cold: link up\n");
+	panic("NX741J UFS cold: link up rc %u HCS %08x UPMCRS %u PCS %08x", result & 0xffu, hcs, (hcs >> 8) & 7u, phy[0x400u >> 2]);
 	return 0;
 }

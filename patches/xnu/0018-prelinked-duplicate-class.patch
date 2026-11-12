@@ -1,0 +1,18 @@
+diff --git a/libkern/c++/OSRuntime.cpp b/libkern/c++/OSRuntime.cpp
+--- a/libkern/c++/OSRuntime.cpp
++++ b/libkern/c++/OSRuntime.cpp
+@@ -515,4 +515,14 @@
+ 	 */
+ 	result = OSMetaClass::postModLoad(metaHandle);
+ 
++	/*
++	 * UniXNU,NX741J: a prelinked kext's classes are registered by the prelink
++	 * startup path before IOKit asks for the kext by identifier, so the second
++	 * registration reports kOSMetaClassDuplicateClass and the load fails with
++	 * kOSKextReturnStartStopError.  The classes are already present and usable,
++	 * so treat the duplicate as success for a prelinked kext.
++	 */
++	if (theKext && theKext->isPrelinked() && result == kOSMetaClassDuplicateClass) {
++		result = KMOD_RETURN_SUCCESS;
++	}
+ 	/* If we've otherwise been fine up to now, but OSMetaClass::postModLoad()

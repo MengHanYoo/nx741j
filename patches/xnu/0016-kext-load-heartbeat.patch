@@ -1,0 +1,24 @@
+diff --git a/libkern/c++/OSKext.cpp b/libkern/c++/OSKext.cpp
+--- a/libkern/c++/OSKext.cpp
++++ b/libkern/c++/OSKext.cpp
+@@ -6319,5 +6319,6 @@
+ 	OSKextExcludeLevel   startMatchingOpt,
+ 	OSArray            * personalityNames)
+ {
++// UniXNU,NX741J: boot heartbeat so a stalled kext load is visible on the panel.
+ 	OSReturn             result                       = kOSReturnError;
+ 	OSKextExcludeLevel   dependenciesStartOpt         = startOpt;
+@@ -6526,4 +6527,6 @@
+ 	 */
+ 	count = getNumDependencies();
++	OSKextLog(this, kOSKextLogErrorLevel | kOSKextLogLoadFlag,
++	    "HB %s deps %u", getIdentifierCString(), count);
+ 	for (i = 0; i < count; i++) {
+ 		OSKext * dependency = OSDynamicCast(OSKext,
+@@ -6543,4 +6546,6 @@
+ 		 * but not given the personality names of the main kext.
+ 		 */
++		OSKextLog(this, kOSKextLogErrorLevel | kOSKextLogLoadFlag,
++		    "HB %s -> %s", getIdentifierCString(), dependency->getIdentifierCString());
+ 		result = dependency->load(dependenciesStartOpt,
+ 		    dependenciesStartMatchingOpt,

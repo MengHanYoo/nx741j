@@ -1,0 +1,14 @@
+diff --git a/libkern/c++/OSKext.cpp b/libkern/c++/OSKext.cpp
+--- a/libkern/c++/OSKext.cpp
++++ b/libkern/c++/OSKext.cpp
+@@ -8306,4 +8306,10 @@
+ 	result = OSRuntimeInitializeCPP(this);
++	if (result != KERN_SUCCESS) {
++		panic("NX741J: %s cpp init failed (0x%x)", getIdentifierCString(), (int)result);
++	}
+ 	if (result == KERN_SUCCESS) {
+ 		result = startfunc(kmod_info, kmodStartData);
++		if (result != KERN_SUCCESS) {
++			panic("NX741J: %s startfunc failed (0x%x)", getIdentifierCString(), (int)result);
++		}
+ 	}
