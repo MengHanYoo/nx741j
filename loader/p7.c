@@ -326,12 +326,22 @@ static void capture_previous_log(void)
 {
     volatile UINT64 *p;
     UINT64 found = 0;
+    UINT32 foundLen = 0;
+    UINT32 matches = 0;
     out_ascii("nxlog scan\r\n");
+    /*
+      DRAM keeps the buffers of earlier boots too, so every match is examined and
+      the longest one wins: it is the most recent boot and the one that ran the
+      console to its end (a panic leaves more text than an early hang).
+    */
     for (UINT64 addr = 0xB0000000ULL; addr < 0xC8000000ULL; addr += 0x1000ULL) {
         p = (volatile UINT64 *)addr;
         if (p[0] == 0x0031474F4C584EULL) {
             UINT32 probe = *(volatile UINT32 *)(addr + 8);
-            if (probe > 0 && probe < 0x1FFF0U) { found = addr; break; }
+            if (probe > 0 && probe < 0x1FFF0U) {
+                matches++;
+                if (probe > foundLen) { found = addr; foundLen = probe; }
+            }
         }
     }
     {
@@ -341,6 +351,7 @@ static void capture_previous_log(void)
         for (UINTN z = 0; z < sizeof(st); z++) st[z] = 0;
         q[0] = 'N'; q[1] = 'X'; q[2] = 'L'; q[3] = 'G'; q[4] = 'S'; q[5] = 'T'; q[6] = '1';
         *(UINT64 *)(st + 8) = found;
+        *(UINT32 *)(st + 24) = matches;
         if (found) {
             UINT32 l2 = *(volatile UINT32 *)(found + 8);
             *(UINT32 *)(st + 16) = l2;

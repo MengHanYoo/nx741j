@@ -1,16 +1,18 @@
 diff --git a/osfmk/console/serial_general.c b/osfmk/console/serial_general.c
-index b1ca47a..177ffb9 100644
+index b1ca47a..78a9df9 100644
 --- a/osfmk/console/serial_general.c
 +++ b/osfmk/console/serial_general.c
-@@ -155,9 +155,32 @@ console_printbuf_state_init(struct console_printbuf_state * data, int write_on_n
+@@ -155,9 +155,36 @@ console_printbuf_state_init(struct console_printbuf_state * data, int write_on_n
  	}
  }
  
 +/*
 + * UniXNU,NX741J: in-memory console capture (this board has no UART).
 + * The buffer lives in BSS, so the magic is written on the first character
-+ * instead of being a static initialiser; the efisp loader scans DRAM for
-+ * that magic on the next boot and copies the buffer to rawdump.
++ * instead of being a static initialiser; the efisp loader scans DRAM for that
++ * magic on the next boot and copies the buffer to rawdump.  Every append is
++ * cleaned to the point of coherency because the loader reads DRAM with the MMU
++ * and caches off: without the dc cvac the copied text shows bit flips.
 + */
 +volatile unsigned char nxl_console_log[0x20000] __attribute__((aligned(4096)));
 +static unsigned int nxl_console_len;
@@ -31,6 +33,8 @@ index b1ca47a..177ffb9 100644
 +		nxl_console_log[9] = (unsigned char)(nxl_console_len >> 8);
 +		nxl_console_log[10] = (unsigned char)(nxl_console_len >> 16);
 +		nxl_console_log[11] = (unsigned char)(nxl_console_len >> 24);
++		__asm__ volatile ("dc cvac, %0" :: "r" ((unsigned long)&nxl_console_log[12 + nxl_console_len] & ~63UL) : "memory");
++		__asm__ volatile ("dc cvac, %0" :: "r" ((unsigned long)nxl_console_log & ~63UL) : "memory");
 +	}
  	struct console_printbuf_state * info = (struct console_printbuf_state *)arg;
  	info->total += 1;
