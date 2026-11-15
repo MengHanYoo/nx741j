@@ -322,6 +322,44 @@ static int find_partition(const char *want, UINT64 *out_lba)
 // static buffer that starts with the "NXLOG1" magic.  Scanning DRAM for that
 // magic and dropping the payload into rawdump+82 MiB gives the host a log
 // channel on a board with no UART.
+/*
+  Snapshot of the UFS host the bootloader left behind.  The firmware (Mu) drives
+  UFS before XNU runs, so this is the only place where the ABL hand-off state can
+  be read: compare it with what the kernel later sees to tell whether the firmware
+  changed anything.  Written to rawdump LBA 4764488 as a 4 KiB record.
+*/
+static void dump_ufs_state(void)
+{
+    static UINT8 rec[4096] __attribute__((aligned(4096)));
+    UINTN bs3 = gRawBs ? gRawBs : 4096;
+    UINT64 hc = 0x1d84000ULL, mca = 0x1da0000ULL;
+    UINT32 vals[16];
+    UINTN i;
+    for (i = 0; i < sizeof(rec); i++) rec[i] = 0;
+    rec[0] = 'U'; rec[1] = 'F'; rec[2] = 'S'; rec[3] = 'S';
+    rec[4] = 'T'; rec[5] = 'A'; rec[6] = 'T'; rec[7] = '1';
+    vals[0]  = *(volatile UINT32 *)(hc + 0x00);   /* CAP */
+    vals[1]  = *(volatile UINT32 *)(hc + 0x08);   /* VER */
+    vals[2]  = *(volatile UINT32 *)(hc + 0x20);   /* IS */
+    vals[3]  = *(volatile UINT32 *)(hc + 0x24);   /* IE */
+    vals[4]  = *(volatile UINT32 *)(hc + 0x30);   /* HCS */
+    vals[5]  = *(volatile UINT32 *)(hc + 0x34);   /* HCE */
+    vals[6]  = *(volatile UINT32 *)(hc + 0x50);   /* UTRLBA */
+    vals[7]  = *(volatile UINT32 *)(hc + 0x54);   /* UTRLBAU */
+    vals[8]  = *(volatile UINT32 *)(hc + 0x58);   /* UTRLDBR */
+    vals[9]  = *(volatile UINT32 *)(hc + 0x5c);   /* UTRLCLR */
+    vals[10] = *(volatile UINT32 *)(hc + 0x60);   /* UTRLRSR */
+    vals[11] = *(volatile UINT32 *)(hc + 0x300);  /* MEM_CFG */
+    vals[12] = *(volatile UINT32 *)(hc + 0x380);  /* MCQ_CFG */
+    vals[13] = *(volatile UINT32 *)(mca + 0x00);  /* MCA SQATTR */
+    vals[14] = *(volatile UINT32 *)(mca + 0x20);  /* MCA CQATTR */
+    vals[15] = 0xfeedface;
+    for (i = 0; i < 16; i++) *(UINT32 *)(rec + 16 + i * 4) = vals[i];
+    ((EFI_STATUS (*)(EFI_BLOCK_IO_PROTOCOL *, UINT32, UINT64, UINTN, void *))gIo->WriteBlocks)
+        (gIo, gIo->Media->MediaId, 4764488ULL, bs3, rec);
+    out_ascii("ufs snapshot "); out_hex(vals[6]); out_ascii("/"); out_hex(vals[4]); out_ascii("\r\n");
+}
+
 static void capture_previous_log(void)
 {
     volatile UINT64 *p;
