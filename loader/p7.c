@@ -334,13 +334,41 @@ static void capture_previous_log(void)
       the longest one wins: it is the most recent boot and the one that ran the
       console to its end (a panic leaves more text than an early hang).
     */
-    for (UINT64 addr = 0xB0000000ULL; addr < 0xC8000000ULL; addr += 0x1000ULL) {
-        p = (volatile UINT64 *)addr;
-        if (p[0] == 0x0031474F4C584EULL) {
-            UINT32 probe = *(volatile UINT32 *)(addr + 8);
-            if (probe > 0 && probe < 0x1FFF0U) {
-                matches++;
-                if (probe > foundLen) { found = addr; foundLen = probe; }
+    EFI_BOOT_SERVICES *bsvc = gST->BootServices;
+    UINTN size = 0, key = 0, descSize = 0;
+    UINT32 descVer = 0;
+    UINT8 *map = 0;
+    UINTN count = 0;
+    /*
+      Only walk memory the firmware actually describes: a fixed range hit an
+      unmapped hole once and wedged the loader, and the GCD map is authoritative.
+      EfiLoaderCode..EfiConventionalMemory (1..7) covers the window DarwinBoot
+      allocated, the firmware heap and free DRAM.
+    */
+    ((EFI_STATUS (*)(UINTN *, void **, UINTN *, UINTN *, UINT32 *))bsvc->GetMemoryMap)
+        (&size, 0, &key, &descSize, &descVer);
+    size += 16 * descSize + 4096;
+    if (!((EFI_STATUS (*)(UINTN, UINTN, void **))bsvc->AllocatePool)(1, size, (void **)&map) && map) {
+        if (!((EFI_STATUS (*)(UINTN *, void *, UINTN *, UINTN *, UINT32 *))bsvc->GetMemoryMap)
+                 (&size, map, &key, &descSize, &descVer)) {
+            count = size / descSize;
+        }
+    }
+    out_ascii("nxlog ranges "); out_hex(count); out_ascii("\r\n");
+    for (UINTN i = 0; i < count; i++) {
+        UINT8 *d = map + i * descSize;
+        UINT32 type = *(UINT32 *)d;
+        UINT64 base = *(UINT64 *)(d + 8);
+        UINT64 pages = *(UINT64 *)(d + 24);
+        if (type < 1 || type > 7) { continue; }
+        for (UINT64 a = base & ~0xFFFULL; a < base + pages * 4096ULL; a += 0x1000ULL) {
+            p = (volatile UINT64 *)a;
+            if (p[0] == 0x0031474F4C584EULL) {
+                UINT32 probe = *(volatile UINT32 *)(a + 8);
+                if (probe > 0 && probe < 0x1FFF0U) {
+                    matches++;
+                    if (probe > foundLen) { found = a; foundLen = probe; }
+                }
             }
         }
     }

@@ -1,25 +1,23 @@
 diff --git a/osfmk/console/serial_general.c b/osfmk/console/serial_general.c
-index b1ca47a..78a9df9 100644
+index b1ca47a..3dea5c1 100644
 --- a/osfmk/console/serial_general.c
 +++ b/osfmk/console/serial_general.c
-@@ -155,9 +155,36 @@ console_printbuf_state_init(struct console_printbuf_state * data, int write_on_n
+@@ -155,9 +155,51 @@ console_printbuf_state_init(struct console_printbuf_state * data, int write_on_n
  	}
  }
  
 +/*
-+ * UniXNU,NX741J: in-memory console capture (this board has no UART).
-+ * The buffer lives in BSS, so the magic is written on the first character
-+ * instead of being a static initialiser; the efisp loader scans DRAM for that
-+ * magic on the next boot and copies the buffer to rawdump.  Every append is
-+ * cleaned to the point of coherency because the loader reads DRAM with the MMU
-+ * and caches off: without the dc cvac the copied text shows bit flips.
++ * UniXNU,NX741J: in-memory console capture (this board has no UART).  The buffer
++ * lives in BSS, so the magic is written on the first character instead of being a
++ * static initialiser.  Every append is cleaned to the point of coherency because
++ * the efisp loader reads DRAM with the MMU and caches off.
 + */
 +volatile unsigned char nxl_console_log[0x20000] __attribute__((aligned(4096)));
-+static unsigned int nxl_console_len;
++unsigned int nxl_console_len;
 +
- void
- console_printbuf_putc(int ch, void * arg)
- {
++void
++nxl_console_append(int ch)
++{
 +	if (nxl_console_len < sizeof(nxl_console_log) - 12) {
 +		if (nxl_console_len == 0) {
 +			nxl_console_log[0] = 0x4E; nxl_console_log[1] = 0x58;
@@ -36,6 +34,53 @@ index b1ca47a..78a9df9 100644
 +		__asm__ volatile ("dc cvac, %0" :: "r" ((unsigned long)&nxl_console_log[12 + nxl_console_len] & ~63UL) : "memory");
 +		__asm__ volatile ("dc cvac, %0" :: "r" ((unsigned long)nxl_console_log & ~63UL) : "memory");
 +	}
++}
++
++void
++nxl_console_sync(void)
++{
++	unsigned long at = (unsigned long)nxl_console_log & ~63UL;
++	unsigned long end = at + sizeof(nxl_console_log);
++	for (; at < end; at += 64) {
++		__asm__ volatile ("dc civac, %0" :: "r" (at) : "memory");
++	}
++	__asm__ volatile ("dsb sy" ::: "memory");
++}
++
+ void
+ console_printbuf_putc(int ch, void * arg)
+ {
++	nxl_console_append(ch);
  	struct console_printbuf_state * info = (struct console_printbuf_state *)arg;
  	info->total += 1;
  	if (info->pos < (SERIAL_CONS_BUF_SIZE - 1)) {
+diff --git a/osfmk/kern/debug.c b/osfmk/kern/debug.c
+index 0a00656..31605df 100644
+--- a/osfmk/kern/debug.c
++++ b/osfmk/kern/debug.c
+@@ -1275,6 +1275,8 @@ debugger_collect_diagnostics(unsigned int exception, unsigned int code, unsigned
+ 		if (debugger_panic_str) {
+ #pragma clang diagnostic push
+ #pragma clang diagnostic ignored "-Wformat-nonliteral"
++			extern void nxl_console_sync(void);
++			nxl_console_sync();
+ 			_doprnt(debugger_panic_str, debugger_panic_args, consdebug_putc, 0);
+ #pragma clang diagnostic pop
+ 		}
+diff --git a/osfmk/kern/printf.c b/osfmk/kern/printf.c
+index e44008f..8d8d0a8 100644
+--- a/osfmk/kern/printf.c
++++ b/osfmk/kern/printf.c
+@@ -908,9 +908,12 @@ vprintf(const char *fmt, va_list ap)
+ 	return vprintf_internal(fmt, ap, __builtin_return_address(0));
+ }
+ 
++extern void nxl_console_append(int ch);
++
+ void
+ consdebug_putc(char c)
+ {
++	nxl_console_append((int)c);
+ 	if (!disableConsoleOutput) {
+ 		console_write_char(c);
+ 	}
