@@ -126,7 +126,7 @@ kind = "driver"
 function = "SM8550 UFS transport and sheng persistent storage"
 scope = "board"
 repository = "https://github.com/UniXNU/ShengUfs.git"
-revision = "99d8bcd3e43dd24fc3c8437c67b5d4cc71ab94d0"
+revision = "fd420df000f43213d9cd019725abff0849c98c72"
 path = "drivers/ShengUfs"
 # The implementation targets the SM8550 controller; an SM8850 board (nx741j) needs its
 # own clock/reset table, which is board_dependencies work, not an ABI difference: the
