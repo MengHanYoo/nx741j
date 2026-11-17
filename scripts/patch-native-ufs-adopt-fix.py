@@ -214,6 +214,13 @@ SWEET_SMMU_FIX = (SWEET_SMMU_ANCHOR + TAB +
                   '    }' + TAB +
                   '  }')
 
+PROBE37_ANCHOR = '  if (probe == 10) {'
+PROBE37_FIX = ('  if (probe == 37) {' + TAB +
+              '    printf ("NATIVE_UFS: TZ xPU probe' + chr(92) + 'n");' + TAB +
+              '    native_ufs_probe_xpu ();' + TAB +
+              '    return true;' + TAB +
+              '  }' + TAB +
+              '  if (probe == 10) {')
 PROBE36_ANCHOR = '  if (probe == 10) {'
 PROBE36_FIX = ('  if (probe == 36) {' + TAB +
               '    printf ("NATIVE_UFS: UFSHCI ordered bring-up' + chr(92) + 'n");' + TAB +
@@ -265,7 +272,7 @@ PROBE30_FIX = ('  if (probe == 30) {' + TAB +
               '  if (probe == 10) {')
 PROBE20_ANCHOR = '  if (probe == 10) {'
 DECL_ANCHOR = 'volatile uint32_t native_ufs_probe_requested = 0;'
-DECL_FIX = (DECL_ANCHOR + TAB + 'extern "C" int native_ufs_probe (void);' + TAB + 'extern "C" int native_ufs_probe_iova (void);' + TAB + 'extern "C" int native_ufs_probe_dump (void);' + TAB + 'extern "C" int native_ufs_probe_cb (void);' + TAB + 'extern "C" int native_ufs_probe_bypass (void);' + TAB + 'extern "C" int native_ufs_probe_smmu_walk (void);' + TAB + 'extern "C" int native_ufs_probe_abl_list (void);' + TAB + 'extern "C" int native_ufs_probe_spec (void);')
+DECL_FIX = (DECL_ANCHOR + TAB + 'extern "C" int native_ufs_probe (void);' + TAB + 'extern "C" int native_ufs_probe_iova (void);' + TAB + 'extern "C" int native_ufs_probe_dump (void);' + TAB + 'extern "C" int native_ufs_probe_cb (void);' + TAB + 'extern "C" int native_ufs_probe_bypass (void);' + TAB + 'extern "C" int native_ufs_probe_smmu_walk (void);' + TAB + 'extern "C" int native_ufs_probe_abl_list (void);' + TAB + 'extern "C" int native_ufs_probe_spec (void);' + TAB + 'extern "C" int native_ufs_probe_xpu (void);')
 PROBE20_FIX = ('  if (probe == 20) {' + TAB +
               '    printf ("NATIVE_UFS: handing over to sweet_ufs' + NL + '");' + TAB +
               '    int e20 = native_ufs_probe ();' + TAB +
@@ -273,7 +280,7 @@ PROBE20_FIX = ('  if (probe == 20) {' + TAB +
               '    return e20 == 0;' + TAB +
               '  }' + TAB +
               '  if (probe == 10) {')
-for anchor, replacement in ((DECL_ANCHOR, DECL_FIX), (ENTRY_ANCHOR, ENTRY_FIX), (BRING_ANCHOR, BRING_FIX), (MAP_ANCHOR, MAP_FIX), (ALLOC_ANCHOR, ALLOC_FIX), (SET_ANCHOR, SET_FIX), (SWEET_SMMU_ANCHOR, SWEET_SMMU_FIX), (PROBE36_ANCHOR, PROBE36_FIX), (PROBE35_ANCHOR, PROBE35_FIX), (PROBE34_ANCHOR, PROBE34_FIX), (PROBE33_ANCHOR, PROBE33_FIX), (PROBE32_ANCHOR, PROBE32_FIX), (PROBE31_ANCHOR, PROBE31_FIX), (PROBE30_ANCHOR, PROBE30_FIX), (PROBE20_ANCHOR, PROBE20_FIX)):
+for anchor, replacement in ((DECL_ANCHOR, DECL_FIX), (ENTRY_ANCHOR, ENTRY_FIX), (BRING_ANCHOR, BRING_FIX), (MAP_ANCHOR, MAP_FIX), (ALLOC_ANCHOR, ALLOC_FIX), (SET_ANCHOR, SET_FIX), (SWEET_SMMU_ANCHOR, SWEET_SMMU_FIX), (PROBE37_ANCHOR, PROBE37_FIX), (PROBE36_ANCHOR, PROBE36_FIX), (PROBE35_ANCHOR, PROBE35_FIX), (PROBE34_ANCHOR, PROBE34_FIX), (PROBE33_ANCHOR, PROBE33_FIX), (PROBE32_ANCHOR, PROBE32_FIX), (PROBE31_ANCHOR, PROBE31_FIX), (PROBE30_ANCHOR, PROBE30_FIX), (PROBE20_ANCHOR, PROBE20_FIX)):
     if anchor in text and replacement not in text:
         text = text.replace(anchor, replacement, 1)
         notes.append('entry marker')

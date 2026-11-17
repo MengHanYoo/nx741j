@@ -2,7 +2,7 @@ diff --git a/bsd/dev/native_ufs_iova.c b/bsd/dev/native_ufs_iova.c
 new file mode 100644
 --- /dev/null
 +++ b/bsd/dev/native_ufs_iova.c
-@@ -0,0 +1,736 @@
+@@ -0,0 +1,807 @@
 +/*
 + * NX741J: bring the UFS host up through apps_smmu, the way this board's own
 + * device tree says it must be done.
@@ -737,6 +737,77 @@ new file mode 100644
 +         "dbr=%08x ocs=%02x is=%08x hcs=%08x\n"
 +         "pa=%llx",
 +         dbr, ocs, is, hcs, (unsigned long long)dma_pa);
++  return 0;
++}
++
++/*
++ * native-ufs-probe=37: ask TZ about xPU, and read xPU-protected words through it.
++ *
++ * The vendor SCM interface (Silicon/Qualcomm/QcomPkg/Include/Protocol/
++ * scm_sip_interface.h in the firmware tree) documents:
++ *
++ *   TZ_CONFIG_XPU_VIOLATION_ERR_FATAL 0x02000C0E param_id 2
++ *       arg0: ENABLE(0) / DISABLE(1) / NOOP(2);  reply: enabled
++ *   TZ_IO_ACCESS_READ                 0x02000501 param_id 1
++ *       arg0: address;                           reply: value
++ *
++ * "Implementation takes place entirely in Monitor mode" - so this reads memory
++ * that aborts from normal world (the SMMU context-bank page).
++ */
++static uint64_t
++nx_smc (uint64_t id, uint64_t a1, uint64_t a2, uint64_t a3, uint64_t a4,
++        uint64_t a5, uint64_t a6, uint64_t x7, uint64_t *r1, uint64_t *r2, uint64_t *r3)
++{
++  register uint64_t x0 __asm__ ("x0") = id;
++  register uint64_t q1 __asm__ ("x1") = a1;
++  register uint64_t q2 __asm__ ("x2") = a2;
++  register uint64_t q3 __asm__ ("x3") = a3;
++  register uint64_t q4 __asm__ ("x4") = a4;
++  register uint64_t q5 __asm__ ("x5") = a5;
++  register uint64_t q6 __asm__ ("x6") = a6;
++  register uint64_t q7 __asm__ ("x7") = x7;
++  __asm__ volatile ("smc #0"
++                    : "+r"(x0), "+r"(q1), "+r"(q2), "+r"(q3)
++                    : "r"(q4), "r"(q5), "r"(q6), "r"(q7)
++                    : "memory");
++  if (r1) *r1 = q1;
++  if (r2) *r2 = q2;
++  if (r3) *r3 = q3;
++  return x0;
++}
++
++int
++native_ufs_probe_xpu (void)
++{
++  uint64_t rc, v1 = 0, v2 = 0, v3 = 0;
++  unsigned qemu = 0;
++
++  if (PE_parse_boot_argn ("qemu-mark", &qemu, sizeof (qemu)) && qemu == 1) {
++    return 0;
++  }
++
++  /* 1. Is an xPU violation fatal?  NOOP = 2. */
++  rc = nx_smc (0x02000C0EULL, 2, 0, 0, 0, 0, 0, 0, &v1, &v2, &v3);
++  printf ("NX741J xpu: violation_err_fatal rc=%lld enabled=%lld\n",
++          (long long)rc, (long long)v1);
++
++  /* 2. GFSR through the monitor (aborts from normal world). */
++  rc = nx_smc (0x02000501ULL, 0x15010048ULL, 0, 0, 0, 0, 0, 0, &v1, &v2, &v3);
++  printf ("NX741J xpu: io_read gfsr rc=%lld value=%08llx\n",
++          (long long)rc, (unsigned long long)v1);
++
++  /* 3. CB0 SCTLR / TTBR0 / TCR through the monitor. */
++  rc = nx_smc (0x02000501ULL, 0x15010000ULL, 0, 0, 0, 0, 0, 0, &v1, &v2, &v3);
++  printf ("NX741J xpu: io_read cb0_sctlr rc=%lld value=%08llx\n",
++          (long long)rc, (unsigned long long)v1);
++  rc = nx_smc (0x02000501ULL, 0x15010020ULL, 0, 0, 0, 0, 0, 0, &v1, &v2, &v3);
++  printf ("NX741J xpu: io_read cb0_ttbr0 rc=%lld value=%016llx\n",
++          (long long)rc, (unsigned long long)v1);
++  rc = nx_smc (0x02000501ULL, 0x15010030ULL, 0, 0, 0, 0, 0, 0, &v1, &v2, &v3);
++  printf ("NX741J xpu: io_read cb0_tcr rc=%lld value=%08llx\n",
++          (long long)rc, (unsigned long long)v1);
++
++  panic ("NX741J xpu done");
 +  return 0;
 +}
 diff --git a/bsd/conf/files b/bsd/conf/files
