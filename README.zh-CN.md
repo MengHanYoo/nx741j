@@ -23,7 +23,7 @@ bootloader -> efisp loader -> UniXNU (UEFI) -> DarwinBoot -> XNU -> userland
 | 3 | 负载（内核、ADT、trust cache） | 完成 |
 | 4 | 启动链交接（loader -> UEFI -> DarwinBoot -> XNU） | 完成 |
 | 5 | 内核 bring-up（platform expert、IOKit、预链接 kext） | **完成** |
-| 6 | 存储（UFS） | **进行中** |
+| 6 | 存储（UFS） | **阻塞 — 平台（XBL/TZ/xPU）** |
 | 7 | 用户态（根卷、`launchd`） | 被阶段 6 阻塞 |
 
 **阶段 5 里程碑（2026-11-12）**：内核 console 已能直接画到面板上，所有启动阶段都可以在设备上
@@ -111,3 +111,74 @@ wsl\flash-boota-9008.ps1 -Img <image> -StartSector <lba> -Label <label> -Lun <lu
 
 补丁与板级代码沿用上游 UniXNU 的许可（各文件内标注 BSD-2-Clause-Patent）。厂商还原表为从本机固件
 中恢复的数据。
+
+## 任务、代办与未决问题（2026-11-18）
+
+以下每一条都在本机实测过，证据见 [docs/STATUS-2026-11-18.md](docs/STATUS-2026-11-18.md) 及此前的状态文档。
+
+### 已完成
+
+| 事项 | 证据 |
+|---|---|
+| 阶段 1–5：板级、固件、负载、交接、内核 bring-up | [docs/STATUS-2026-11-12.md](docs/STATUS-2026-11-12.md) |
+| console 日志通道（内核 → DRAM → rawdump → 主机） | `patches/xnu/0021`、`loader/p7.c`、`-ReadTo` |
+| UFS 寄存器访问、队列所有权、UTRLBA/RSR 回读 | [docs/STATUS-2026-11-15.md](docs/STATUS-2026-11-15.md) |
+| 从内核侧补上流 0x60 的匹配 + 旁路（SMR[0]=0x80000060，S2CR[0]=1） | 2026-11-18 第 1 节 |
+| DME_GET / DME_SET（PA_PWRMode SLOW → FAST） | 第 2 节 |
+| sweet_ufs 移植及其仅依赖 libkern 的构建 | `patches/xnu/0022` |
+| 独立 loader 移植 + Mach-O → SWEETXNU 负载转换器 | `bootshim/`、`scripts/macho-to-sweet-payload.py` |
+
+### 阻塞中
+
+**阶段 6 — 本机无法由 HLOS 驱动 UFS。** 主机始终不取 UTRD（DBR 一直为 1），
+无论列表放在我们的 DMA 还是引导程序自己的区域，而 UTRLRSR 读回 1、HCS=0x10f。
+所有软件侧可能原因都已实测并排除：
+
+* 固件：移除 UfsPassThruDxe 后行为不变（第 9 节）；
+* 仅支持 MCQ：CAP bit29 = 0，legacy 单门铃是支持的（第 4 节）；
+* 描述符编码：与 `ufshci.h` 逐位一致（第 4 节）；
+* 控制器复位：HCE 循环后主机不再应答（第 3 节）；
+* SMMU context bank：XNU、固件、TZ_IO_ACCESS_READ 三条路都被拒绝（第 5、7 节）；
+* 引导程序配置：`xbl_config.img` 是签名 MBN，UFS 键只是 schema 表；
+  `NX741_unlock/` 全量扫描无该键（第 10 节）。
+
+**阶段 7 — 用户态** 仍被阶段 6 阻塞。
+
+### 下一步（每一项都需要我们目前没有的东西）
+
+1. **厂商签名的 XBL/TZ 改动**，让流 0x60 对非安全世界保持匹配 + 旁路，或提供内核可编程的 stage-1 上下文；
+2. **固件侧挂载根卷**：需要 Mu 在 `ExitBootServices` 之后继续服务块请求。Mu 是单核（`Mu_Basecore` 无 MpServices/PSCI），
+   因此要先做 SMP 移植、共享环协议，再写 XNU 侧块驱动；
+3. **独立 EFI loader**：本机 `fastboot boot` 要求 kernel 字段是 PE（`No EFI image found in boot.img`），
+   所以 loader 要 PE 化，负载放进 ramdisk 字段（第 11 节）。
+
+### 待办清单
+
+| 事项 | 说明 |
+|---|---|
+| ADT：外设节点补 `unixnu,adt-name` | 阶段 7 需要匹配 |
+| ADT：`/chosen` 的 osenvironment、crypto-hash-method、root-matching | 目前缺失 |
+| ADT：`memory-map` 占位符 | 目前为空 |
+| 把 panic 文本写进日志通道 | `panic()` 输出未被捕获，只有屏幕可见 |
+| OS 侧按键（ButtonProbe，report 2） | DXE 触碰 TLMM 会 assert |
+| `0008-granular-protection-noop.patch` 不在 `series` 中 | `board.toml` 注释仍引用它 |
+| 记录 `early_security_init = ""`（AMFI/Image4）偏离 | 阶段 7 前必须处理 |
+| trust cache / unique_chip_id 占位 | 自制扁平包；发布前需说明 |
+| bootshim 构建产物入库 | 自 719722b 起由 `.gitignore` 排除 |
+
+### 未决问题
+
+* 是谁把 `SMR[0].VALID` 清掉的——XBL、ABL 还是 TZ？只读遍历运行在固件之后，写入者尚未定位；
+* `xbl_config` 里 `UfsSmmuConfigForOtherBootDev` 的编译值是多少？
+* 如果 CB 窗口被打开，TZ 是否接受 HLOS 自建的 stage-1 上下文？
+
+### 复现证据
+
+```
+wsl bash _tmp/t2/noaes2_2017.sh      # 带探针补丁的内核
+wsl bash _tmp/t2/pay_step2b_2017.sh  # 负载（boot-args 取自 board.toml）
+wsl bash _tmp/t2/qemu_step2_2017.sh  # 闸门：EBS ok
+wsl bash _tmp/t2/fw_2017.sh          # 固件（SILICIUM_UEFI.fd）
+```
+
+上机：9008（`wsl/flash-boota-9008.ps1`）刷入 → 启动一次 → 热重启 → 再进 9008 → `-ReadTo` 读日志。

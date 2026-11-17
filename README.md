@@ -23,7 +23,7 @@ in [board.toml](board.toml); it is the only IPSW available for this port.
 | 3 | payload (kernel, ADT, trust cache) | done |
 | 4 | boot chain hand-offs (loader -> UEFI -> DarwinBoot -> XNU) | done |
 | 5 | kernel bring-up (platform expert, IOKit, prelinked kexts) | **done** |
-| 6 | storage (UFS) | **in progress** |
+| 6 | storage (UFS) | **blocked - platform (XBL/TZ/xPU)** |
 | 7 | userland (root volume, `launchd`) | blocked by stage 6 |
 
 **Stage 5 milestone (2026-11-12).** The kernel console now renders on the panel, so every boot stage
@@ -193,3 +193,80 @@ back the stock `efisp` (`sha256 4df18359...`) restores the vendor boot chain.
 
 Patches and board code follow the upstream UniXNU licensing (BSD-2-Clause-Patent where noted in the
 individual files). Vendor-derived tables are data recovered from the device's own firmware.
+
+## Tasks, TODOs and open issues (2026-11-18)
+
+Everything below is measured on the unit; the evidence for each line lives in
+[docs/STATUS-2026-11-18.md](docs/STATUS-2026-11-18.md) and the earlier status files.
+
+### Done
+
+| Item | Evidence |
+|---|---|
+| stages 1-5: board, firmware, payload, hand-offs, kernel bring-up | [docs/STATUS-2026-11-12.md](docs/STATUS-2026-11-12.md) |
+| console log channel (kernel -> DRAM -> rawdump -> host) | `patches/xnu/0021`, `loader/p7.c`, `-ReadTo` |
+| UFS register access, queue ownership, UTRLBA/RSR readback | [docs/STATUS-2026-11-15.md](docs/STATUS-2026-11-15.md) |
+| stream 0x60 match + bypass from the kernel (SMR[0]=0x80000060, S2CR[0]=1) | 2026-11-18 section 1 |
+| DME_GET / DME_SET (PA_PWRMode SLOW -> FAST) | 2026-11-18 section 2 |
+| sweet_ufs port and its libkern-only build | `patches/xnu/0022` |
+| standalone loader port + Mach-O to SWEETXNU payload converter | `bootshim/`, `scripts/macho-to-sweet-payload.py` |
+
+### Blocked
+
+**Stage 6 - UFS cannot be driven from HLOS on this unit.** The host never fetches the
+UTRD (DBR stays set), both from our DMA and from the bootloader's own list region,
+while UTRLRSR reads 1 and HCS=0x10f. Every candidate cause was measured and excluded:
+
+* firmware: removing UfsPassThruDxe changes nothing (section 9);
+* MCQ-only controller: CAP bit29 = 0, legacy doorbell is supported (section 4);
+* descriptor encoding: matches `ufshci.h` bit for bit (section 4);
+* controller reset: the HCE cycle leaves the host unresponsive (section 3);
+* SMMU context bank: refused to XNU, to the firmware and through TZ_IO_ACCESS_READ (sections 5, 7);
+* bootloader configuration: `xbl_config.img` is a signed MBN whose UFS keys are a schema
+  table only, and `NX741_unlock/` contains no occurrence of the key (section 10).
+
+**Stage 7 - userland** stays blocked by stage 6.
+
+### Next steps (each needs something we do not have)
+
+1. **Vendor-signed XBL/TZ change** so stream 0x60 stays matched and bypassed for the
+   non-secure world, or so a stage-1 context the kernel may program exists.
+2. **Firmware-side root mount**: Mu would have to service block requests after
+   ExitBootServices. Mu is single-core (no MpServices/PSCI in Mu_Basecore), so this
+   needs an SMP port, a shared-ring protocol and an XNU block driver.
+3. **Standalone EFI loader**: `fastboot boot` on this unit requires a PE in the kernel field
+   (`No EFI image found in boot.img`), so the loader must become a PE and the payload
+   must ride in the ramdisk field (section 11).
+
+### Backlog
+
+| Task | Notes |
+|---|---|
+| ADT: `unixnu,adt-name` on peripheral nodes | stage 7 needs matching |
+| ADT: `/chosen` osenvironment, crypto-hash-method, root-matching | missing today |
+| ADT: `memory-map` placeholder | currently empty |
+| panic text into the log channel | `panic()` output is not captured, only the panel shows it |
+| keys from the OS side (ButtonProbe, report 2) | any DXE access to TLMM asserts |
+| `0008-granular-protection-noop.patch` not in `series` | `board.toml` comment still references it |
+| record the `early_security_init = ""` (AMFI/Image4) deviation | needed before stage 7 |
+| trust cache / unique_chip_id placeholders | self-made flat package; document before release |
+| bootshim build output in git | excluded via `.gitignore` since 719722b |
+
+### Open questions
+
+* Which stage clears SMR[0].VALID - XBL, ABL or TZ? The read-only walk runs after the
+  firmware, so the writer is not identified yet.
+* What is the compiled value of UfsSmmuConfigForOtherBootDev in `xbl_config`?
+* Would TZ accept a stage-1 context built by HLOS if the context-bank window were opened?
+
+### Reproducing the evidence
+
+```
+wsl bash _tmp/t2/noaes2_2017.sh      # kernel with the probe patches
+wsl bash _tmp/t2/pay_step2b_2017.sh  # payload (boot-args from board.toml)
+wsl bash _tmp/t2/qemu_step2_2017.sh  # gate: EBS ok
+wsl bash _tmp/t2/fw_2017.sh          # firmware (SILICIUM_UEFI.fd)
+```
+
+On the unit: flash over 9008 (`wsl/flash-boota-9008.ps1`), boot once, warm reset,
+re-enter 9008, read the log with `-ReadTo`.
