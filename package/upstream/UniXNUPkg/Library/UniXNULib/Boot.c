@@ -87,8 +87,12 @@ RunXnu (
   Request.Volume         = Entry->Volume;
   Request.KernelPath     = Entry->Path;
   Request.BootArgs       = Entry->Args;
-  Request.DeviceTree     = (Entry->Type == UniXNUEntryXnu) ? NULL : Fdt;
-  Request.DeviceTreeSize = (Entry->Type == UniXNUEntryXnu) ? 0 : FdtSize;
+  //
+  // Hand the prepared tree to the loader for every entry type.  The xnu path used
+  // to drop it, which left DarwinBoot without the tree UniXNU had just built.
+  //
+  Request.DeviceTree     = Fdt;
+  Request.DeviceTreeSize = FdtSize;
   Request.Ramdisk        = Ramdisk;
   Request.RamdiskSize    = RamdiskSize;
   Request.Kexts          = Kexts;
