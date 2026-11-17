@@ -360,6 +360,53 @@ static void dump_ufs_state(void)
     out_ascii("ufs snapshot "); out_hex(vals[6]); out_ascii("/"); out_hex(vals[4]); out_ascii("\r\n");
 }
 
+/*
+  Which descriptors describe the SMMU window?  The kernel cannot read past
+  0x15001fff without an external abort, so the question is whether the firmware
+  memory map describes the whole 1 MiB the device tree claims.  This walks the
+  GCD only (no device access) and writes the answer to rawdump LBA 4764490.
+*/
+static void dump_smmu_gcd(void)
+{
+    static UINT8 rec[4096];
+    UINTN bs3 = gRawBs ? gRawBs : 4096;
+    EFI_BOOT_SERVICES *bsvc = gST->BootServices;
+    UINTN size = 0, key = 0, descSize = 0, count = 0, i, n = 0;
+    UINT32 descVer = 0;
+    UINT8 *map = 0;
+    for (i = 0; i < sizeof(rec); i++) rec[i] = 0;
+    rec[0] = 'G'; rec[1] = 'C'; rec[2] = 'D'; rec[3] = 'S';
+    rec[4] = 'M'; rec[5] = 'M'; rec[6] = 'U'; rec[7] = '1';
+    ((EFI_STATUS (*)(UINTN *, void **, UINTN *, UINTN *, UINT32 *))bsvc->GetMemoryMap)
+        (&size, 0, &key, &descSize, &descVer);
+    size += 16 * descSize + 4096;
+    if (!((EFI_STATUS (*)(UINTN, UINTN, void **))bsvc->AllocatePool)(1, size, (void **)&map) && map) {
+        if (!((EFI_STATUS (*)(UINTN *, void *, UINTN *, UINTN *, UINT32 *))bsvc->GetMemoryMap)
+                 (&size, map, &key, &descSize, &descVer)) {
+            count = size / descSize;
+        }
+    }
+    *(UINT32 *)(rec + 8) = (UINT32)count;
+    for (i = 0; i < count && n < 8; i++) {
+        UINT8 *d = map + i * descSize;
+        UINT32 type = *(UINT32 *)d;
+        UINT64 base = *(UINT64 *)(d + 8);
+        UINT64 bytes = *(UINT64 *)(d + 24) * 4096ULL;
+        if (base <= 0x15000000ULL && 0x15000000ULL < base + bytes) {
+            UINT8 *e = rec + 16 + n * 32;
+            *(UINT64 *)(e + 0) = base;
+            *(UINT64 *)(e + 8) = bytes;
+            *(UINT32 *)(e + 16) = type;
+            *(UINT32 *)(e + 20) = (UINT32)i;
+            n++;
+        }
+    }
+    *(UINT32 *)(rec + 12) = (UINT32)n;
+    ((EFI_STATUS (*)(EFI_BLOCK_IO_PROTOCOL *, UINT32, UINT64, UINTN, void *))gIo->WriteBlocks)
+        (gIo, gIo->Media->MediaId, 4764490ULL, bs3, rec);
+    out_ascii("smmu gcd "); out_hex((UINT64)n); out_ascii("\r\n");
+}
+
 static void capture_previous_log(void)
 {
     volatile UINT64 *p;
@@ -531,6 +578,7 @@ EFI_STATUS EFIAPI EfiMain(EFI_HANDLE image, EFI_SYSTEM_TABLE *st)
 
 
 
+    dump_smmu_gcd();
     capture_previous_log();
     for (int i = 0; i < 400000; i++) __asm__ volatile("" ::: "memory");   // let the console flush
     out_ascii("mask irq, own stack, mmu off\r\n");

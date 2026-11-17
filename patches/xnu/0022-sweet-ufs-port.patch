@@ -2,7 +2,7 @@ diff --git a/bsd/dev/sweet_ufs.c b/bsd/dev/sweet_ufs.c
 new file mode 100644
 --- /dev/null
 +++ b/bsd/dev/sweet_ufs.c
-@@ -0,0 +1,735 @@
+@@ -0,0 +1,763 @@
 +/*
 + * SWEET internal UFS root device (read-only).
 + *
@@ -613,6 +613,18 @@ new file mode 100644
 +	static const char *const paths[] = { "/soc/ufshc@1d84000", "/sweet-ufs", "/arm-io/ufshc" };
 +	int ok = 0;
 +	printf("NX741J UFS: probe start\n");
++	{
++		/* data-a-live: this unit's bootloader left stream 0x60 unmatched, so the
++		 * host's DMA faults.  Match it here and bypass the stream. */
++		uintptr_t sm = ml_io_map (0x15000000ULL, 0x1000);
++		if (sm) {
++			*(volatile uint32_t *)(sm + 0x800) = 0x80000060u;   /* SMR0: VALID | id 0x60 */
++			*(volatile uint32_t *)(sm + 0xc00) = 1u;            /* S2CR0: bypass */
++			__builtin_arm_dsb (0xf);
++			printf ("NX741J UFS: stream 0x60 smr=%08x s2cr=%08x\n",
++			        *(volatile uint32_t *)(sm + 0x800), *(volatile uint32_t *)(sm + 0xc00));
++		}
++	}
 +	for (unsigned i = 0; i < sizeof(paths) / sizeof(paths[0]); i++) {
 +		if (SecureDTLookupEntry(NULL, paths[i], &node) == kSuccess &&
 +		    SecureDTGetProperty(node, "reg", (void const **)&reg, &size) == kSuccess &&
@@ -691,6 +703,22 @@ new file mode 100644
 +		 * UFS); DME_HIBERNATE_EXIT came back 0x101 and left IS.UE set, after
 +		 * which the doorbell store hangs.  Skip it and clear the status. */
 +		printf("NX741J UFS: skipping hibernate exit, hcs=%08x is=%08x\n", ufs_rd(REG_HCS), ufs_rd(REG_IS));
++		{
++			/* UFS power mode: DME_SET PA_PWRMode = FAST (0x01), as pandora's
++			 * 0118/0119 order does before the first SCSI command. */
++			uint32_t uccs = ufs_rd(REG_IS);
++			ufs_wr(REG_IS, uccs);
++			ufs_wr(0x94, 0x15610000u);   /* ARG1: PA_PWRMode */
++			ufs_wr(0x98, 0);             /* ARG2 */
++			ufs_wr(0x9c, 0x01u);         /* ARG3: FAST */
++			ufs_wr(0x90, 0x02u);         /* DME_SET */
++			for (int i = 0; i < 100000 && !(ufs_rd(REG_IS) & (1u << 10)); i++) {
++				delay (1);
++			}
++			printf ("NX741J UFS: dme_set FAST done=%d res=%08x is=%08x\n",
++			        (ufs_rd(REG_IS) >> 10) & 1, ufs_rd(0x98), ufs_rd(REG_IS));
++			ufs_wr(REG_IS, 1u << 10);
++		}
 +		ufs_wr(REG_IS, ufs_rd(REG_IS));
 +		{
 +			/* GCC UFS PHY block at 0x177000: AXI 0x18, AHB 0x24, UNIPRO 0x68, GDSCR 0x04 */

@@ -199,9 +199,73 @@ SET_FIX = (SET_ANCHOR + TAB +
            '            (unsigned long long)phys, (unsigned)bytes);')
 # native-ufs-probe=20 hands the controller to the ported pandora driver
 # (bsd/dev/sweet_ufs.c) instead of the ShengUfs takeover.
+# 0022's probe: force the data-a-live stream state first (SMR[0] matches id 0x60,
+# S2CR[0] bypasses), because this unit's bootloader left stream 0x60 unmatched.
+SWEET_SMMU_ANCHOR = '	printf("NX741J UFS: probe start' + chr(92) + 'n");'
+SWEET_SMMU_FIX = (SWEET_SMMU_ANCHOR + TAB +
+                  '  {' + TAB +
+                  '    uintptr_t sm = ml_io_map (0x15000000ULL, 0x1000);' + TAB +
+                  '    if (sm) {' + TAB +
+                  '      *(volatile uint32_t *)(sm + 0x800) = 0x80000060u;' + TAB +
+                  '      *(volatile uint32_t *)(sm + 0xc00) = 1u;' + TAB +
+                  '      __builtin_arm_dsb (0xf);' + TAB +
+                  '      printf ("NX741J UFS: stream 0x60 smr=%08x s2cr=%08x' + chr(92) + 'n",' + TAB +
+                  '              *(volatile uint32_t *)(sm + 0x800), *(volatile uint32_t *)(sm + 0xc00));' + TAB +
+                  '    }' + TAB +
+                  '  }')
+
+PROBE36_ANCHOR = '  if (probe == 10) {'
+PROBE36_FIX = ('  if (probe == 36) {' + TAB +
+              '    printf ("NATIVE_UFS: UFSHCI ordered bring-up' + chr(92) + 'n");' + TAB +
+              '    native_ufs_probe_spec ();' + TAB +
+              '    return true;' + TAB +
+              '  }' + TAB +
+              '  if (probe == 10) {')
+PROBE35_ANCHOR = '  if (probe == 10) {'
+PROBE35_FIX = ('  if (probe == 35) {' + TAB +
+              '    printf ("NATIVE_UFS: ABL list region test' + NL + '");' + TAB +
+              '    native_ufs_probe_abl_list ();' + TAB +
+              '    return true;' + TAB +
+              '  }' + TAB +
+              '  if (probe == 10) {')
+PROBE34_ANCHOR = '  if (probe == 10) {'
+PROBE34_FIX = ('  if (probe == 34) {' + TAB +
+              '    printf ("NATIVE_UFS: smmu walk (reference layout)' + NL + '");' + TAB +
+              '    native_ufs_probe_smmu_walk ();' + TAB +
+              '    return true;' + TAB +
+              '  }' + TAB +
+              '  if (probe == 10) {')
+PROBE33_ANCHOR = '  if (probe == 10) {'
+PROBE33_FIX = ('  if (probe == 33) {' + TAB +
+              '    printf ("NATIVE_UFS: stream 0x60 bypass test' + NL + '");' + TAB +
+              '    native_ufs_probe_bypass ();' + TAB +
+              '    return true;' + TAB +
+              '  }' + TAB +
+              '  if (probe == 10) {')
+PROBE32_ANCHOR = '  if (probe == 10) {'
+PROBE32_FIX = ('  if (probe == 32) {' + TAB +
+              '    printf ("NATIVE_UFS: CB0 page read' + NL + '");' + TAB +
+              '    native_ufs_probe_cb ();' + TAB +
+              '    return true;' + TAB +
+              '  }' + TAB +
+              '  if (probe == 10) {')
+PROBE31_ANCHOR = '  if (probe == 10) {'
+PROBE31_FIX = ('  if (probe == 31) {' + TAB +
+              '    printf ("NATIVE_UFS: read-only SMMU layout dump' + NL + '");' + TAB +
+              '    native_ufs_probe_dump ();' + TAB +
+              '    return true;' + TAB +
+              '  }' + TAB +
+              '  if (probe == 10) {')
+PROBE30_ANCHOR = '  if (probe == 10) {'
+PROBE30_FIX = ('  if (probe == 30) {' + TAB +
+              '    printf ("NATIVE_UFS: IOVA probe, stream 0x60' + NL + '");' + TAB +
+              '    native_ufs_probe_iova ();' + TAB +
+              '    return true;' + TAB +
+              '  }' + TAB +
+              '  if (probe == 10) {')
 PROBE20_ANCHOR = '  if (probe == 10) {'
 DECL_ANCHOR = 'volatile uint32_t native_ufs_probe_requested = 0;'
-DECL_FIX = (DECL_ANCHOR + TAB + 'extern "C" int native_ufs_probe (void);')
+DECL_FIX = (DECL_ANCHOR + TAB + 'extern "C" int native_ufs_probe (void);' + TAB + 'extern "C" int native_ufs_probe_iova (void);' + TAB + 'extern "C" int native_ufs_probe_dump (void);' + TAB + 'extern "C" int native_ufs_probe_cb (void);' + TAB + 'extern "C" int native_ufs_probe_bypass (void);' + TAB + 'extern "C" int native_ufs_probe_smmu_walk (void);' + TAB + 'extern "C" int native_ufs_probe_abl_list (void);' + TAB + 'extern "C" int native_ufs_probe_spec (void);')
 PROBE20_FIX = ('  if (probe == 20) {' + TAB +
               '    printf ("NATIVE_UFS: handing over to sweet_ufs' + NL + '");' + TAB +
               '    int e20 = native_ufs_probe ();' + TAB +
@@ -209,7 +273,7 @@ PROBE20_FIX = ('  if (probe == 20) {' + TAB +
               '    return e20 == 0;' + TAB +
               '  }' + TAB +
               '  if (probe == 10) {')
-for anchor, replacement in ((DECL_ANCHOR, DECL_FIX), (ENTRY_ANCHOR, ENTRY_FIX), (BRING_ANCHOR, BRING_FIX), (MAP_ANCHOR, MAP_FIX), (ALLOC_ANCHOR, ALLOC_FIX), (SET_ANCHOR, SET_FIX), (PROBE20_ANCHOR, PROBE20_FIX)):
+for anchor, replacement in ((DECL_ANCHOR, DECL_FIX), (ENTRY_ANCHOR, ENTRY_FIX), (BRING_ANCHOR, BRING_FIX), (MAP_ANCHOR, MAP_FIX), (ALLOC_ANCHOR, ALLOC_FIX), (SET_ANCHOR, SET_FIX), (SWEET_SMMU_ANCHOR, SWEET_SMMU_FIX), (PROBE36_ANCHOR, PROBE36_FIX), (PROBE35_ANCHOR, PROBE35_FIX), (PROBE34_ANCHOR, PROBE34_FIX), (PROBE33_ANCHOR, PROBE33_FIX), (PROBE32_ANCHOR, PROBE32_FIX), (PROBE31_ANCHOR, PROBE31_FIX), (PROBE30_ANCHOR, PROBE30_FIX), (PROBE20_ANCHOR, PROBE20_FIX)):
     if anchor in text and replacement not in text:
         text = text.replace(anchor, replacement, 1)
         notes.append('entry marker')

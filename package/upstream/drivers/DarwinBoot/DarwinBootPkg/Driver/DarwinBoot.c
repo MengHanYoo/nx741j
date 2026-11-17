@@ -807,6 +807,57 @@ DbProbeWrite (
                         DB_PROBE_OFFSET / mDbDisk->Media->BlockSize, 4096, &mDbProbe);
 }
 // ---------------------------------------------------------------------------
+// NX741J: quiesce the UFS host before handing the machine to XNU.
+//
+// The firmware's own UFS driver has driven the controller to load the payload
+// from storage, while the pandora reference (data-a-live) boots a UEFI that
+// never touches UFS.  To remove that difference, stop the request list and cycle
+// the host controller enable one last time from here, so the kernel starts from
+// a freshly initialised controller instead of one the firmware left behind.
+STATIC BOOLEAN
+DbBlobContains (
+  IN CONST UINT8  *Blob,
+  IN UINTN         Size,
+  IN CONST CHAR8  *Needle
+  )
+{
+  UINTN NeedleLen = AsciiStrLen (Needle);
+  UINTN i;
+  if (Blob == NULL || Size < NeedleLen) {
+    return FALSE;
+  }
+  for (i = 0; i + NeedleLen <= Size; i++) {
+    if (CompareMem (Blob + i, Needle, NeedleLen) == 0) {
+      return TRUE;
+    }
+  }
+  return FALSE;
+}
+
+STATIC VOID
+UfsQuiesce (VOID)
+{
+  volatile UINT32 *Hc = (volatile UINT32 *)(UINTN)0x1D84000;
+  UINT32 Hce = Hc[0x34 / 4];
+  UINT32 Hcs = Hc[0x30 / 4];
+  UINTN  i;
+
+  Print (L"NX741J: ufs before reset hce=%08x hcs=%08x\r\n", Hce, Hcs);
+  Hc[0x60 / 4] = 0;                       // UTRLRSR: stop the request list
+  Hc[0x5c / 4] = 0xFFFFFFFF;              // UTRLCLR
+  Hc[0x20 / 4] = 0xFFFFFFFF;              // IS: acknowledge
+  Hc[0x34 / 4] = Hce & ~1u;               // HCE = 0
+  for (i = 0; i < 100000 && (Hc[0x34 / 4] & 1u) != 0; i++) {
+    gBS->Stall (1);
+  }
+  Hc[0x34 / 4] = Hce | 1u;                // HCE = 1
+  for (i = 0; i < 100000 && (Hc[0x30 / 4] & 0x8u) == 0; i++) {
+    gBS->Stall (1);
+  }
+  Print (L"NX741J: ufs after reset hce=%08x hcs=%08x\r\n", Hc[0x34 / 4], Hc[0x30 / 4]);
+}
+
+// ---------------------------------------------------------------------------
 
 STATIC
 EFI_STATUS
@@ -913,6 +964,22 @@ Boot (
       }
       CommandLine[Index] = (CHAR8)Request->BootArgs[Index];
     }
+  }
+  //
+  // NX741J: is the SMMU context-bank register page reachable from the firmware
+  // side?  The kernel sees an external abort at 0x15010000 while 0x15000000 and
+  // 0x15001000 read fine.  Run only when asked, so the QEMU gate never touches it.
+  //
+  if (AsciiStrStr (CommandLine, "mu-smmu-probe=1") != NULL) {
+    volatile UINT32 *MuCb = (volatile UINT32 *)(UINTN)0x15010000;
+    UINT32 MuV0, MuV1, MuV2, MuV3;
+    Print (L"NX741J mu: reading 0x15010000\r\n");
+    MuV0 = MuCb[0x00 / 4];
+    MuV1 = MuCb[0x20 / 4];
+    MuV2 = MuCb[0x30 / 4];
+    MuV3 = MuCb[0x10 / 4];
+    Print (L"NX741J mu cb: %08x %08x %08x %08x\r\n", MuV0, MuV1, MuV2, MuV3);
+    Print (L"NX741J mu: cb read ok\r\n");
   }
   mProbeWrite = (AsciiStrStr (CommandLine, "probe-write=1") != NULL);
   mScratchVideo = (AsciiStrStr (CommandLine, "scratch-video=1") != NULL);
@@ -1188,6 +1255,11 @@ Boot (
           READ_SYSREG (id_aa64mmfr0_el1) & 0xF, (((READ_SYSREG (id_aa64mmfr0_el1) >> 28) & 0xF) == 0xF) ? "NOT supported" : "supported"));
   DEBUG ((DEBUG_ERROR, "ID_AA64PFR0_EL1  0x%lx\n", READ_SYSREG (id_aa64pfr0_el1)));
   DEBUG ((DEBUG_ERROR, "\nExiting boot services. A green bar across the top\nmarks the loader handoff before the kernel branch.\n"));
+  // Only on this board: QEMU has no UFS host at 0x1d84000, and touching it there
+  // faults before ExitBootServices (the gate reports "EBS ok 0").
+  if (Request != NULL && DbBlobContains (Request->DeviceTree, Request->DeviceTreeSize, "nx741j")) {
+    UfsQuiesce ();
+  }
   Print (L"DARWINBOOT: p13 map, then straight to ExitBootServices\r\n");
   for (Attempt = 0; Attempt < 3; Attempt++) {
     MapSize = Capacity;
