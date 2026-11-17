@@ -18,7 +18,7 @@ include = ["ArmDTPlatform", "ArmCpu", "XnuPrelink", "DarwinBoot", "GopFramebuffe
 
 [kernel]
 defconfig = "nx741j_defconfig"
-config_fragments = ["arch:configs/common.config", "soc:configs/sm8850.config", "os:configs/ios.config"]
+config_fragments = ["arch:configs/common.config", "soc:configs/sm8850.config", "os:configs/ios.config", "configs/no-native-aes.config"]
 archives = [
   "build-corecrypto-14.py",
   "build-corecrypto-14.py --namespace",
