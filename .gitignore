@@ -5,3 +5,6 @@
 __pycache__/
 *.pyc
 .DS_Store
+
+# standalone loader build output (54 MB payload + boot.img)
+bootshim/out/
