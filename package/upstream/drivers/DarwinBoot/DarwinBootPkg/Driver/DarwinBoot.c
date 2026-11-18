@@ -28,7 +28,8 @@ STATIC UINT32    mMarkIndex;
 #include "PackedRamdisk.h"
 #include "WindowSize.h"
 
-#define WINDOW_SIZE  SIZE_256MB
+/* 512 MiB: the UFS request list lives at ~0xc3b0_0000, outside a 256 MiB window */
+#define WINDOW_SIZE  SIZE_512MB
 #define BLOCK_SIZE   SIZE_2MB
 #define MAX_SEGMENTS 64
 

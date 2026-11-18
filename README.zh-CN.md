@@ -184,3 +184,38 @@ wsl bash _tmp/t2/fw_2017.sh          # 固件（SILICIUM_UEFI.fd）
 ```
 
 上机：9008（`wsl/flash-boota-9008.ps1`）刷入 → 启动一次 → 热重启 → 再进 9008 → `-ReadTo` 读日志。
+
+## 2026-11-19 更新 — UFS 命令已能完成，卡在数据阶段
+
+### 上次快照之后完成的事
+
+| 事项 | 证据 |
+|---|---|
+| 冷启动走完厂商序列（PHY、SERDES、PCS、HCE、DME_LINKSTARTUP） | `PCS ready (0x400 00000001)`、`HCS=0x10f`、`UPMCRS=1` |
+| UFS 的 GCC 分支全部开启（用 data-a-live 的 SM8850 偏移） | `axi/ahb/unipro/aggre/ice` 使能位全为 1 |
+| 本机第一条真正完成的 UFS 命令 | `TEST UNIT READY lun0: ocs=0 resp=00 scsi=00 db=0` |
+| 主机只取固件队列区里的请求 | 自建 DMA（`0xb4a09000`）→ `dbr=1`；固件区 → 命令完成 |
+| 等待有界，不再卡定时器 | 依官方 UFS 页，把 6 处 `IODelay` 换成忙等 |
+
+### 待办与未决问题（按顺序）
+
+1. **数据阶段写不回可见数据**：`READ CAPACITY` 完成但 8 字节为 0（`unexpected LUN0 block size 00000000`）。
+   adopt 路径原来按虚拟地址清 cache，现改为按物理地址刷（与 data-a-live 一致），并让 probe=9 在 panic 前扫描
+   16 KiB 区域找期望的容量模式；结果待测。
+2. **内核物理窗口不含固件队列区**：`arm_vm_init` 拒绝 `0xc3b04000`，因为 DarwinBoot 只给了 256 MiB 窗口
+   （`0xb03c8000 + 0x10000000`）。`WINDOW_SIZE` 已改为 512 MiB 并重建固件，下次启动验证分配是否覆盖该区。
+3. **阶段 7 无法开始**：必须先能稳定读取已知块（问题 1）并定位根卷。
+4. **阶段 7 前的 ADT 缺口**：外设 `unixnu,adt-name`、`/chosen` 的 `osenvironment`/`crypto-hash-method`/`root-matching`、
+   `memory-map` 占位符。
+5. **panic 文本不进日志通道**，目前只能拍屏。
+6. **厂商侧**：DT 声明 `qcom,handoff-smrs = <0x800 0x02>`，但引导程序没有执行；开关在签名 `xbl_config` MBN 里，
+   只有厂商签名的 XBL/TZ 改动才能变——这就是本移植不能依赖 HLOS 拥有 SMMU context 的原因。
+
+### 复现
+
+```
+wsl bash _tmp/t2/noaes2_2017.sh      # 内核（patch-native-ufs-cold-init.py 负责探针）
+wsl bash _tmp/t2/pay_step2b_2017.sh  # 负载（boot-args 取自 board.toml）
+wsl bash _tmp/t2/qemu_step2_2017.sh  # 闸门：EBS ok
+wsl bash _tmp/t2/fw_2017.sh          # 固件
+```

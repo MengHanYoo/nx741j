@@ -273,3 +273,43 @@ wsl bash _tmp/t2/fw_2017.sh          # firmware (SILICIUM_UEFI.fd)
 
 On the unit: flash over 9008 (`wsl/flash-boota-9008.ps1`), boot once, warm reset,
 re-enter 9008, read the log with `-ReadTo`.
+
+## 2026-11-19 update — UFS commands complete, data phase next
+
+### Done since the last snapshot
+
+| Item | Evidence |
+|---|---|
+| cold init completes the vendor sequence (PHY, SERDES, PCS, HCE, DME_LINKSTARTUP) | `PCS ready (0x400 00000001)`, `HCS=0x10f`, `UPMCRS=1` |
+| UFS GCC branches are all enabled (SM8850 offsets from data-a-live) | `axi/ahb/unipro/aggre/ice` enable bits set |
+| first completed UFS command on this unit | `TEST UNIT READY lun0: ocs=0 resp=00 scsi=00 db=0` |
+| the host only fetches from the firmware's queue region | own DMA (`0xb4a09000`) -> `dbr=1`; firmware region -> command completes |
+| waits are bounded (no more timer stalls) | `IODelay` replaced by busy-waits at six sites, per the official UFS page |
+
+### Open issues (in order)
+
+1. **Data phase writes nothing we can see.** `READ CAPACITY` completes but the 8 bytes are
+   zeros (`unexpected LUN0 block size 00000000`). The adopt path cleaned the firmware
+   mapping by virtual address; it now flushes by physical address like data-a-live does,
+   and probe 9 scans the 16 KiB region for the expected pattern before panicking. Result pending.
+2. **Kernel window excludes the firmware queue region.** `arm_vm_init` rejected
+   `0xc3b04000` because DarwinBoot handed over a 256 MiB window (`0xb03c8000 + 0x10000000`).
+   `WINDOW_SIZE` is now 512 MiB and the firmware is rebuilt; the next boot tells whether the
+   allocation lands so that the queue region is inside it.
+3. **Stage 7 cannot start** until a known block is read reliably (issue 1) and the root volume
+   is located.
+4. **ADT gaps** before userland: `unixnu,adt-name` on peripherals, `/chosen`
+   `osenvironment`/`crypto-hash-method`/`root-matching`, `memory-map` placeholder.
+5. **panic text is not in the log channel**; it is read off the panel only.
+6. **Vendor side**: the DT declares `qcom,handoff-smrs = <0x800 0x02>` but the bootloader does
+   not perform it; the switch lives in a signed `xbl_config` MBN, so only a vendor-signed
+   XBL/TZ change can alter it. This is why the port cannot rely on HLOS owning the SMMU context.
+
+### Reproducing
+
+```
+wsl bash _tmp/t2/noaes2_2017.sh      # kernel (patch-native-ufs-cold-init.py applies the probes)
+wsl bash _tmp/t2/pay_step2b_2017.sh  # payload (boot-args from board.toml)
+wsl bash _tmp/t2/qemu_step2_2017.sh  # gate: EBS ok
+wsl bash _tmp/t2/fw_2017.sh          # firmware
+```
