@@ -313,3 +313,13 @@ wsl bash _tmp/t2/pay_step2b_2017.sh  # payload (boot-args from board.toml)
 wsl bash _tmp/t2/qemu_step2_2017.sh  # gate: EBS ok
 wsl bash _tmp/t2/fw_2017.sh          # firmware
 ```
+
+### Late 2026-11-19 (after the first README archive)
+
+| Item | State |
+|---|---|
+| UFS data phase | open: `READ CAPACITY` completes but the 8 bytes read back as zeros (`blockSize=00000000`); the adopt path now flushes the firmware mapping by physical address and probe 9 scans the 16 KiB region for the expected pattern |
+| Kernel physical window | open: `arm_vm_init` rejected the firmware queue region (`illegal PA 0xc3b0_9000`) because boot_args carried a 256 MiB window; the ADT now carries `darwinboot-memory-size = 0x20000000` and DarwinBoot forces `WindowSize >= SIZE_512MB`, firmware rebuilt, verification pending |
+| Firmware rebuilds | the build compiles DarwinBoot from `UniXNU/drivers/DarwinBoot` (not the device repo copy); both copies now carry the same two changes |
+| Device state | restored: stock `efisp`, stock `boot_a`/`boot_b`, `misc` cleared, Android boots |
+| Next session | flash payload `2ca4c0e2` with firmware `8b835dff`, confirm `size 0x20000000` and no `illegal PA`, then read the GPT header |

@@ -219,3 +219,13 @@ wsl bash _tmp/t2/pay_step2b_2017.sh  # 负载（boot-args 取自 board.toml）
 wsl bash _tmp/t2/qemu_step2_2017.sh  # 闸门：EBS ok
 wsl bash _tmp/t2/fw_2017.sh          # 固件
 ```
+
+### 2026-11-19 深夜追加（首版 README 归档之后）
+
+| 事项 | 状态 |
+|---|---|
+| UFS 数据阶段 | 未决：`READ CAPACITY` 完成但读回 8 字节为 0（`blockSize=00000000`）；adopt 路径已改为按物理地址刷缓存，probe=9 在 panic 前扫描 16 KiB 区域找期望模式 |
+| 内核物理窗口 | 未决：`arm_vm_init` 拒绝固件队列区（`illegal PA 0xc3b0_9000`），因为 boot_args 只带 256 MiB；ADT 已加 `darwinboot-memory-size = 0x20000000`，DarwinBoot 强制 `WindowSize >= SIZE_512MB`，固件已重建，待验证 |
+| 固件重建 | 构建实际编译的是 `UniXNU/drivers/DarwinBoot`（不是设备仓库副本）；两份副本现已同步这两处改动 |
+| 设备状态 | 已恢复：原厂 `efisp`、原厂 `boot_a`/`boot_b`、`misc` 已清，Android 可启动 |
+| 下次开工 | 刷 payload `2ca4c0e2` + 固件 `8b835dff`，确认 `size 0x20000000` 且无 `illegal PA`，然后读 GPT 头 |

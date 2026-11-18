@@ -1031,6 +1031,7 @@ Boot (
   if (!AdtNode (Tree, TreeSize, &Offset, 0, 3, &RamdiskOffset, &TrustCacheOffset, &AddonOffset, &PolicyOffset, &WindowSize, &KeepPacked) || (Offset != TreeSize)) { Status = EFI_COMPROMISED_DATA; goto Fail; }
   if (KeepPacked && (!RamdiskPacked || (RamdiskOffset == MAX_UINTN))) { Status = EFI_COMPROMISED_DATA; goto Fail; }
   if (WindowSize == 0) { WindowSize = WINDOW_SIZE; }
+  if (WindowSize < SIZE_512MB) { WindowSize = SIZE_512MB; }
   Mark (L"[0j] tree ok", 0);
   mDbProbe.Step = 3; DbProbeWrite (Request);
   {
