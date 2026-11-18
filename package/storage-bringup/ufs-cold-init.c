@@ -101,6 +101,7 @@ int board_ufs_cold_init(void)
 	}
 	printf("UFS cold: PCS ready (0x400 %08x)\n", phy[0x400u >> 2]);
 
+
 	host_write(host, HOST_HCE, host_read(host, HOST_HCE) | 1u);
 	if (poll_bit(host, HOST_HCS, HCS_UCRDY) != 0) {
 		panic("NX741J UFS cold: HCE on, UCRDY never set (HCS %08x)",
