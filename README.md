@@ -222,6 +222,9 @@ while UTRLRSR reads 1 and HCS=0x10f. Every candidate cause was measured and excl
 * descriptor encoding: matches `ufshci.h` bit for bit (section 4);
 * controller reset: the HCE cycle leaves the host unresponsive (section 3);
 * SMMU context bank: refused to XNU, to the firmware and through TZ_IO_ACCESS_READ (sections 5, 7);
+* the bootloader never handed SMR0 over: the DT declares `qcom,handoff-smrs = <0x800 0x02>`
+  (SMR0 set up by the bootloader, as on the working data-a-live unit) but the measured
+  value is `SMR[0]=0x00000060` with VALID clear and `S2CR[0]` faulting;
 * bootloader configuration: `xbl_config.img` is a signed MBN whose UFS keys are a schema
   table only, and `NX741_unlock/` contains no occurrence of the key (section 10).
 

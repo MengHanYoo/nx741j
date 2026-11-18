@@ -139,6 +139,8 @@ wsl\flash-boota-9008.ps1 -Img <image> -StartSector <lba> -Label <label> -Lun <lu
 * 描述符编码：与 `ufshci.h` 逐位一致（第 4 节）；
 * 控制器复位：HCE 循环后主机不再应答（第 3 节）；
 * SMMU context bank：XNU、固件、TZ_IO_ACCESS_READ 三条路都被拒绝（第 5、7 节）；
+* 引导程序没有执行 SMR0 交接：DT 声明 `qcom,handoff-smrs = <0x800 0x02>`（SMR0 由引导程序配置，
+  与成功的 data-a-live 机一致），但实测 `SMR[0]=0x00000060`（VALID=0）、`S2CR[0]` 为 fault；
 * 引导程序配置：`xbl_config.img` 是签名 MBN，UFS 键只是 schema 表；
   `NX741_unlock/` 全量扫描无该键（第 10 节）。
 
