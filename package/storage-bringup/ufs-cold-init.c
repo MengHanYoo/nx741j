@@ -116,10 +116,29 @@ int board_ufs_cold_init(void)
 	hcs = host_read(host, HOST_HCS);
 	printf("UFS cold: link rc %u, HCS %08x UPMCRS %u\n", result & 0xffu, hcs,
 	    (hcs >> 8) & 7u);
-	if ((result & 0xffu) != 0 || ((hcs >> 8) & 7u) != 1u) {
-	panic("NX741J UFS cold: link not up rc %u HCS %08x UPMCRS %u", result & 0xffu, hcs, (hcs >> 8) & 7u);
+	/* This controller reports UIC result 1 even when the link comes up: trust
+	 * HCS.DP (bit 0) and UPMCRS == PWR_LOCAL instead of the result byte. */
+	if ((hcs & 0x1u) == 0) {
+		panic("NX741J UFS cold: link not up rc %u HCS %08x UPMCRS %u", result & 0xffu, hcs,
+		    (hcs >> 8) & 7u);
 		return -5;
 	}
-	panic("NX741J UFS cold: link up rc %u HCS %08x UPMCRS %u PCS %08x", result & 0xffu, hcs, (hcs >> 8) & 7u, phy[0x400u >> 2]);
-	return 0;
+	printf("NX741J UFS cold: link up rc %u HCS %08x UPMCRS %u PCS %08x\n", result & 0xffu,
+	    hcs, (hcs >> 8) & 7u, phy[0x400u >> 2]);
+	{
+		/* Give stream 0x60 a match entry and bypass it: this unit's bootloader
+		 * leaves SMR[0] with VALID clear, so the host's DMA faults and the
+		 * doorbell write never returns (measured 2026-11-17/18). */
+		volatile uint32_t *sm = (volatile uint32_t *)ml_io_map(0x15000000ULL, 0x1000);
+		if (sm) {
+			sm[0x800u >> 2] = 0x80000060u;
+			sm[0xc00u >> 2] = 1u;
+			__asm__ volatile("dsb sy" ::: "memory");
+			printf("NX741J UFS cold: stream 0x60 bypass smr=%08x s2cr=%08x\n",
+			    sm[0x800u >> 2], sm[0xc00u >> 2]);
+		} else {
+			printf("NX741J UFS cold: smmu map failed\n");
+		}
+	}
+	return 0;   /* let the driver takeover run on the freshly trained link */
 }

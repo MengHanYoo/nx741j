@@ -13,7 +13,7 @@ K=$O/kernel/kernel.macho
 ADT=$O/device-tree/hardware.dtb
 test -f $K || { echo missing kernel; exit 1; }
 test -f $ADT || { echo missing adt; exit 1; }
-python3 $R/scripts/macho-to-sweet-payload.py --kernel "$K" --adt "$ADT" --phys-base 0x90000000 --mem-size 0x5000000 --cmdline "keepsyms=1 kextlog=0x1" -o $out/payload.bin
+python3 $R/scripts/macho-to-sweet-payload.py --kernel "$K" --adt "$ADT" --phys-base 0x300000000 --mem-size 0x5000000 --cmdline "$(python3 $R/bootshim/cmdline.py $R/board.toml)" -o $out/payload.bin
 : > $out/logo.bin
 FLAGS="--target=aarch64-none-elf -O2 -ffreestanding -fno-builtin -nostdlib -fno-pic -fno-stack-protector -mgeneral-regs-only -mstrict-align -Wall -Wextra -Werror"
 $T/clang $FLAGS -c src/start.S -o $out/start.o
