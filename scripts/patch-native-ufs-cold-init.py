@@ -36,6 +36,21 @@ ADOPT_ANCHORS = [
      '  printf ("NATIVE_UFS adopt: cleared, reading state\\n");\n  uint32_t hcsBefore = read32 (hc, 0x30);'),
 ]
 ADOPT_ANCHORS += [
+    ('  const uint32_t ucdOffset = 4096, rspOffset = 512, prdtOffset = 1024, dataOffset = 8192;',
+     '  /* data inside 8K: the firmware queue block looks like 8 KiB, so +8K is out of it */\n  const uint32_t ucdOffset = 4096, rspOffset = 512, prdtOffset = 1024, dataOffset = 6144;'),
+
+    ('    uint8_t rd[10] = { 0x28, 0, 0, 0, 0, 1, 0, 0, 1, 0 };',
+     '    printf ("NATIVE_UFS gpt: reading header bs=%08x\\n", blockSize[0]);\n    uint8_t rd[10] = { 0x28, 0, 0, 0, 0, 1, 0, 0, 1, 0 };'),
+    ('    if (h.ocs != 0 || h.scsi != 0) {',
+     '    printf ("NATIVE_UFS gpt: header done ocs=%x resp=%x scsi=%x\\n", h.ocs, h.response, h.scsi);\n    if (h.ocs != 0 || h.scsi != 0) {'),
+    ('    if (!done) {',
+     '    printf ("NATIVE_UFS cmd: done=%d dbr=%08x is=%08x ocs=%02x\\n", done ? 1 : 0, read32 (hc, 0x58), read32 (hc, 0x20), *reinterpret_cast<volatile uint32_t *> (utrd + 8) & 0xffU);\n    if (!done) {'),
+
+    ('  for (unsigned lun = 0; lun < maxLun; lun++) {',
+     '  for (unsigned lun = 0; lun < ((level == 9) ? 0u : maxLun); lun++) {   /* level 9 skips the LUN loop, it hangs here */'),
+    ('  if (level == 9) {',
+     '  if (level == 9 && blockSize[0] != 4096) {\n    unsigned nx_off = 0, nx_hits = 0;\n    for (unsigned nx_i = 0; nx_i + 4 <= 16384; nx_i += 4) {\n      if (virt[nx_i] == 0 && virt[nx_i + 1] == 0 && virt[nx_i + 2] == 0x10 && virt[nx_i + 3] == 0) { nx_hits++; nx_off = nx_i; }\n    }\n    panic ("NATIVE_UFS gpt: blockSize=%08x cap-data at %u hits=%u d0=%08x d1=%08x", blockSize[0], nx_off, nx_hits, *(volatile uint32_t *)(virt + dataOffset), *(volatile uint32_t *)(virt + 0));\n  }\n  if (level == 9) {'),
+
     ('    *reinterpret_cast<uint32_t *> (utrd + 0) = 0x10000000U | (direction << 25);',
      '    /* interrupt bit (24) as well: UFSHCI only completes descriptors that ask for it */\n    *reinterpret_cast<uint32_t *> (utrd + 0) = 0x10000000U | (1U << 24) | (direction << 25);'),
     ('    *reinterpret_cast<uint32_t *> (utrd + 0) = 0x10000000U;',
@@ -59,6 +74,25 @@ ADOPT_ANCHORS += [
     ('    if (smmu) { smmuReport[2] = read32 (smmu, 0x24); }',
      '    if (smmu) {\n      smmuReport[2] = read32 (smmu, 0x24);\n      write32 (smmu, 0x800, 0x80000060u);\n      write32 (smmu, 0xc00, 1u);\n      __asm__ volatile ("dsb sy" ::: "memory");\n      printf ("NATIVE_UFS adopt: smr=%08x s2cr=%08x\\n", read32 (smmu, 0x800), read32 (smmu, 0xc00));\n    }'),
 ]
+SPIN = '{ volatile unsigned nx_spin = 0; for (nx_spin = 0; nx_spin < 4000; nx_spin++) { __asm__ volatile ("" ::: "memory"); } }'
+SPIN_LONG = '{ volatile unsigned nx_spin = 0; for (nx_spin = 0; nx_spin < 400000; nx_spin++) { __asm__ volatile ("" ::: "memory"); } }'
+REPL = [
+    ('static void cacheClean (const void *start, size_t length)',
+     'static void __attribute__((unused)) cacheClean (const void *start, size_t length)'),
+    ('static void cacheCleanInvalidate (const void *start, size_t length)',
+     'static void __attribute__((unused)) cacheCleanInvalidate (const void *start, size_t length)'),
+    ('cacheClean (virt, 16384);',
+     'flush_dcache64 ((addr64_t)phys, 16384, TRUE);'),
+    ('cacheCleanInvalidate (virt, 16384);',
+     'flush_dcache64 ((addr64_t)phys, 16384, TRUE);'),
+    ('IODelay (1);', SPIN),
+    ('IODelay (10);', SPIN),
+    ('IODelay (1000);', SPIN_LONG),
+    ('IODelay (500);', SPIN_LONG),
+]
+for old, new in REPL:
+    text = text.replace(old, new)
+
 for old, new in ADOPT_ANCHORS:
     if old in text and new not in text:
         text = text.replace(old, new, 1)

@@ -100,6 +100,21 @@ int board_ufs_cold_init(void)
 		return -2;
 	}
 	printf("UFS cold: PCS ready (0x400 %08x)\n", phy[0x400u >> 2]);
+	{
+		/* Read-only GCC check with the SM8850 offsets measured on pandora
+		 * (data-a-live wsl/pandora_ufs_diag.c.txt); the SM8550 header in the
+		 * driver uses different offsets (0x18/0x24/0x68/0xe4). */
+		volatile uint32_t *g = (volatile uint32_t *)ml_io_map(0x100000ULL + 0x77000ULL, 0x1000);
+		volatile uint32_t *m = (volatile uint32_t *)ml_io_map(0x100000ULL + 0x9e000ULL, 0x1000);
+		if (g) {
+			printf("UFS cold: SM8850 GCC offsets gdsc=%08x axi=%08x ahb=%08x unipro=%08x aggre=%08x ice=%08x\n",
+			    g[0x004u >> 2], g[0x018u >> 2], g[0x028u >> 2], g[0x06cu >> 2],
+			    g[0x0f0u >> 2], g[0x07cu >> 2]);
+			if (m) printf("UFS cold: SM8850 GCC memphy gdsc=%08x\n", m[0]);
+		} else {
+			printf("UFS cold: GCC map failed\n");
+		}
+	}
 
 
 	host_write(host, HOST_HCE, host_read(host, HOST_HCE) | 1u);
