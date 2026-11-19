@@ -132,17 +132,13 @@ NX_CAP = r'''  if (level == 9) {
     uint32_t ver = (uint32_t)h[8] | ((uint32_t)h[9] << 8) | ((uint32_t)h[10] << 16) | ((uint32_t)h[11] << 24);
     uint32_t cnt = (uint32_t)h[12] | ((uint32_t)h[13] << 8) | ((uint32_t)h[14] << 16) | ((uint32_t)h[15] << 24);
     uint64_t img = 0; for (int i = 0; i < 8; i++) img |= (uint64_t)h[16 + i] << (8 * i);
-    uint64_t w0off = 0, w0sz = 0, w1off = 0, w1sz = 0;
-    for (int i = 0; i < 8; i++) w0off |= (uint64_t)h[24 + 32 + i] << (8 * i);
-    for (int i = 0; i < 8; i++) w0sz |= (uint64_t)h[24 + 40 + i] << (8 * i);
-    for (int i = 0; i < 8; i++) w1off |= (uint64_t)h[24 + 128 + 32 + i] << (8 * i);
-    for (int i = 0; i < 8; i++) w1sz |= (uint64_t)h[24 + 128 + 40 + i] << (8 * i);
-    const uint64_t partBytes = 1024ULL * 1024 * 1024 * 1024;
-    bool bounds = img >= 4096 && !(img & 4095) && img <= partBytes;
-    bounds = bounds && !(w0off & 4095) && w0off >= 4096 && w0sz && w0off < img && w0sz <= img - w0off;
-    bounds = bounds && !(w1off & 4095) && w1off >= 4096 && w1sz && w1off < img && w1sz <= img - w1off;
-    bool ordered = w0off + w0sz <= w1off;
-    panic ("NATIVE_UFS root: ok=%d magic=%c%c%c%c%c%c%c%c ver=%u cnt=%u img=%llx w0=%c%c o=%llx sz=%llx w1=%c%c o=%llx sz=%llx bounds=%d ord=%d", ok ? 1 : 0, h[0],h[1],h[2],h[3],h[4],h[5],h[6],h[7], ver, cnt, img, h[24], h[26], w0off, w0sz, h[24+128], h[24+128+2], w1off, w1sz, bounds ? 1 : 0, ordered ? 1 : 0);
+    uint64_t w0off = 0, w0sz = 0; for (int i = 0; i < 8; i++) w0off |= (uint64_t)h[56 + i] << (8 * i);
+    for (int i = 0; i < 8; i++) w0sz |= (uint64_t)h[64 + i] << (8 * i);
+    bool bounds = img >= 4096 && !(img & 4095) && w0sz && w0off >= 4096 && !(w0off & 4095) && w0off < img && w0sz <= img - w0off;
+    static uint8_t nb[4096];
+    bool rd = nxRootRead ((uint32_t)(0x004a6328u + 256u + 4u), 1, nb);
+    uint32_t am = (uint32_t)nb[0x420] | ((uint32_t)nb[0x421] << 8) | ((uint32_t)nb[0x422] << 16) | ((uint32_t)nb[0x423] << 24);
+    panic ("NATIVE_UFS apfs: rd=%d magic=%08x b0=%02x%02x%02x%02x root=%d ver=%u cnt=%u bounds=%d img=%llx w0sz=%llx", rd ? 1 : 0, am, nb[0x420],nb[0x421],nb[0x422],nb[0x423], ok ? 1 : 0, ver, cnt, bounds ? 1 : 0, img, w0sz);
   }
 '''
 text = text.replace('  if (level == 9 && blockSize[0] != 4096) {', NX_CAP + '  if (level == 9 && blockSize[0] != 4096) {', 1)
@@ -189,5 +185,58 @@ text = text.replace('  gRootDiagnostic.stage = "LUN ready";', '  printf ("NATIVE
 # --- NX_NOP_RC: report the NOP OUT result before the root check ---
 text = text.replace('  if (hostNop () != kIOReturnSuccess) {', '  { IOReturn nx_nop = hostNop (); printf ("NATIVE_UFS bringup: nop rc=%d dbr=%08x is=%08x\\n", (int)nx_nop, read32 (gHost.hc, 0x58), read32 (gHost.hc, 0x20)); if (nx_nop != kIOReturnSuccess) {', 1)
 text = text.replace('    *why = "NOP OUT";\n    return false;\n  }', '    *why = "NOP OUT";\n    return false;\n  } }', 1)
+# --- NX_ROOT_READ: adopt-transport block read used by the block device and root probes ---
+READFN = r'''
+static volatile uintptr_t nxRootHc = 0;
+static uint8_t *nxRootVirt = 0;
+static uint64_t nxRootPhys = 0;
+static void nxRootBind (uintptr_t hc, uint8_t *virt, uint64_t phys) { nxRootHc = hc; nxRootVirt = virt; nxRootPhys = phys; }
+// One 4 KiB block per command through the adopted firmware queue. Returns false on any
+// transport failure or non-zero OCS. Flushes by physical address around the transfer.
+static bool nxRootRead (uint32_t lba, uint32_t blocks, void *out)
+{
+  if (!nxRootHc || !nxRootVirt || !out || !blocks) return false;
+  uint8_t *u = nxRootVirt;
+  uint8_t *c = nxRootVirt + 4096;
+  uint8_t *dst = static_cast<uint8_t *> (out);
+  for (uint32_t i = 0; i < blocks; i++) {
+    zero32 (u, 32);
+    zero32 (c, 1024 + 16);
+    c[0] = 0x01; c[1] = 0x40; c[2] = 0; c[3] = 1;
+    be32 (c + 12, 4096);
+    c[16] = 0x28;
+    c[16 + 2] = (uint8_t)(lba >> 24); c[16 + 3] = (uint8_t)(lba >> 16);
+    c[16 + 4] = (uint8_t)(lba >> 8); c[16 + 5] = (uint8_t)lba;
+    c[16 + 7] = 0; c[16 + 8] = 1;
+    *(uint32_t *)(u + 0) = 0x11000000U;
+    *(uint32_t *)(u + 8) = 0x0fU;
+    *(uint32_t *)(u + 16) = (uint32_t)(nxRootPhys + 4096);
+    *(uint32_t *)(u + 20) = (uint32_t)((nxRootPhys + 4096) >> 32);
+    *(uint32_t *)(u + 24) = (512U >> 2) | ((512U >> 2) << 16);
+    *(uint32_t *)(u + 28) = 1U | ((1024U >> 2) << 16);
+    *(uint32_t *)(c + 1024 + 0) = (uint32_t)(nxRootPhys + 6144);
+    *(uint32_t *)(c + 1024 + 4) = (uint32_t)((nxRootPhys + 6144) >> 32);
+    *(uint32_t *)(c + 1024 + 8) = 0;
+    *(uint32_t *)(c + 1024 + 12) = 4095U;
+    flush_dcache64 ((addr64_t)nxRootPhys, 16384, TRUE);
+    write32 (nxRootHc, 0x20, 0xffffffffU);
+    write32 (nxRootHc, 0x58, 1);
+    bool done = false;
+    for (unsigned spin = 0; spin < 400000; spin++) {
+      if (!(read32 (nxRootHc, 0x58) & 1)) { done = true; break; }
+      { volatile unsigned s = 0; for (s = 0; s < 4000; s++) { __asm__ volatile ("" ::: "memory"); } }
+    }
+    flush_dcache64 ((addr64_t)nxRootPhys, 16384, TRUE);
+    if (!done || c[32] != 0) return false;
+    bcopy (nxRootVirt + 6144, dst + (uint64_t)i * 4096, 4096);
+    lba++;
+  }
+  return true;
+}
+'''
+text = text.replace('void NativeUfs::adoptAndRead (unsigned level)', READFN + 'void NativeUfs::adoptAndRead (unsigned level)', 1)
+# Bind the adopt transport for later use and route the block device's reads through it.
+text = text.replace("  uint64_t phys = fwList;", "  uint64_t phys = fwList;\n  nxRootBind (hc, virt, phys);", 1)
+text = text.replace('      IOReturn r = hostRead4k (0, lba, blocks, out);', '      IOReturn r = nxRootRead (static_cast<uint32_t> (lba), static_cast<uint32_t> (blocks), out) ? kIOReturnSuccess : kIOReturnIOError;', 1)
 SOURCE.write_text(text)
 print('== patch-native-ufs-cold-init: applied')
