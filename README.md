@@ -23,7 +23,7 @@ in [board.toml](board.toml); it is the only IPSW available for this port.
 | 3 | payload (kernel, ADT, trust cache) | done |
 | 4 | boot chain hand-offs (loader -> UEFI -> DarwinBoot -> XNU) | done |
 | 5 | kernel bring-up (platform expert, IOKit, prelinked kexts) | **done** |
-| 6 | storage (UFS) | **blocked - platform (XBL/TZ/xPU)** |
+| 6 | storage (UFS) | **conditions 1-4 done, 5 partial** (see below) |
 | 7 | userland (root volume, `launchd`) | blocked by stage 6 |
 
 **Stage 5 milestone (2026-11-12).** The kernel console now renders on the panel, so every boot stage
@@ -38,20 +38,30 @@ kext com.apple.kpi.bsd Loaded.
 loading dependencies com.apple.kpi.mach
 ```
 
-**Stage 6 (UFS).** `NativeUfs` matches `/arm-io/ufshc` and now runs the official takeover path
-(`native-ufs-probe=3`): it stops the firmware request list, zeroes only the slots it uses, forces
-stream `0x60` to bypass in `apps_smmu` and restarts the list at the firmware's own `UTRLBA` instead of
-installing a kernel buffer.
+**Stage 6 (UFS).** The storage path now runs on the firmware state the bootloader leaves behind
+(official porting/ufs condition 2): the request list is adopted at the firmware UTRLBA, stream 0x60
+is forced to match and bypass (`SMR[0]=0x80000060`, `S2CR[0]=1`), and the vendor cold-init
+sequence (PHY calibration, SERDES start, PCS ready, HCE, DME link startup) runs behind
+`native-ufs-cold-init=1`.  Every wait is a bounded busy-wait, because `IODelay` blocks on the
+timer on this build.
 
-The first attempt at that path died inside `NativeUfs::adoptAndRead+0x844` with a level-3 translation
-fault (`far` = mapping base + `0x4000`, `esr=0x96000047`): the driver maps the request list with a
-16 KiB window but cleans 32 KiB. `scripts/patch-native-ufs-adopt-fix.py` narrows the clean to the
-mapped window, and the compiled constant is verified with `llvm-objdump`
-(`+0x838: add x9, x9, #0x4, lsl #12` = `0x4000`) before any flash.
+| Condition | State | Evidence |
+|---|---|---|
+| 1 registers | done | `CAP=0xd5c7031f`, `HCS=0x10f`, `HCE=1` |
+| 2 DMA / queue ownership | done | list installed and started (`rsr=1`); the controller fetches only the firmware queue region |
+| 3 command completion | done | `TEST UNIT READY lun0: ocs=0 resp=00 scsi=00 db=0` |
+| 4 known-block read | done | `READ(10)` LBA 1 returns `sig=4546492050415254` (EFI PART), `entlba=2 cnt=32 esz=128`; entries parsed, `userdata` at `first=0x4a6328` |
+| 5 root volume | partial | official `SHNGROOT` manifest read through the kernel transport, `img=0x1f3800000`, `w0=0x14fe08600`, `w1=0xa3800000`, `bounds=1 ord=1`; OS window block 4 returns `NXSB`; publishing the windows as `IOMedia` is next |
+| 6 persistence, 7 performance | not started | |
 
-The vendor cold-init path still exists behind `native-ufs-cold-init=1` (PHY calibration tables,
-SERDES start, PCS ready, HCE, DME link startup), but the official flow takes the firmware state over
-instead of resetting the PHY, so it is off by default.
+The official `./unixnu userdata` image (7.8 GiB, `SHNGROOT` v1, OS 5,635,081,728 B at
+`0x100000`, SystemOS 2,743,074,816 B at `0x150000000`) is flashed to `userdata` at LBA 4,875,048
+and reads back byte-identical.  `nxRootRead` issues one 4 KiB `READ(10)` per command through the
+adopted queue, so the block device and the root probes read real filesystem data.  data-a-live
+`pinfile` also works here (pinned 64 MiB and 16 GiB files, 1 and 11 extents, `rawtest`/`rawcheck`
+through `/dev/block/sda12`), i.e. the dm-default-key layer can be bypassed as on the reference
+device.  The kernel window covers the firmware queue: DarwinBoot prefers a free run containing
+`0xC3B00000`, falls back for QEMU, and reports up to `0xD0000000`.
 
 ## Session log — 2026-11-12
 
@@ -165,7 +175,9 @@ back the stock `efisp` (`sha256 4df18359...`) restores the vendor boot chain.
 | `package/firmware-overlay/` | board-level firmware code, applied into the UEFI tree |
 | `patches/xnu/` | device XNU patch series (see `series` for the applied order) |
 | `patches/firmware/` | firmware patches (DSC/FDF, platform drivers) |
+| `patches/drivers/` | device driver diffs (adopt-transport root work) |
 | `scripts/` | build helpers (`build-fast.sh`, `build-and-test.sh`, ...) |
+| `scripts/patch-native-ufs-*.py` | build hooks for the ShengUfs prelude and the driver diff |
 | `docs/` | analysis, audits, per-stage notes, hardware inventory |
 
 ## Recent fixes worth knowing
@@ -175,6 +187,8 @@ back the stock `efisp` (`sha256 4df18359...`) restores the vendor boot chain.
 | `0010-console-acquire-screen.patch` | `PE_create_console` uses `kPEAcquireScreen`, so `kprintf` reaches the panel |
 | `0015-iodevicetree-null-interrupt-parent.patch` | `IODTMapOneInterrupt` fed a NULL parent into `IODTGetICellCounts` and panicked during `InitIOKit` |
 | `component:GopFramebuffer` in `[kernel] archives` | the display component was selected but never linked |
+| `patches/drivers/native-ufs-adopt-root.patch` | adopt-transport block reader, manifest layout, `startRoot` preference, `probe=12` reporting |
+| bounded busy-waits | `IODelay` blocks on the timer on this build, so every UFS wait spins with a deadline |
 | `native-ufs-cold-init=1` | vendor-derived PHY calibration + link startup before any command |
 | `patches/xnu/0021-console-log-capture.patch` | console bytes are mirrored into a DRAM buffer the efisp loader can find on the next boot |
 | `scripts/patch-native-ufs-adopt-fix.py` | the adopt path cleaned 32 KiB out of a 16 KiB mapping, which faulted in `adoptAndRead+0x844` |
@@ -193,51 +207,3 @@ back the stock `efisp` (`sha256 4df18359...`) restores the vendor boot chain.
 
 Patches and board code follow the upstream UniXNU licensing (BSD-2-Clause-Patent where noted in the
 individual files). Vendor-derived tables are data recovered from the device's own firmware.
-
-## Current status (2026-11-20)
-
-This section replaces the dated session logs that used to follow the licence. It lists what has been measured on the unit, not what is planned.
-
-### Boot chain (official porting stages 1-5)
-
-| Stage | State | Evidence |
-|---|---|---|
-| 1 boot image | done | efisp loader takes over from ABL (this board replaces BootShim; the deviation is recorded in docs/) |
-| 2 UEFI firmware | done | Mu firmware volume at rawdump + 64 MiB, DXE log, ConIn fix |
-| 3 boot manager | done | UniXNU menu, config and BootEntry |
-| 4 XNU loader | done | DarwinBoot MARK #29, EBS ok |
-| 5 kernel | done | platform expert, IOKit, kext loading, console |
-
-### UFS (official porting/ufs completion conditions)
-
-| Condition | State | Evidence |
-|---|---|---|
-| 1 registers | done | CAP=0xd5c7031f, HCS=0x10f, HCE=1 |
-| 2 DMA / queue ownership | done | list installed and started (rsr=1); the controller fetches only the firmware queue region |
-| 3 command completion | done | TEST UNIT READY lun0: ocs=0 resp=00 scsi=00 db=0 |
-| 4 known-block read | done | READ(10) LBA 1 returns sig=4546492050415254 (EFI PART), entlba=2 cnt=32 esz=128; entries parsed, userdata found at first=0x4a6328 |
-| 5 root volume | partial | official SHNGROOT manifest read through the kernel transport; policy checks pass (img=0x1f3800000, w0=0x14fe08600, w1=0xa3800000, bounds=1 ord=1); OS window block 4 returns NXSB; publishing the windows as IOMedia is next |
-| 6 persistence, 7 performance | not started | |
-
-Cold start (native-ufs-cold-init=1) runs the vendor sequence: PHY calibration, SERDES start, PCS ready (0x400 00000001), HCE, DME_LINKSTARTUP (HCS=0x10f, UPMCRS=1). The UFS GCC branches read enabled with the SM8850 offsets from data-a-live pandora_ufs_clocks(); stream 0x60 is forced to match and bypass (SMR[0]=0x80000060, S2CR[0]=1) and every wait is a bounded busy-wait, because IODelay blocks on the timer on this build.
-
-### Storage work proven on the unit
-
-* the official userdata image was built (7.8 GiB, SHNGROOT v1, OS 5,635,081,728 B at 0x100000, SystemOS 2,743,074,816 B at 0x150000000), flashed to userdata (LBA 4,875,048) and read back byte-identical;
-* nxRootRead issues one 4 KiB READ(10) per command through the adopted firmware queue, maintains the cache by physical address and copies into the caller buffer; the block device reads through it, and a probe read of the OS window returns the APFS container superblock NXSB;
-* data-a-live pinfile works on this unit: pinned files of 64 MiB and 16 GiB, extents (1 and 11 segments), and rawtest/rawcheck through /dev/block/sda12, so the dm-default-key layer can be bypassed as on the reference device;
-* the kernel window covers the firmware queue: DarwinBoot prefers a free run containing 0xC3B00000, falls back for QEMU, and reports a covered range up to 0xD0000000, so arm_vm_init accepts those physical addresses.
-
-### Driver patch and build state
-
-* patches/drivers/native-ufs-adopt-root.patch is the reviewable diff for the adopt-root work (block reader, manifest layout, startRoot preference, probe=12 reporting);
-* scripts/patch-native-ufs-cold-init.py applies it and is NOT wired into board.toml, because ./unixnu tree runs the board hooks during regeneration: a wired hook is applied twice and the second application is rejected. Without the hook the tree builds clean (kernel_rc=0, no compiler errors);
-* two safe ways to finish are recorded in docs/STATUS-2026-11-19.md section 10: restore the previous idempotent string-patcher hook and keep the diff as the record, or regenerate the diff in a scratch directory from the pinned upstream revision.
-
-### Open issues and next steps
-
-1. Run probe=12 on the unit and expect publication done=1 published=2 (OS and SystemOS as block devices).
-2. Add /chosen/root-matching with the OS volume UUID so XNU selects that window as root.
-3. The production hostBringUp path (own DMA + full SMMU window) does not work on this board; the adopt transport is the supported route. Details in docs/STATUS-2026-11-19.md.
-4. ADT gaps for userland: peripheral unixnu,adt-name, /chosen osenvironment/crypto-hash-method/root-matching, memory-map placeholders.
-5. Panic text still only reaches the panel; the console buffer covers normal prints.
