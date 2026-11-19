@@ -194,179 +194,50 @@ back the stock `efisp` (`sha256 4df18359...`) restores the vendor boot chain.
 Patches and board code follow the upstream UniXNU licensing (BSD-2-Clause-Patent where noted in the
 individual files). Vendor-derived tables are data recovered from the device's own firmware.
 
-## Tasks, TODOs and open issues (2026-11-18)
+## Current status (2026-11-20)
 
-Everything below is measured on the unit; the evidence for each line lives in
-[docs/STATUS-2026-11-18.md](docs/STATUS-2026-11-18.md) and the earlier status files.
+This section replaces the dated session logs that used to follow the licence. It lists what has been measured on the unit, not what is planned.
 
-### Done
+### Boot chain (official porting stages 1-5)
 
-| Item | Evidence |
-|---|---|
-| stages 1-5: board, firmware, payload, hand-offs, kernel bring-up | [docs/STATUS-2026-11-12.md](docs/STATUS-2026-11-12.md) |
-| console log channel (kernel -> DRAM -> rawdump -> host) | `patches/xnu/0021`, `loader/p7.c`, `-ReadTo` |
-| UFS register access, queue ownership, UTRLBA/RSR readback | [docs/STATUS-2026-11-15.md](docs/STATUS-2026-11-15.md) |
-| stream 0x60 match + bypass from the kernel (SMR[0]=0x80000060, S2CR[0]=1) | 2026-11-18 section 1 |
-| DME_GET / DME_SET (PA_PWRMode SLOW -> FAST) | 2026-11-18 section 2 |
-| sweet_ufs port and its libkern-only build | `patches/xnu/0022` |
-| standalone loader port + Mach-O to SWEETXNU payload converter | `bootshim/`, `scripts/macho-to-sweet-payload.py` |
-
-### Blocked
-
-**Stage 6 - UFS cannot be driven from HLOS on this unit.** The host never fetches the
-UTRD (DBR stays set), both from our DMA and from the bootloader's own list region,
-while UTRLRSR reads 1 and HCS=0x10f. Every candidate cause was measured and excluded:
-
-* firmware: removing UfsPassThruDxe changes nothing (section 9);
-* MCQ-only controller: CAP bit29 = 0, legacy doorbell is supported (section 4);
-* descriptor encoding: matches `ufshci.h` bit for bit (section 4);
-* controller reset: the HCE cycle leaves the host unresponsive (section 3);
-* SMMU context bank: refused to XNU, to the firmware and through TZ_IO_ACCESS_READ (sections 5, 7);
-* the bootloader never handed SMR0 over: the DT declares `qcom,handoff-smrs = <0x800 0x02>`
-  (SMR0 set up by the bootloader, as on the working data-a-live unit) but the measured
-  value is `SMR[0]=0x00000060` with VALID clear and `S2CR[0]` faulting;
-* bootloader configuration: `xbl_config.img` is a signed MBN whose UFS keys are a schema
-  table only, and `NX741_unlock/` contains no occurrence of the key (section 10).
-
-**Stage 7 - userland** stays blocked by stage 6.
-
-### Next steps (each needs something we do not have)
-
-1. **Vendor-signed XBL/TZ change** so stream 0x60 stays matched and bypassed for the
-   non-secure world, or so a stage-1 context the kernel may program exists.
-2. **Firmware-side root mount**: Mu would have to service block requests after
-   ExitBootServices. Mu is single-core (no MpServices/PSCI in Mu_Basecore), so this
-   needs an SMP port, a shared-ring protocol and an XNU block driver.
-3. **Standalone EFI loader**: `fastboot boot` on this unit requires a PE in the kernel field
-   (`No EFI image found in boot.img`), so the loader must become a PE and the payload
-   must ride in the ramdisk field (section 11).
-
-### Backlog
-
-| Task | Notes |
-|---|---|
-| ADT: `unixnu,adt-name` on peripheral nodes | stage 7 needs matching |
-| ADT: `/chosen` osenvironment, crypto-hash-method, root-matching | missing today |
-| ADT: `memory-map` placeholder | currently empty |
-| panic text into the log channel | `panic()` output is not captured, only the panel shows it |
-| keys from the OS side (ButtonProbe, report 2) | any DXE access to TLMM asserts |
-| `0008-granular-protection-noop.patch` not in `series` | `board.toml` comment still references it |
-| record the `early_security_init = ""` (AMFI/Image4) deviation | needed before stage 7 |
-| trust cache / unique_chip_id placeholders | self-made flat package; document before release |
-| bootshim build output in git | excluded via `.gitignore` since 719722b |
-
-### Open questions
-
-* Which stage clears SMR[0].VALID - XBL, ABL or TZ? The read-only walk runs after the
-  firmware, so the writer is not identified yet.
-* What is the compiled value of UfsSmmuConfigForOtherBootDev in `xbl_config`?
-* Would TZ accept a stage-1 context built by HLOS if the context-bank window were opened?
-
-### Reproducing the evidence
-
-```
-wsl bash _tmp/t2/noaes2_2017.sh      # kernel with the probe patches
-wsl bash _tmp/t2/pay_step2b_2017.sh  # payload (boot-args from board.toml)
-wsl bash _tmp/t2/qemu_step2_2017.sh  # gate: EBS ok
-wsl bash _tmp/t2/fw_2017.sh          # firmware (SILICIUM_UEFI.fd)
-```
-
-On the unit: flash over 9008 (`wsl/flash-boota-9008.ps1`), boot once, warm reset,
-re-enter 9008, read the log with `-ReadTo`.
-
-## 2026-11-19 update — UFS commands complete, data phase next
-
-### Done since the last snapshot
-
-| Item | Evidence |
-|---|---|
-| cold init completes the vendor sequence (PHY, SERDES, PCS, HCE, DME_LINKSTARTUP) | `PCS ready (0x400 00000001)`, `HCS=0x10f`, `UPMCRS=1` |
-| UFS GCC branches are all enabled (SM8850 offsets from data-a-live) | `axi/ahb/unipro/aggre/ice` enable bits set |
-| first completed UFS command on this unit | `TEST UNIT READY lun0: ocs=0 resp=00 scsi=00 db=0` |
-| the host only fetches from the firmware's queue region | own DMA (`0xb4a09000`) -> `dbr=1`; firmware region -> command completes |
-| waits are bounded (no more timer stalls) | `IODelay` replaced by busy-waits at six sites, per the official UFS page |
-
-### Open issues (in order)
-
-1. **Data phase writes nothing we can see.** `READ CAPACITY` completes but the 8 bytes are
-   zeros (`unexpected LUN0 block size 00000000`). The adopt path cleaned the firmware
-   mapping by virtual address; it now flushes by physical address like data-a-live does,
-   and probe 9 scans the 16 KiB region for the expected pattern before panicking. Result pending.
-2. **Kernel window excludes the firmware queue region.** `arm_vm_init` rejected
-   `0xc3b04000` because DarwinBoot handed over a 256 MiB window (`0xb03c8000 + 0x10000000`).
-   `WINDOW_SIZE` is now 512 MiB and the firmware is rebuilt; the next boot tells whether the
-   allocation lands so that the queue region is inside it.
-3. **Stage 7 cannot start** until a known block is read reliably (issue 1) and the root volume
-   is located.
-4. **ADT gaps** before userland: `unixnu,adt-name` on peripherals, `/chosen`
-   `osenvironment`/`crypto-hash-method`/`root-matching`, `memory-map` placeholder.
-5. **panic text is not in the log channel**; it is read off the panel only.
-6. **Vendor side**: the DT declares `qcom,handoff-smrs = <0x800 0x02>` but the bootloader does
-   not perform it; the switch lives in a signed `xbl_config` MBN, so only a vendor-signed
-   XBL/TZ change can alter it. This is why the port cannot rely on HLOS owning the SMMU context.
-
-### Reproducing
-
-```
-wsl bash _tmp/t2/noaes2_2017.sh      # kernel (patch-native-ufs-cold-init.py applies the probes)
-wsl bash _tmp/t2/pay_step2b_2017.sh  # payload (boot-args from board.toml)
-wsl bash _tmp/t2/qemu_step2_2017.sh  # gate: EBS ok
-wsl bash _tmp/t2/fw_2017.sh          # firmware
-```
-
-### Late 2026-11-19 (after the first README archive)
-
-| Item | State |
-|---|---|
-| UFS data phase | open: `READ CAPACITY` completes but the 8 bytes read back as zeros (`blockSize=00000000`); the adopt path now flushes the firmware mapping by physical address and probe 9 scans the 16 KiB region for the expected pattern |
-| Kernel physical window | open: `arm_vm_init` rejected the firmware queue region (`illegal PA 0xc3b0_9000`) because boot_args carried a 256 MiB window; the ADT now carries `darwinboot-memory-size = 0x20000000` and DarwinBoot forces `WindowSize >= SIZE_512MB`, firmware rebuilt, verification pending |
-| Firmware rebuilds | the build compiles DarwinBoot from `UniXNU/drivers/DarwinBoot` (not the device repo copy); both copies now carry the same two changes |
-| Device state | restored: stock `efisp`, stock `boot_a`/`boot_b`, `misc` cleared, Android boots |
-| Next session | flash payload `2ca4c0e2` with firmware `8b835dff`, confirm `size 0x20000000` and no `illegal PA`, then read the GPT header |
-
-## Current archive — 2026-11-19 (UFS milestone)
-
-### Storage state
-
-| Official UFS condition (porting/ufs) | State | Evidence |
+| Stage | State | Evidence |
 |---|---|---|
-| 1 registers | done | `CAP=0xd5c7031f`, `HCS=0x10f`, `HCE=1` |
-| 2 DMA / queue ownership | done | list installed and started (`rsr=1`), requests are fetched only from the firmware queue region |
-| 3 command completion | **done** | `TEST UNIT READY lun0: ocs=0 resp=00 scsi=00 db=0 is=5` |
-| 4 known-block read | **done** | `READ(10)` LBA 1 -> `sig=4546492050415254` (EFI PART), `entlba=2 cnt=32 esz=128` |
-| 5 root volume | next | userdata located, first block not read yet |
+| 1 boot image | done | efisp loader takes over from ABL (this board replaces BootShim; the deviation is recorded in docs/) |
+| 2 UEFI firmware | done | Mu firmware volume at rawdump + 64 MiB, DXE log, ConIn fix |
+| 3 boot manager | done | UniXNU menu, config and BootEntry |
+| 4 XNU loader | done | DarwinBoot MARK #29, EBS ok |
+| 5 kernel | done | platform expert, IOKit, kext loading, console |
+
+### UFS (official porting/ufs completion conditions)
+
+| Condition | State | Evidence |
+|---|---|---|
+| 1 registers | done | CAP=0xd5c7031f, HCS=0x10f, HCE=1 |
+| 2 DMA / queue ownership | done | list installed and started (rsr=1); the controller fetches only the firmware queue region |
+| 3 command completion | done | TEST UNIT READY lun0: ocs=0 resp=00 scsi=00 db=0 |
+| 4 known-block read | done | READ(10) LBA 1 returns sig=4546492050415254 (EFI PART), entlba=2 cnt=32 esz=128; entries parsed, userdata found at first=0x4a6328 |
+| 5 root volume | partial | official SHNGROOT manifest read through the kernel transport; policy checks pass (img=0x1f3800000, w0=0x14fe08600, w1=0xa3800000, bounds=1 ord=1); OS window block 4 returns NXSB; publishing the windows as IOMedia is next |
 | 6 persistence, 7 performance | not started | |
 
-Cold start (`native-ufs-cold-init=1`) completes the vendor sequence: PHY calibration,
-SERDES start, PCS ready (`0x400 00000001`), HCE, `DME_LINKSTARTUP` (`HCS=0x10f`,
-`UPMCRS=1`).  The UFS GCC branches are all enabled when read with the SM8850 offsets
-from data-a-live's `pandora_ufs_clocks()`.
+Cold start (native-ufs-cold-init=1) runs the vendor sequence: PHY calibration, SERDES start, PCS ready (0x400 00000001), HCE, DME_LINKSTARTUP (HCS=0x10f, UPMCRS=1). The UFS GCC branches read enabled with the SM8850 offsets from data-a-live pandora_ufs_clocks(); stream 0x60 is forced to match and bypass (SMR[0]=0x80000060, S2CR[0]=1) and every wait is a bounded busy-wait, because IODelay blocks on the timer on this build.
 
-The stream is forced to match and bypass (`SMR[0]=0x80000060`, `S2CR[0]=1`), waits are
-bounded busy-waits (the official page warns that `IODelay` blocks on the timer), and the
-request descriptor is built explicitly (`u7=0x01000001`, `prd0=phys+6144`, `prd3=7`).
+### Storage work proven on the unit
 
-GPT data measured from the unit:
+* the official userdata image was built (7.8 GiB, SHNGROOT v1, OS 5,635,081,728 B at 0x100000, SystemOS 2,743,074,816 B at 0x150000000), flashed to userdata (LBA 4,875,048) and read back byte-identical;
+* nxRootRead issues one 4 KiB READ(10) per command through the adopted firmware queue, maintains the cache by physical address and copies into the caller buffer; the block device reads through it, and a probe read of the OS window returns the APFS container superblock NXSB;
+* data-a-live pinfile works on this unit: pinned files of 64 MiB and 16 GiB, extents (1 and 11 segments), and rawtest/rawcheck through /dev/block/sda12, so the dm-default-key layer can be bypassed as on the reference device;
+* the kernel window covers the firmware queue: DarwinBoot prefers a free run containing 0xC3B00000, falls back for QEMU, and reports a covered range up to 0xD0000000, so arm_vm_init accepts those physical addresses.
 
-```
-hdr=1 ents=1 entlba=2 cnt=32 used=12 userdata=11 first=4a6328 last=ed4f7fa n0=ssd
-```
+### Driver patch and build state
 
-`first=0x4a6328` is 4,875,048, the same `start_sector` the vendor `rawprogram0.xml`
-gives for `userdata`; the first entry name decodes to `ssd`.
+* patches/drivers/native-ufs-adopt-root.patch is the reviewable diff for the adopt-root work (block reader, manifest layout, startRoot preference, probe=12 reporting);
+* scripts/patch-native-ufs-cold-init.py applies it and is NOT wired into board.toml, because ./unixnu tree runs the board hooks during regeneration: a wired hook is applied twice and the second application is rejected. Without the hook the tree builds clean (kernel_rc=0, no compiler errors);
+* two safe ways to finish are recorded in docs/STATUS-2026-11-19.md section 10: restore the previous idempotent string-patcher hook and keep the diff as the record, or regenerate the diff in a scratch directory from the pinned upstream revision.
 
-### Open issues
+### Open issues and next steps
 
-1. **Root volume**: read userdata's first block (LBA 4,875,048), identify the file system
-   and locate the iOS root window (RootLayout / root IOMedia from the official page).
-2. **Kernel window vs firmware queue**: DarwinBoot now prefers a free run containing
-   `0xC3B00000`, falls back on QEMU, and reports a covered range up to `0xD0000000`.
-   Keep this in mind before changing any memory constant.
-3. **Request descriptors are built inline** in the probe; the driver-side path
-   (`adoptAndRead` lambda) still needs the same field layout check before production use.
-4. **Vendor hand-off**: the DT declares `qcom,handoff-smrs = <0x800 0x02>` but the
-   bootloader does not perform it; the switch lives in a signed `xbl_config` MBN.
-5. **Stage 7 prerequisites**: ADT `unixnu,adt-name` on peripherals, `/chosen`
-   `osenvironment`/`crypto-hash-method`/`root-matching`, `memory-map` placeholders.
-6. **Observability**: panic text is still only on the panel; the console buffer covers
-   normal prints.
+1. Run probe=12 on the unit and expect publication done=1 published=2 (OS and SystemOS as block devices).
+2. Add /chosen/root-matching with the OS volume UUID so XNU selects that window as root.
+3. The production hostBringUp path (own DMA + full SMMU window) does not work on this board; the adopt transport is the supported route. Details in docs/STATUS-2026-11-19.md.
+4. ADT gaps for userland: peripheral unixnu,adt-name, /chosen osenvironment/crypto-hash-method/root-matching, memory-map placeholders.
+5. Panic text still only reaches the panel; the console buffer covers normal prints.
