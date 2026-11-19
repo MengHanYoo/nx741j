@@ -132,9 +132,17 @@ NX_CAP = r'''  if (level == 9) {
     uint32_t ver = (uint32_t)h[8] | ((uint32_t)h[9] << 8) | ((uint32_t)h[10] << 16) | ((uint32_t)h[11] << 24);
     uint32_t cnt = (uint32_t)h[12] | ((uint32_t)h[13] << 8) | ((uint32_t)h[14] << 16) | ((uint32_t)h[15] << 24);
     uint64_t img = 0; for (int i = 0; i < 8; i++) img |= (uint64_t)h[16 + i] << (8 * i);
-    uint64_t woff = 0, wsz = 0; for (int i = 0; i < 8; i++) woff |= (uint64_t)h[24 + 32 + i] << (8 * i);
-    for (int i = 0; i < 8; i++) wsz |= (uint64_t)h[24 + 40 + i] << (8 * i);
-    panic ("NATIVE_UFS root: ok=%d magic=%c%c%c%c%c%c%c%c ver=%u cnt=%u img=%llx w0off=%llx w0sz=%llx", ok ? 1 : 0, h[0],h[1],h[2],h[3],h[4],h[5],h[6],h[7], ver, cnt, img, woff, wsz);
+    uint64_t w0off = 0, w0sz = 0, w1off = 0, w1sz = 0;
+    for (int i = 0; i < 8; i++) w0off |= (uint64_t)h[24 + 32 + i] << (8 * i);
+    for (int i = 0; i < 8; i++) w0sz |= (uint64_t)h[24 + 40 + i] << (8 * i);
+    for (int i = 0; i < 8; i++) w1off |= (uint64_t)h[24 + 128 + 32 + i] << (8 * i);
+    for (int i = 0; i < 8; i++) w1sz |= (uint64_t)h[24 + 128 + 40 + i] << (8 * i);
+    const uint64_t partBytes = 1024ULL * 1024 * 1024 * 1024;
+    bool bounds = img >= 4096 && !(img & 4095) && img <= partBytes;
+    bounds = bounds && !(w0off & 4095) && w0off >= 4096 && w0sz && w0off < img && w0sz <= img - w0off;
+    bounds = bounds && !(w1off & 4095) && w1off >= 4096 && w1sz && w1off < img && w1sz <= img - w1off;
+    bool ordered = w0off + w0sz <= w1off;
+    panic ("NATIVE_UFS root: ok=%d magic=%c%c%c%c%c%c%c%c ver=%u cnt=%u img=%llx w0=%c%c o=%llx sz=%llx w1=%c%c o=%llx sz=%llx bounds=%d ord=%d", ok ? 1 : 0, h[0],h[1],h[2],h[3],h[4],h[5],h[6],h[7], ver, cnt, img, h[24], h[26], w0off, w0sz, h[24+128], h[24+128+2], w1off, w1sz, bounds ? 1 : 0, ordered ? 1 : 0);
   }
 '''
 text = text.replace('  if (level == 9 && blockSize[0] != 4096) {', NX_CAP + '  if (level == 9 && blockSize[0] != 4096) {', 1)
