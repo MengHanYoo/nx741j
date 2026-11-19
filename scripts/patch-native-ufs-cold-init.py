@@ -178,5 +178,8 @@ text = text.replace('  gRootDiagnostic.stage = "NOP OUT";', '  printf ("NATIVE_U
 text = text.replace('  gRootDiagnostic.stage = "power mode query";', '  printf ("NATIVE_UFS bringup: step power query\\n");\n  gRootDiagnostic.stage = "power mode query";', 1)
 text = text.replace('    gRootDiagnostic.stage = "device wake";', '    printf ("NATIVE_UFS bringup: step wake\\n");\n    gRootDiagnostic.stage = "device wake";', 1)
 text = text.replace('  gRootDiagnostic.stage = "LUN ready";', '  printf ("NATIVE_UFS bringup: step tur loop\\n");\n  gRootDiagnostic.stage = "LUN ready";', 1)
+# --- NX_NOP_RC: report the NOP OUT result before the root check ---
+text = text.replace('  if (hostNop () != kIOReturnSuccess) {', '  { IOReturn nx_nop = hostNop (); printf ("NATIVE_UFS bringup: nop rc=%d dbr=%08x is=%08x\\n", (int)nx_nop, read32 (gHost.hc, 0x58), read32 (gHost.hc, 0x20)); if (nx_nop != kIOReturnSuccess) {', 1)
+text = text.replace('    *why = "NOP OUT";\n    return false;\n  }', '    *why = "NOP OUT";\n    return false;\n  } }', 1)
 SOURCE.write_text(text)
 print('== patch-native-ufs-cold-init: applied')
