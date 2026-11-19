@@ -110,8 +110,7 @@ NX_CAP = r'''  if (level == 9) {
     auto issue = [&] (uint32_t lba, uint32_t bytes) -> bool {
       zero32 (u, 32); zero32 (c, 1024 + 16); zero32 (virt + dataOffset, bytes + 64);
       c[0] = 0x01; c[1] = 0x40; c[2] = 0; c[3] = 1; be32 (c + 12, bytes);
-      c[16] = 0x28; c[21] = (uint8_t)(lba & 0xff); c[22] = 0; c[23] = (uint8_t)((bytes / 4096) & 0xff);
-      /* READ(10): LBA at bytes 2..5 (big endian), transfer length at 7..8 */
+      c[16] = 0x28;
       c[16 + 2] = (uint8_t)(lba >> 24); c[16 + 3] = (uint8_t)(lba >> 16); c[16 + 4] = (uint8_t)(lba >> 8); c[16 + 5] = (uint8_t)lba;
       c[16 + 7] = (uint8_t)((bytes / 4096) >> 8); c[16 + 8] = (uint8_t)(bytes / 4096);
       *(uint32_t *)(u + 0) = 0x11000000U; *(uint32_t *)(u + 8) = 0x0fU;
@@ -128,26 +127,14 @@ NX_CAP = r'''  if (level == 9) {
       flush_dcache64 ((addr64_t)phys, 16384, TRUE);
       return d;
     };
-    bool hOk = issue (1, 4096);
+    bool ok = issue (0x004a6328u, 4096);
     const uint8_t *h = virt + dataOffset;
-    uint64_t entLba = 0; for (int i = 0; i < 8; i++) entLba |= (uint64_t)h[72 + i] << (8 * i);
-    uint32_t entCnt = (uint32_t)h[80] | ((uint32_t)h[81] << 8) | ((uint32_t)h[82] << 16) | ((uint32_t)h[83] << 24);
-    bool eOk = issue ((uint32_t)entLba, 4096);
-    const uint8_t *e = virt + dataOffset;
-    int found = -1; uint64_t first = 0, last = 0; unsigned shown = 0; char nm[9];
-    for (uint32_t i = 0; i < entCnt && i < 32; i++) {
-      const uint8_t *p0 = e + i * 128;
-      if (p0[0] == 0 && p0[1] == 0 && p0[2] == 0 && p0[3] == 0) continue;
-      const uint8_t *n = p0 + 56;
-      if (n[0] == 'u' && n[2] == 's' && n[4] == 'e' && n[6] == 'r' && n[8] == 'd' && n[10] == 'a' && n[12] == 't' && n[14] == 'a') {
-        found = (int)i;
-        for (int k = 0; k < 8; k++) first |= (uint64_t)p0[32 + k] << (8 * k);
-        for (int k = 0; k < 8; k++) last |= (uint64_t)p0[40 + k] << (8 * k);
-      }
-      if (i < 3) { for (int k = 0; k < 8; k++) nm[k] = (char)n[k * 2]; nm[8] = 0; if (i == 0) { for (int k = 0; k < 8; k++) nm[k] = (char)(e[56 + k * 2]); } }
-      shown++;
-    }
-    panic ("NATIVE_UFS gpt2: hdr=%d ents=%d entlba=%llx cnt=%u used=%u userdata=%d first=%llx last=%llx n0=%02x%02x%02x%02x", hOk ? 1 : 0, eOk ? 1 : 0, entLba, entCnt, shown, found, first, last, e[56], e[58], e[60], e[62]);
+    uint32_t ver = (uint32_t)h[8] | ((uint32_t)h[9] << 8) | ((uint32_t)h[10] << 16) | ((uint32_t)h[11] << 24);
+    uint32_t cnt = (uint32_t)h[12] | ((uint32_t)h[13] << 8) | ((uint32_t)h[14] << 16) | ((uint32_t)h[15] << 24);
+    uint64_t img = 0; for (int i = 0; i < 8; i++) img |= (uint64_t)h[16 + i] << (8 * i);
+    uint64_t woff = 0, wsz = 0; for (int i = 0; i < 8; i++) woff |= (uint64_t)h[24 + 32 + i] << (8 * i);
+    for (int i = 0; i < 8; i++) wsz |= (uint64_t)h[24 + 40 + i] << (8 * i);
+    panic ("NATIVE_UFS root: ok=%d magic=%c%c%c%c%c%c%c%c ver=%u cnt=%u img=%llx w0off=%llx w0sz=%llx", ok ? 1 : 0, h[0],h[1],h[2],h[3],h[4],h[5],h[6],h[7], ver, cnt, img, woff, wsz);
   }
 '''
 text = text.replace('  if (level == 9 && blockSize[0] != 4096) {', NX_CAP + '  if (level == 9 && blockSize[0] != 4096) {', 1)
@@ -155,5 +142,41 @@ text, _n = _nxre.subn(r'panic \("NATIVE_UFS gpt: blockSize=.*?\);', NX_PRD_DUMP,
 print('== prdt dump patched:', _n)
 text = text.replace('utrd0=%08x utrd2=%08x utrd4=%08x ie=%08x', 'utrd0=%08x utrd2=%08x utrd4=%08x utrd6=%08x utrd7=%08x ie=%08x')
 text = text.replace('*reinterpret_cast<volatile uint32_t *> (utrd + 16),\n            read32 (hc, 0x24));', '*reinterpret_cast<volatile uint32_t *> (utrd + 16), *reinterpret_cast<volatile uint32_t *> (utrd + 24), *reinterpret_cast<volatile uint32_t *> (utrd + 28),\n            read32 (hc, 0x24));')
+# --- production bring-up on this board: firmware queue region + 4 KiB SMMU page ---
+text = text.replace('  kDataMax = 131072,', '  kDataMax = 8192,   /* NX_FW_REGION: one slot must fit the firmware 16 KiB queue */')
+text = text.replace('mapPhys (0x15000000ULL, 0xd0000, gHost.smmuMap)', 'mapPhys (0x15000000ULL, 0x1000, gHost.smmuMap)')
+text = text.replace('  gHost.smmu = gHost.smmuMap->getVirtualAddress ();', '  if (!gHost.smmuMap) { *why = "smmu map"; return false; }\n  gHost.smmu = gHost.smmuMap->getVirtualAddress ();')
+FW = '''  {
+    static OSSharedPtr<IOMemoryMap> fwMap;
+    uint64_t fw = ((uint64_t)read32 (gHost.hc, 0x54) << 32) | read32 (gHost.hc, 0x50);
+    if (fw && !(fw & 0xfff)) {
+      IOMemoryDescriptor *region = IOMemoryDescriptor::withPhysicalAddress (fw, 16384, kIODirectionInOut);
+      if (region) {
+        fwMap = OSSharedPtr<IOMemoryMap> (region->map (kIOMapAnywhere), OSNoRetain);
+        region->release ();
+      }
+      if (fwMap) {
+        gHost.virt = reinterpret_cast<uint8_t *> (fwMap->getVirtualAddress ());
+        gHost.phys = fw;
+        gHost.dmaBytes = 16384;
+        printf ("NATIVE_UFS bringup: firmware region %llx\\n", (unsigned long long)fw);
+      }
+    }
+  }
+'''
+text = text.replace('  for (unsigned attempt = 0; attempt < 3 && !gHost.virt; ++attempt) {', FW + '  for (unsigned attempt = 0; attempt < 3 && !gHost.virt; ++attempt) {', 1)
+# --- NX_FW_LAYOUT: shrink the per-slot data area so one slot fits 16 KiB ---
+LAYOUT = ROOT / 'drivers/ShengUfs/RootTransportLayout.h'
+if LAYOUT.is_file():
+    lt = LAYOUT.read_text()
+    if 'kDataMax = 131072,' in lt:
+        lt = lt.replace('kDataMax = 131072,', 'kDataMax = 8192,   /* NX_FW_LAYOUT: one slot fits the firmware 16 KiB queue */', 1)
+        LAYOUT.write_text(lt)
+        print('== NX_FW_LAYOUT: kDataMax = 8192')
+# --- NX_STEP_TRACE: one line per bring-up step after the list runs ---
+text = text.replace('  gRootDiagnostic.stage = "NOP OUT";', '  printf ("NATIVE_UFS bringup: step nop\\n");\n  gRootDiagnostic.stage = "NOP OUT";', 1)
+text = text.replace('  gRootDiagnostic.stage = "power mode query";', '  printf ("NATIVE_UFS bringup: step power query\\n");\n  gRootDiagnostic.stage = "power mode query";', 1)
+text = text.replace('    gRootDiagnostic.stage = "device wake";', '    printf ("NATIVE_UFS bringup: step wake\\n");\n    gRootDiagnostic.stage = "device wake";', 1)
+text = text.replace('  gRootDiagnostic.stage = "LUN ready";', '  printf ("NATIVE_UFS bringup: step tur loop\\n");\n  gRootDiagnostic.stage = "LUN ready";', 1)
 SOURCE.write_text(text)
 print('== patch-native-ufs-cold-init: applied')
