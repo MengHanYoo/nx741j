@@ -15,7 +15,7 @@ ROOT = Path(__file__).resolve().parents[1]
 PATCH = ROOT / 'patches/drivers/native-ufs-adopt-root.patch'
 EMBEDDED = r'''--- a/drivers/ShengUfs/NativeUfs.cpp
 +++ b/drivers/ShengUfs/NativeUfs.cpp
-@@ -331,6 +331,51 @@
+@@ -441,6 +441,53 @@
    report[2] = sctlr;
  }
  
@@ -64,10 +64,12 @@ EMBEDDED = r'''--- a/drivers/ShengUfs/NativeUfs.cpp
 +  }
 +  return true;
 +}
++static bool nxAdoptBind (void);
++static bool nxAdoptRootLayout (RootLayout *layout, const char **why);
  void NativeUfs::adoptAndRead (unsigned level)
  {
    OSSharedPtr<IOMemoryMap> hcMap;
-@@ -358,6 +403,7 @@
+@@ -468,6 +515,7 @@
    }
    uint8_t *virt = reinterpret_cast<uint8_t *> (regionMap->getVirtualAddress ());
    uint64_t phys = fwList;
@@ -75,8 +77,8 @@ EMBEDDED = r'''--- a/drivers/ShengUfs/NativeUfs.cpp
    zero32 (virt, 16384);
    cacheClean (virt, 16384);
    // Layout: [0,4096) request list (slot 0 used), [4096,5120) command + response UPIU +
-@@ -1517,7 +1563,7 @@
-     void unlock () { IOLockUnlock (mutex); }
+@@ -2208,7 +2256,7 @@
+     void unlock () {}
      IOReturn read (uint64_t lba, uint32_t blocks, void *out) {
        uint64_t t0 = timerTicks ();
 -      IOReturn r = hostRead4k (0, lba, blocks, out);
@@ -84,9 +86,12 @@ EMBEDDED = r'''--- a/drivers/ShengUfs/NativeUfs.cpp
        __atomic_fetch_add (&native_ufs_read_ticks, timerTicks () - t0, __ATOMIC_RELAXED);
        return r;
      }
-@@ -1924,7 +1970,9 @@
+@@ -2668,8 +2716,12 @@
+     thread_deallocate (thread);
      return true;
    }
++static bool nxAdoptBind (void);
++static bool nxAdoptRootLayout (RootLayout *layout, const char **why);
    if (probe == 12) {
 +    printf ("NATIVE_UFS: adopt bind %d\n", nxAdoptBind () ? 1 : 0);
      bool published = startRoot (provider);
@@ -94,7 +99,7 @@ EMBEDDED = r'''--- a/drivers/ShengUfs/NativeUfs.cpp
      if (!published) {
        panic ("NATIVE_UFS media report: root start failed (blocks=%u)", native_ufs_blocks_published);
      }
-@@ -1941,19 +1989,95 @@
+@@ -2686,19 +2738,95 @@
    return false;
  }
  
