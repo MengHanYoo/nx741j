@@ -229,3 +229,46 @@ wsl bash _tmp/t2/fw_2017.sh          # 固件
 | 固件重建 | 构建实际编译的是 `UniXNU/drivers/DarwinBoot`（不是设备仓库副本）；两份副本现已同步这两处改动 |
 | 设备状态 | 已恢复：原厂 `efisp`、原厂 `boot_a`/`boot_b`、`misc` 已清，Android 可启动 |
 | 下次开工 | 刷 payload `2ca4c0e2` + 固件 `8b835dff`，确认 `size 0x20000000` 且无 `illegal PA`，然后读 GPT 头 |
+
+## 当前归档 — 2026-11-19（UFS 里程碑）
+
+### 存储状态
+
+| 官方 UFS 完成条件（porting/ufs） | 状态 | 证据 |
+|---|---|---|
+| 1 寄存器 | 完成 | `CAP=0xd5c7031f`、`HCS=0x10f`、`HCE=1` |
+| 2 DMA / 队列所有权 | 完成 | 队列安装并启动（`rsr=1`），请求只从固件队列区被取走 |
+| 3 命令完成 | **完成** | `TEST UNIT READY lun0: ocs=0 resp=00 scsi=00 db=0 is=5` |
+| 4 已知块读取 | **完成** | `READ(10)` LBA 1 → `sig=4546492050415254`（EFI PART）、`entlba=2 cnt=32 esz=128` |
+| 5 根卷 | 下一步 | 已定位 userdata，尚未读其首块 |
+| 6 持久化、7 性能 | 未开始 | |
+
+冷启动（`native-ufs-cold-init=1`）完整走完厂商序列：PHY 校准、SERDES 启动、PCS 就绪
+（`0x400 00000001`）、HCE、`DME_LINKSTARTUP`（`HCS=0x10f`、`UPMCRS=1`）。用 data-a-live
+`pandora_ufs_clocks()` 的 SM8850 偏移读取时，UFS 的 GCC 分支全部为使能状态。
+
+流被强制匹配并旁路（`SMR[0]=0x80000060`、`S2CR[0]=1`），等待改为有界忙等（官方页明确
+`IODelay` 会阻塞在定时器上），请求描述符显式构造（`u7=0x01000001`、`prd0=phys+6144`、`prd3=7`）。
+
+本机实测 GPT 数据：
+
+```
+hdr=1 ents=1 entlba=2 cnt=32 used=12 userdata=11 first=4a6328 last=ed4f7fa n0=ssd
+```
+
+`first=0x4a6328` = 4,875,048，与厂商 `rawprogram0.xml` 里 `userdata` 的 `start_sector` 一致；
+首个分区名解码为 `ssd`。
+
+### 待办与未决问题
+
+1. **根卷**：读 userdata 首块（LBA 4,875,048），确认文件系统并定位 iOS 根卷窗口
+   （官方页的 RootLayout / 根 IOMedia）。
+2. **内核窗口与固件队列**：DarwinBoot 现在优先选择包含 `0xC3B00000` 的空闲段，QEMU 下回退，
+   并把上报覆盖范围扩到 `0xD0000000`；改任何内存常量前先看这条。
+3. **请求描述符目前在探针里内联构造**；驱动侧 `adoptAndRead` 的 lambda 在生产使用前需要做同样的
+   字段核对。
+4. **厂商交接**：DT 声明 `qcom,handoff-smrs = <0x800 0x02>`，但引导程序没有执行；开关在签名
+   `xbl_config` MBN 里。
+5. **阶段 7 前置**：ADT 外设 `unixnu,adt-name`、`/chosen` 的 `osenvironment`/`crypto-hash-method`/
+   `root-matching`、`memory-map` 占位符。
+6. **可观测性**：panic 文本仍只能拍屏，console 缓冲只覆盖普通打印。

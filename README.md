@@ -323,3 +323,50 @@ wsl bash _tmp/t2/fw_2017.sh          # firmware
 | Firmware rebuilds | the build compiles DarwinBoot from `UniXNU/drivers/DarwinBoot` (not the device repo copy); both copies now carry the same two changes |
 | Device state | restored: stock `efisp`, stock `boot_a`/`boot_b`, `misc` cleared, Android boots |
 | Next session | flash payload `2ca4c0e2` with firmware `8b835dff`, confirm `size 0x20000000` and no `illegal PA`, then read the GPT header |
+
+## Current archive — 2026-11-19 (UFS milestone)
+
+### Storage state
+
+| Official UFS condition (porting/ufs) | State | Evidence |
+|---|---|---|
+| 1 registers | done | `CAP=0xd5c7031f`, `HCS=0x10f`, `HCE=1` |
+| 2 DMA / queue ownership | done | list installed and started (`rsr=1`), requests are fetched only from the firmware queue region |
+| 3 command completion | **done** | `TEST UNIT READY lun0: ocs=0 resp=00 scsi=00 db=0 is=5` |
+| 4 known-block read | **done** | `READ(10)` LBA 1 -> `sig=4546492050415254` (EFI PART), `entlba=2 cnt=32 esz=128` |
+| 5 root volume | next | userdata located, first block not read yet |
+| 6 persistence, 7 performance | not started | |
+
+Cold start (`native-ufs-cold-init=1`) completes the vendor sequence: PHY calibration,
+SERDES start, PCS ready (`0x400 00000001`), HCE, `DME_LINKSTARTUP` (`HCS=0x10f`,
+`UPMCRS=1`).  The UFS GCC branches are all enabled when read with the SM8850 offsets
+from data-a-live's `pandora_ufs_clocks()`.
+
+The stream is forced to match and bypass (`SMR[0]=0x80000060`, `S2CR[0]=1`), waits are
+bounded busy-waits (the official page warns that `IODelay` blocks on the timer), and the
+request descriptor is built explicitly (`u7=0x01000001`, `prd0=phys+6144`, `prd3=7`).
+
+GPT data measured from the unit:
+
+```
+hdr=1 ents=1 entlba=2 cnt=32 used=12 userdata=11 first=4a6328 last=ed4f7fa n0=ssd
+```
+
+`first=0x4a6328` is 4,875,048, the same `start_sector` the vendor `rawprogram0.xml`
+gives for `userdata`; the first entry name decodes to `ssd`.
+
+### Open issues
+
+1. **Root volume**: read userdata's first block (LBA 4,875,048), identify the file system
+   and locate the iOS root window (RootLayout / root IOMedia from the official page).
+2. **Kernel window vs firmware queue**: DarwinBoot now prefers a free run containing
+   `0xC3B00000`, falls back on QEMU, and reports a covered range up to `0xD0000000`.
+   Keep this in mind before changing any memory constant.
+3. **Request descriptors are built inline** in the probe; the driver-side path
+   (`adoptAndRead` lambda) still needs the same field layout check before production use.
+4. **Vendor hand-off**: the DT declares `qcom,handoff-smrs = <0x800 0x02>` but the
+   bootloader does not perform it; the switch lives in a signed `xbl_config` MBN.
+5. **Stage 7 prerequisites**: ADT `unixnu,adt-name` on peripherals, `/chosen`
+   `osenvironment`/`crypto-hash-method`/`root-matching`, `memory-map` placeholders.
+6. **Observability**: panic text is still only on the panel; the console buffer covers
+   normal prints.
