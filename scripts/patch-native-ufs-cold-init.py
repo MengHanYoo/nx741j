@@ -103,5 +103,57 @@ if ANCHOR_DECL not in text or ANCHOR_CALL not in text:
 
 text = text.replace(ANCHOR_DECL, ANCHOR_DECL + '\n' + DECLARATION, 1)
 text = text.replace(ANCHOR_CALL, CALL + '\n' + PROBE_LOG + '\n' + ANCHOR_CALL, 1)
+import re as _nxre
+NX_PRD_DUMP = ('panic ("NATIVE_UFS gpt: bs=%08x off=%u hits=%u d0=%08x utrd7=%08x prd0=%08x prd3=%08x prdA=%08x rsp0=%08x resid=%08x rsp16=%08x", blockSize[0], nx_off, nx_hits, *(volatile uint32_t *)(virt + dataOffset), *(volatile uint32_t *)(virt + 28), *(volatile uint32_t *)(virt + ucdOffset + prdtOffset + 0), *(volatile uint32_t *)(virt + ucdOffset + prdtOffset + 12), (uint32_t)(phys + dataOffset), *(volatile uint32_t *)(virt + ucdOffset + rspOffset + 0), *(volatile uint32_t *)(virt + ucdOffset + rspOffset + 12), *(volatile uint32_t *)(virt + ucdOffset + rspOffset + 16));')
+NX_CAP = r'''  if (level == 9) {
+    uint8_t *u = virt; uint8_t *c = virt + ucdOffset;
+    auto issue = [&] (uint32_t lba, uint32_t bytes) -> bool {
+      zero32 (u, 32); zero32 (c, 1024 + 16); zero32 (virt + dataOffset, bytes + 64);
+      c[0] = 0x01; c[1] = 0x40; c[2] = 0; c[3] = 1; be32 (c + 12, bytes);
+      c[16] = 0x28; c[21] = (uint8_t)(lba & 0xff); c[22] = 0; c[23] = (uint8_t)((bytes / 4096) & 0xff);
+      /* READ(10): LBA at bytes 2..5 (big endian), transfer length at 7..8 */
+      c[16 + 2] = (uint8_t)(lba >> 24); c[16 + 3] = (uint8_t)(lba >> 16); c[16 + 4] = (uint8_t)(lba >> 8); c[16 + 5] = (uint8_t)lba;
+      c[16 + 7] = (uint8_t)((bytes / 4096) >> 8); c[16 + 8] = (uint8_t)(bytes / 4096);
+      *(uint32_t *)(u + 0) = 0x11000000U; *(uint32_t *)(u + 8) = 0x0fU;
+      *(uint32_t *)(u + 16) = (uint32_t)(phys + ucdOffset); *(uint32_t *)(u + 20) = (uint32_t)((phys + ucdOffset) >> 32);
+      *(uint32_t *)(u + 24) = (512U >> 2) | ((rspOffset >> 2) << 16);
+      *(uint32_t *)(u + 28) = 1U | ((prdtOffset >> 2) << 16);
+      *(uint32_t *)(c + prdtOffset + 0) = (uint32_t)(phys + dataOffset);
+      *(uint32_t *)(c + prdtOffset + 4) = (uint32_t)((phys + dataOffset) >> 32);
+      *(uint32_t *)(c + prdtOffset + 8) = 0; *(uint32_t *)(c + prdtOffset + 12) = bytes - 1;
+      flush_dcache64 ((addr64_t)phys, 16384, TRUE);
+      write32 (hc, 0x20, 0xffffffffU); write32 (hc, 0x58, 1);
+      bool d = false;
+      for (unsigned cl = 0; cl < 400000; cl++) { if (!(read32 (hc, 0x58) & 1)) { d = true; break; } { volatile unsigned s = 0; for (s = 0; s < 4000; s++) { __asm__ volatile ("" ::: "memory"); } } }
+      flush_dcache64 ((addr64_t)phys, 16384, TRUE);
+      return d;
+    };
+    bool hOk = issue (1, 4096);
+    const uint8_t *h = virt + dataOffset;
+    uint64_t entLba = 0; for (int i = 0; i < 8; i++) entLba |= (uint64_t)h[72 + i] << (8 * i);
+    uint32_t entCnt = (uint32_t)h[80] | ((uint32_t)h[81] << 8) | ((uint32_t)h[82] << 16) | ((uint32_t)h[83] << 24);
+    bool eOk = issue ((uint32_t)entLba, 4096);
+    const uint8_t *e = virt + dataOffset;
+    int found = -1; uint64_t first = 0, last = 0; unsigned shown = 0; char nm[9];
+    for (uint32_t i = 0; i < entCnt && i < 32; i++) {
+      const uint8_t *p0 = e + i * 128;
+      if (p0[0] == 0 && p0[1] == 0 && p0[2] == 0 && p0[3] == 0) continue;
+      const uint8_t *n = p0 + 56;
+      if (n[0] == 'u' && n[2] == 's' && n[4] == 'e' && n[6] == 'r' && n[8] == 'd' && n[10] == 'a' && n[12] == 't' && n[14] == 'a') {
+        found = (int)i;
+        for (int k = 0; k < 8; k++) first |= (uint64_t)p0[32 + k] << (8 * k);
+        for (int k = 0; k < 8; k++) last |= (uint64_t)p0[40 + k] << (8 * k);
+      }
+      if (i < 3) { for (int k = 0; k < 8; k++) nm[k] = (char)n[k * 2]; nm[8] = 0; if (i == 0) { for (int k = 0; k < 8; k++) nm[k] = (char)(e[56 + k * 2]); } }
+      shown++;
+    }
+    panic ("NATIVE_UFS gpt2: hdr=%d ents=%d entlba=%llx cnt=%u used=%u userdata=%d first=%llx last=%llx n0=%02x%02x%02x%02x", hOk ? 1 : 0, eOk ? 1 : 0, entLba, entCnt, shown, found, first, last, e[56], e[58], e[60], e[62]);
+  }
+'''
+text = text.replace('  if (level == 9 && blockSize[0] != 4096) {', NX_CAP + '  if (level == 9 && blockSize[0] != 4096) {', 1)
+text, _n = _nxre.subn(r'panic \("NATIVE_UFS gpt: blockSize=.*?\);', NX_PRD_DUMP, text, count=1, flags=_nxre.S)
+print('== prdt dump patched:', _n)
+text = text.replace('utrd0=%08x utrd2=%08x utrd4=%08x ie=%08x', 'utrd0=%08x utrd2=%08x utrd4=%08x utrd6=%08x utrd7=%08x ie=%08x')
+text = text.replace('*reinterpret_cast<volatile uint32_t *> (utrd + 16),\n            read32 (hc, 0x24));', '*reinterpret_cast<volatile uint32_t *> (utrd + 16), *reinterpret_cast<volatile uint32_t *> (utrd + 24), *reinterpret_cast<volatile uint32_t *> (utrd + 28),\n            read32 (hc, 0x24));')
 SOURCE.write_text(text)
 print('== patch-native-ufs-cold-init: applied')

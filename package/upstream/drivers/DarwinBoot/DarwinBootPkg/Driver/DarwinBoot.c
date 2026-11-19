@@ -718,7 +718,7 @@ AllocateWindow (KERNEL *Kernel, UINT64 WindowSize, EFI_PHYSICAL_ADDRESS *Address
   Status = GetMap (&Map, &Capacity, &Size, &Key, &Stride);
   if (EFI_ERROR (Status)) { if (Map != NULL) { FreePool (Map); } return Status; }
   Status = EFI_OUT_OF_RESOURCES;
-  Status = EFI_OUT_OF_RESOURCES;
+  EFI_PHYSICAL_ADDRESS FallbackWindow = 0;
   for (Offset = 0; Offset + Stride <= Size; Offset += Stride) {
     Descriptor = (EFI_MEMORY_DESCRIPTOR *)((UINT8 *)Map + Offset);
     if ((Descriptor->Type != EfiConventionalMemory) || (Descriptor->NumberOfPages == 0)) { continue; }
@@ -728,8 +728,17 @@ AllocateWindow (KERNEL *Kernel, UINT64 WindowSize, EFI_PHYSICAL_ADDRESS *Address
     if (RunBytes > BestBytes) { BestBytes = RunBytes; BestStart = Descriptor->PhysicalStart; }
     Candidate = ALIGN_VALUE (Descriptor->PhysicalStart, BLOCK_SIZE) + (Kernel->Base & (BLOCK_SIZE - 1));
     if ((Candidate < Descriptor->PhysicalStart) || (End < Candidate) || (End - Candidate < WindowSize)) { continue; }
+    /* NX741J: the UFS request list sits near 0xc3b00000; the window must cover it. */
+    if ((Candidate > 0xC3B00000ULL) || ((Candidate + WindowSize) <= 0xC3B00000ULL)) {
+      if (FallbackWindow == 0) { FallbackWindow = Candidate; }
+      continue;
+    }
     Status = gBS->AllocatePages (AllocateAddress, EfiLoaderCode, EFI_SIZE_TO_PAGES (WindowSize), &Candidate);
     if (!EFI_ERROR (Status)) { *Address = Candidate; break; }
+  }
+  if (EFI_ERROR (Status) && (FallbackWindow != 0)) {
+    Status = gBS->AllocatePages (AllocateAddress, EfiLoaderCode, EFI_SIZE_TO_PAGES (WindowSize), &FallbackWindow);
+    if (!EFI_ERROR (Status)) { *Address = FallbackWindow; }
   }
   if (EFI_ERROR (Status)) {
     CHAR16 Line[96];
@@ -1031,7 +1040,6 @@ Boot (
   if (!AdtNode (Tree, TreeSize, &Offset, 0, 3, &RamdiskOffset, &TrustCacheOffset, &AddonOffset, &PolicyOffset, &WindowSize, &KeepPacked) || (Offset != TreeSize)) { Status = EFI_COMPROMISED_DATA; goto Fail; }
   if (KeepPacked && (!RamdiskPacked || (RamdiskOffset == MAX_UINTN))) { Status = EFI_COMPROMISED_DATA; goto Fail; }
   if (WindowSize == 0) { WindowSize = WINDOW_SIZE; }
-  if (WindowSize < SIZE_512MB) { WindowSize = SIZE_512MB; }
   Mark (L"[0j] tree ok", 0);
   mDbProbe.Step = 3; DbProbeWrite (Request);
   {
@@ -1152,6 +1160,14 @@ Boot (
   Args->VirtualBase = Kernel.Base;
   Args->PhysicalBase = Address;
   Args->MemorySize = WindowSize;
+  /* NX741J: the UFS request list sits near 0xc3b00000, above the 256 MiB window the
+   * kernel is loaded in.  Report a covered range up to 0xd0000000 (real DRAM) so
+   * arm_vm_init accepts those physical addresses; the allocation itself stays
+   * WindowSize. */
+  if (Args->PhysicalBase < 0xD0000000ULL) {
+    UINT64 NxCover = 0xD0000000ULL - Args->PhysicalBase;
+    if (NxCover > WindowSize) { Args->MemorySize = NxCover; Args->MemorySizeActual = NxCover; }
+  }
   Args->MemorySizeActual = WindowSize;
   Args->TopOfKernelData = Address + Used;
   if (mScratchVideo) {
