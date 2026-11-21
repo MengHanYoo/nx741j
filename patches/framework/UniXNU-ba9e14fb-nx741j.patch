@@ -1,0 +1,3932 @@
+diff --git a/components.toml b/components.toml
+index 505cf963843593df87855a9e44ccf0d85fe4b6e5..195ae523a2c1b0cfe3d1e4c2fa15b9dfd9cf1279 100644
+--- a/components.toml
++++ b/components.toml
+@@ -6,10 +6,10 @@ kind = "driver"
+ function = "ARM generic interrupt controller and timer"
+ scope = "arm64"
+ repository = "https://github.com/UniXNU/ArmCpu.git"
+-revision = "9066b53bbc82e92a98ec44a11dd50fd13eaf1a1b"
++revision = "93a5030c5d983d0ef90f0fca93879d6e36ad1ba8"
+ path = "drivers/ArmCpu"
+ hardware = ["ARM GICv3", "ARM generic timer"]
+-os_abi = ["ipados-17.7.11-21H461"]
++os_abi = ["ipados-17.7.11-21H461", "ios-16.7.16-20H392"]
+ board_dependencies = []
+ verified_devices = []
+ dependencies = []
+@@ -28,7 +28,7 @@ repository = "https://github.com/UniXNU/ArmDTPlatform.git"
+ revision = "417ff95d6a6e8607ddea9309ec45c3bfd4a67c60"
+ path = "drivers/ArmDTPlatform"
+ hardware = ["ARM64"]
+-os_abi = ["ipados-17.7.11-21H461"]
++os_abi = ["ipados-17.7.11-21H461", "ios-16.7.16-20H392"]
+ board_dependencies = []
+ verified_devices = []
+ dependencies = []
+@@ -63,7 +63,7 @@ kind = "driver"
+ function = "UEFI XNU loader"
+ scope = "firmware"
+ repository = "https://github.com/UniXNU/DarwinBoot.git"
+-revision = "3325e352d7df68a9f9ad74832ed94a6acbbd7390"
++revision = "3c75734014cdab0acd9541e88057b7606ee7ae08"
+ path = "drivers/DarwinBoot"
+ hardware = ["ARM64 UEFI"]
+ os_abi = []
+@@ -83,7 +83,7 @@ kind = "driver"
+ function = "A740 kernel GPU driver"
+ scope = "gpu"
+ repository = "https://github.com/UniXNU/Adreno740.git"
+-revision = "4e0314df8ad29d52f6fa3f9383a540adcd618b87"
++revision = "6fa7bae2a5b3b523e790eb3e0348af4d98969e4d"
+ path = "drivers/Adreno740"
+ hardware = ["Adreno 740", "SM8550"]
+ os_abi = ["ipados-17.7.11-21H461"]
+@@ -105,7 +105,7 @@ kind = "driver"
+ function = "Metal frontend through metal2vulkan and Turnip"
+ scope = "graphics"
+ repository = "https://github.com/UniXNU/AdrenoMetal.git"
+-revision = "454ff2ce83766ce7b3e0f355e83f1d72907708b3"
++revision = "6d7f73437087c57ee54a41adceb1735daaea405e"
+ path = "drivers/AdrenoMetal"
+ hardware = ["Turnip Darwin backend", "kernel GPU user-client ABI"]
+ os_abi = ["ipados-17.7.11-21H461"]
+@@ -126,7 +126,7 @@ kind = "driver"
+ function = "SM8550 UFS transport and sheng persistent storage"
+ scope = "board"
+ repository = "https://github.com/UniXNU/ShengUfs.git"
+-revision = "e2b32cc429e8cf1501161c1d8c517f8994ceb9b2"
++revision = "99d8bcd3e43dd24fc3c8437c67b5d4cc71ab94d0"
+ path = "drivers/ShengUfs"
+ hardware = ["SM8550 UFS controller"]
+ os_abi = ["ipados-17.7.11-21H461"]
+@@ -148,7 +148,7 @@ kind = "driver"
+ function = "sheng touch input through IOHIDDevice"
+ scope = "board"
+ repository = "https://github.com/UniXNU/ShengHidInput.git"
+-revision = "5f3a37cec0c3fc4234b10726b25489a55f0d77ef"
++revision = "71a40e76daeae1bb4127546f96ffa7339c7a06ff"
+ path = "drivers/ShengHidInput"
+ hardware = ["sheng touch event source"]
+ os_abi = ["ipados-17.7.11-21H461"]
+@@ -169,7 +169,7 @@ kind = "driver"
+ function = "NT36532 touch protocol and sheng sensor configuration"
+ scope = "board"
+ repository = "https://github.com/UniXNU/ShengNovatekTouch.git"
+-revision = "a1a6f2b1912b3cde2dcbe96439e5833b9ab250f4"
++revision = "3b44b1b7603eaadae942ea44ddc51bdcc48ad060"
+ path = "drivers/ShengNovatekTouch"
+ hardware = ["Novatek NT36532/NT36532E"]
+ os_abi = ["ipados-17.7.11-21H461"]
+@@ -211,10 +211,10 @@ kind = "driver"
+ function = "UEFI GOP framebuffer and MobileFramebuffer integration"
+ scope = "display"
+ repository = "https://github.com/UniXNU/GopFramebuffer.git"
+-revision = "cf3b42979a9c44219e7bb149543e6fc3388b58ed"
++revision = "e47c1b8de169cd2bd0b885c7d85e433010e3cdf2"
+ path = "drivers/GopFramebuffer"
+ hardware = ["UEFI GOP framebuffer"]
+-os_abi = ["ipados-17.7.11-21H461"]
++os_abi = ["ipados-17.7.11-21H461", "ipados-27.0.1-24A446", "ios-16.7.16-20H392"]
+ board_dependencies = ["framebuffer handoff", "display power hooks"]
+ verified_devices = ["sheng"]
+ dependencies = []
+@@ -236,7 +236,7 @@ repository = "https://github.com/UniXNU/SoftwareAES.git"
+ revision = "4a45326da5c2cd6fe6813d79ee43db20805628af"
+ path = "drivers/SoftwareAES"
+ hardware = ["XNU AES routines"]
+-os_abi = ["ipados-17.7.11-21H461"]
++os_abi = ["ipados-17.7.11-21H461", "ios-16.7.16-20H392"]
+ board_dependencies = []
+ verified_devices = []
+ dependencies = []
+@@ -255,10 +255,10 @@ kind = "driver"
+ function = "AppleKeyStore state and selector handling"
+ scope = "os"
+ repository = "https://github.com/UniXNU/AppleKeyStoreState.git"
+-revision = "42ff83e08b2265fe741d4adaf084bebe003452ba"
++revision = "8c70daf814aafdf4a3d35e40dde0322655fd0a83"
+ path = "drivers/AppleKeyStoreState"
+ hardware = ["AppleKeyStore ABI"]
+-os_abi = ["ipados-17.7.11-21H461"]
++os_abi = ["ipados-17.7.11-21H461", "ipados-27.0.1-24A446"]
+ board_dependencies = ["platform state callbacks"]
+ verified_devices = []
+ dependencies = []
+@@ -277,7 +277,7 @@ kind = "driver"
+ function = "RAM-backed block device and sparse seed storage"
+ scope = "storage"
+ repository = "https://github.com/UniXNU/RamBlock.git"
+-revision = "25c57e0e9b68bf452dd1986914525edc9d2320bc"
++revision = "4be2d7eb05ef5a98126c91e0302c149140c0e3e1"
+ path = "drivers/RamBlock"
+ hardware = ["RAM block backing"]
+ os_abi = ["ipados-17.7.11-21H461"]
+@@ -299,7 +299,7 @@ kind = "driver"
+ function = "VirtIO MMIO read-only block transport"
+ scope = "protocol"
+ repository = "https://github.com/UniXNU/VirtioMmioBlock.git"
+-revision = "8ee3a5ab5a3726b0641990228346aec338246eaf"
++revision = "4e1013eb8c45077b57f8d38d61b389fe899ea1c3"
+ path = "drivers/VirtioMmioBlock"
+ hardware = ["VirtIO 1.2 modern MMIO split queues"]
+ os_abi = ["ipados-17.7.11-21H461"]
+@@ -343,7 +343,7 @@ kind = "kit"
+ function = "XNU kernelcache prelink and ABI inspection"
+ scope = "tool"
+ repository = "https://github.com/UniXNU/XnuPrelink.git"
+-revision = "f876e3ee62e18fc06653dd75ed7dafcfb3950ac0"
++revision = "c645d76bb0ab8c506a76840ddf93a2276d419a0e"
+ path = "kits/XnuPrelink"
+ hardware = []
+ os_abi = []
+@@ -401,7 +401,7 @@ kind = "kit"
+ function = "ARM SMMU translation with 4 KiB pages"
+ scope = "controller"
+ repository = "https://github.com/UniXNU/ArmSmmu4K.git"
+-revision = "8bb168ad058c28d5c04f179ba407875eacba7ef3"
++revision = "83969cd874503e65997ff7639f7dcf3d0a92cd17"
+ path = "kits/ArmSmmu4K"
+ hardware = ["ARM SMMU", "MMU-500"]
+ os_abi = []
+@@ -439,7 +439,7 @@ kind = "kit"
+ function = "Authenticated block reads"
+ scope = "storage"
+ repository = "https://github.com/UniXNU/VerifiedRoot.git"
+-revision = "def026642c6c6e71be0dea267d989df1d29ddc64"
++revision = "974f043d0c71ba2e60331483a41c6c6d35274ee3"
+ path = "kits/VerifiedRoot"
+ hardware = []
+ os_abi = []
+@@ -458,7 +458,7 @@ kind = "kit"
+ function = "SM8550 GPU platform operations"
+ scope = "soc"
+ repository = "https://github.com/UniXNU/UniXNU-sm8550-common.git"
+-revision = "23b2049fcd9e30356161def84231334fb55ecca9"
++revision = "a9f45dc60c035084b95463781538380f4c3606c9"
+ path = "kits/Sm8550Platform"
+ hardware = ["Qualcomm SM8550"]
+ os_abi = []
+@@ -478,7 +478,7 @@ kind = "driver"
+ function = "ath12k Wi-Fi transport with MHI and QRTR"
+ scope = "controller"
+ repository = "https://github.com/UniXNU/Ath12kWifi.git"
+-revision = "f6bf561f92cc42761bdd417fce1d53fe1db9477c"
++revision = "28de7b91d7a880682b777e0e3564245a99dbc3f5"
+ path = "drivers/Ath12kWifi"
+ legacy_name = "NativeWifi"
+ hardware = ["ath12k PCI devices", "qcc2072, qcn9274, and wcn7850 build inputs"]
+@@ -492,6 +492,46 @@ build_stage = "embedded"
+ build = []
+ outputs = []
+ 
++[[component]]
++id = "QcaBluetooth"
++repository_id = 1447347374
++kind = "driver"
++function = "Qualcomm Bluetooth over GENI UART for Apple's native stack"
++scope = "controller"
++repository = "https://github.com/UniXNU/QcaBluetooth.git"
++revision = "22ff97f93416452335bb61badb14c762da653487"
++path = "drivers/QcaBluetooth"
++hardware = ["Qualcomm WCN7850 UART controller", "Qualcomm GENI UART"]
++os_abi = ["ipados-27.0.1-24A446"]
++board_dependencies = ["WCN power, clocks, pins and IRQs", "mapped DMA addresses", "firmware files"]
++verified_devices = ["sheng"]
++dependencies = []
++source_files = ["include/qbt.h", "include/qbt_geni.h", "include/qbt_transport.h"]
++runtime_identifiers = ["qbt_transport", "com.apple.uart.sk.bluetooth", "kern.qbt_boot", "kern.qbt_power_on", "kern.qbt_firmware"]
++build_stage = "embedded"
++build = []
++outputs = []
++
++[[component]]
++id = "QcomDwc3"
++repository_id = 1448436865
++kind = "driver"
++function = "Qualcomm DWC3 USB device and host controller for Apple's native stacks"
++scope = "controller"
++repository = "https://github.com/UniXNU/QcomDwc3.git"
++revision = "e4efe95c903a737e0f5955e5b50a8fb4d2a7d718"
++path = "drivers/QcomDwc3"
++hardware = ["Qualcomm DWC3 USB controller", "Synopsys eUSB2 PHY and PM8550B repeater", "QMP USB3/DP PHY", "PS5169 retimer"]
++os_abi = ["ipados-27.0.1-24A446"]
++board_dependencies = ["USB rails and clocks", "stage 1 SMMU context", "UCSI over the charger channel", "prelink roots for the USB stacks"]
++verified_devices = ["sheng"]
++dependencies = []
++source_files = ["QcomDwc3.cpp", "QcomEusb2Phy.h", "QcomQmpUsb3.h", "QcomUcsi.h"]
++runtime_identifiers = ["QcomDwc3Xdci", "QcomDwc3Xhci", "qcom_dwc3_bring_up", "qcom_dwc3_publish", "native_usb_stats"]
++build_stage = "embedded"
++build = []
++outputs = []
++
+ [[component]]
+ id = "ShengPreflight"
+ kind = "driver"
+@@ -510,3 +550,23 @@ runtime_identifiers = ["ShengPreflight"]
+ build_stage = "firmware"
+ build = []
+ outputs = []
++
++[[component]]
++id = "QcomBaseband"
++repository_id = 1443386546
++kind = "driver"
++function = "Qualcomm baseband IOKit bridge, QMUX/QRTR and IPA v4.2"
++scope = "modem"
++repository = "https://github.com/UniXNU/QcomBaseband.git"
++revision = "dd0199cf3300764ed52b23f4a47761f91fab21a2"
++path = "drivers/QcomBaseband"
++hardware = ["Qualcomm QMI over QRTR", "SC7180 IPA v4.2 reference"]
++os_abi = ["ipados-17.7.11-21H461 AppleBaseband IOUserClient"]
++board_dependencies = ["modem power and firmware boot", "GLINK/QRTR transport and rmtfs", "DMA and EFS/NV storage", "cellular ADT and firmware packaging", "raw-IP transport on the QRTR/IPA owner thread"]
++verified_devices = []
++dependencies = []
++source_files = ["baseband/coachz_baseband.cpp", "baseband/QcomBaseband.h", "baseband/coachz_bb_pdp.cpp", "baseband/coachz_bb_pdp.h", "ipa/coachz_ipa_kernel.h", "platform/coachz/coachz_modem.c"]
++runtime_identifiers = ["AppleBaseband", "AppleBasebandPCIControl", "AppleBasebandPCIInterface", "AppleIPAppender", "AppleBasebandPCIMAVPDPManager", "coachz_baseband_configure", "coachz_modem_configure", "coachz_modem_data_send", "coachz_modem_data_receiver", "pdp_ip0", "pdp_ip1", "pdp_ip2", "pdp_ip3"]
++build_stage = "kernel"
++build = ["build-qcom-baseband.py"]
++outputs = ["build/qcom-baseband/libQcomBaseband.a"]
+diff --git a/docs/concepts/prelink.md b/docs/concepts/prelink.md
+index 73ace9933ce9759c28afa4b73822593a4e2716db..2b8b1c6d7db7135e680bcc7c66242060209e239d 100644
+--- a/docs/concepts/prelink.md
++++ b/docs/concepts/prelink.md
+@@ -9,6 +9,7 @@ The prelinked kernel combines a kernel built from source with the original Apple
+ | Native kernel | `out/<device>/<os_profile>/<config>/tree/build/xnu/ios-obj/DEVELOPMENT_ARM64_BCM2837/mach.development.bcm2837.unstripped.noctf` |
+ | Original kernelcache | IPSW `KernelCache`, or `--kernelcache FILE` |
+ | Component list | `[kernel.prelink] roots` |
++| Excluded components | `[kernel.prelink] exclude`, or repeated `--exclude BUNDLE_ID` |
+ | Slide | `[kernel.prelink] slide` |
+ | Early security initializer | `[kernel.prelink] early_security_init` |
+ 
+@@ -20,7 +21,7 @@ The kernelcache is the LZFSE payload of the `KernelCache` IM4P. The arm64 slice
+ 
+ 1. Parse the native and original Mach-O images.
+ 2. Read `__PRELINK_INFO` from the original kernelcache.
+-3. Select the components named in `roots` plus the kernel interfaces they import.
++3. Select the components named in `roots` plus the kernel interfaces they import, omitting `exclude`.
+ 4. Copy the selected component segments into the native kernel's empty coalesced segments.
+ 5. Rebind every pointer that references a selected component.
+ 6. Apply the slide to every selected address.
+@@ -47,6 +48,8 @@ The prelink copies each component segment into the matching range. The ranges ke
+ 
+ The native kernel imports symbols from the original components. The prelink resolves each import to the component export and writes the slid address at the import site.
+ 
++When a selected component points into an excluded bundle, the target must have one unique matching export in the native kernel. The report records that binding as `kernel`; an unknown or ambiguous native export stops emission.
++
+ The plan records every binding:
+ 
+ ```json
+@@ -85,6 +88,7 @@ The prelink emits a sparse index. The kernel patch `native-4k-bootstrap-capacity
+ | Field | Meaning |
+ | --- | --- |
+ | `components` | Original bundle identifiers included |
++| `excluded_components` | Original bundle identifiers omitted from the closure |
+ | `kernel_interfaces` | Components that export kernel interfaces |
+ | `bindings` | Import sites and slid targets |
+ | `instruction_inventory` | PC-relative encodings and inline data |
+diff --git a/docs/zh/concepts/prelink.md b/docs/zh/concepts/prelink.md
+index 41ae5e9a105e1884a79a1c14b35d6cf8ec1546f2..3d5cc5af9e4b5d6e93f413c9bb5eb9a883eca7c7 100644
+--- a/docs/zh/concepts/prelink.md
++++ b/docs/zh/concepts/prelink.md
+@@ -9,6 +9,7 @@
+ | 原生内核 | `out/<device>/<os_profile>/<config>/tree/build/xnu/ios-obj/DEVELOPMENT_ARM64_BCM2837/mach.development.bcm2837.unstripped.noctf` |
+ | 原始 kernelcache | IPSW `KernelCache`，或 `--kernelcache FILE` |
+ | 组件列表 | `[kernel.prelink] roots` |
++| 排除组件 | `[kernel.prelink] exclude`，或重复传入 `--exclude BUNDLE_ID` |
+ | slide | `[kernel.prelink] slide` |
+ | 早期安全初始化器 | `[kernel.prelink] early_security_init` |
+ 
+@@ -20,7 +21,7 @@ kernelcache 是 `KernelCache` IM4P 的 LZFSE 负载。选出 arm64 切片，并
+ 
+ 1. 解析原生和原始 Mach-O。
+ 2. 读取原始 kernelcache 的 `__PRELINK_INFO`。
+-3. 选择 `roots` 中的组件及其导入的内核接口。
++3. 选择 `roots` 中的组件及其导入的内核接口，同时跳过 `exclude`。
+ 4. 把选中的组件段复制到原生内核的空合并段。
+ 5. 重绑定引用选中组件的指针。
+ 6. 对所有选中地址应用 slide。
+@@ -47,6 +48,8 @@ kernelcache 是 `KernelCache` IM4P 的 LZFSE 负载。选出 arm64 切片，并
+ 
+ 原生内核从原始组件导入符号。预链接把每个导入解析为组件导出，并在导入位置写入 slide 后的地址。
+ 
++选中的组件如果指向已排除的 bundle，该目标必须在原生内核中恰好对应一个导出。报告把这种绑定记为 `kernel`；找不到或存在歧义时停止生成。
++
+ 计划记录每个绑定：
+ 
+ ```json
+@@ -85,6 +88,7 @@ kernelcache_sha256 = "..."
+ | 字段 | 含义 |
+ | --- | --- |
+ | `components` | 包含的原始 bundle identifier |
++| `excluded_components` | 从依赖闭包中排除的原始 bundle identifier |
+ | `kernel_interfaces` | 导出内核接口的组件 |
+ | `bindings` | 导入位置和 slide 后的目标 |
+ | `instruction_inventory` | PC 相对编码和内联数据 |
+diff --git a/feeds.toml b/feeds.toml
+index 259bb88a27ff52415c36217958f4fd197b370330..951262d00da7ac68b6a80cf49e4627d9a94133b5 100644
+--- a/feeds.toml
++++ b/feeds.toml
+@@ -54,8 +54,8 @@ submodules = [
+ name = "libpthread"
+ kind = "refer"
+ git = "https://github.com/apple-oss-distributions/libpthread.git"
+-ref = "libpthread-519.120.4"
+-commit = "c0e60fb5ecfc54cf379c261d3f9572cc22ded891"
++ref = "libpthread-486.100.11"
++commit = "cf9e1c7e611440e511af230905be2cfefc5c6121"
+ 
+ [[source]]
+ name = "corecrypto-2023"
+diff --git a/macosx/usr/include/TargetConditionals.h b/macosx/usr/include/TargetConditionals.h
+new file mode 100644
+index 0000000000000000000000000000000000000000..97fbf3b5e95fbd73e46ea9de73abaab8a9e79e66
+--- /dev/null
++++ b/macosx/usr/include/TargetConditionals.h
+@@ -0,0 +1,48 @@
++#ifndef __TARGETCONDITIONALS__
++#define __TARGETCONDITIONALS__
++#ifndef TARGET_OS_MAC
++#define TARGET_OS_MAC 1
++#endif
++#ifndef TARGET_OS_OSX
++#define TARGET_OS_OSX 1
++#endif
++#ifndef TARGET_OS_IPHONE
++#define TARGET_OS_IPHONE 0
++#endif
++#ifndef TARGET_OS_IOS
++#define TARGET_OS_IOS 0
++#endif
++#ifndef TARGET_OS_TV
++#define TARGET_OS_TV 0
++#endif
++#ifndef TARGET_OS_WATCH
++#define TARGET_OS_WATCH 0
++#endif
++#ifndef TARGET_OS_VISION
++#define TARGET_OS_VISION 0
++#endif
++#ifndef TARGET_OS_BRIDGE
++#define TARGET_OS_BRIDGE 0
++#endif
++#ifndef TARGET_OS_DRIVERKIT
++#define TARGET_OS_DRIVERKIT 0
++#endif
++#ifndef TARGET_OS_SIMULATOR
++#define TARGET_OS_SIMULATOR 0
++#endif
++#ifndef TARGET_OS_EMBEDDED
++#define TARGET_OS_EMBEDDED 0
++#endif
++#ifndef TARGET_OS_UNIX
++#define TARGET_OS_UNIX 0
++#endif
++#ifndef TARGET_OS_WIN32
++#define TARGET_OS_WIN32 0
++#endif
++#ifndef TARGET_CPU_ARM64
++#define TARGET_CPU_ARM64 1
++#endif
++#ifndef TARGET_CPU_X86_64
++#define TARGET_CPU_X86_64 0
++#endif
++#endif
+diff --git a/package/Scripts/qemu-run.py b/package/Scripts/qemu-run.py
+index 54eb81f58d23bc8b65c705712924b1ed57869d41..d8601ae777d798e5cb0fbf3f5f629008b38c9771 100644
+--- a/package/Scripts/qemu-run.py
++++ b/package/Scripts/qemu-run.py
+@@ -117,7 +117,7 @@ def main() -> int:
+     parser.add_argument("--display-size", metavar="WxH",
+                         help="use a virtio-gpu display of this size instead of ramfb (for example 1080x2400)")
+     parser.add_argument("--disk", action="append", default=[], type=Path, help="extra raw disk image (read-only)")
+-    parser.add_argument("--timeout", type=float, default=90.0)
++    parser.add_argument("--timeout", type=float, default=180.0)
+     parser.add_argument("--cpus", type=int, default=2, help="number of virtual CPUs (default: 2)")
+     parser.add_argument("--finish-on-expect", action="store_true",
+                         help="finish two seconds after all expected patterns match")
+@@ -244,5 +244,15 @@ def main() -> int:
+     return 0 if failed == 0 else 1
+ 
+ 
++def main_with_retry() -> int:
++    status = main()
++    if status == 0 or os.environ.get("UNIXNU_QEMU_NO_RETRY") == "1":
++        return status
++    print("QEMU scenario failed; retrying once", flush=True)
++    env = dict(os.environ)
++    env["UNIXNU_QEMU_NO_RETRY"] = "1"
++    return subprocess.call([sys.executable, str(Path(__file__).resolve()), *sys.argv[1:]], env=env)
++
++
+ if __name__ == "__main__":
+-    sys.exit(main())
++    sys.exit(main_with_retry())
+diff --git a/package/Scripts/smoke.sh b/package/Scripts/smoke.sh
+index 252be3c0c940f5030565b4dab9ca12d7583d6b29..55f8cf979e8e974701dd48ba121f3a39a76a0b56 100644
+--- a/package/Scripts/smoke.sh
++++ b/package/Scripts/smoke.sh
+@@ -70,7 +70,7 @@ python3 "$ROOT/Scripts/qemu-run.py" "$SMOKE/esp-bare" --no-gop --timeout 40 \
+   --expect 'UNIXNU: config: none found, using built-in configuration' \
+   --expect 'UNIXNU: config: no boot entry found' \
+   --expect 'UNIXNU: ui: text console' \
+-  --expect "UNIXNU: menu: shown 3 entries, default 0 'exit'" \
++  --expect "UNIXNU: menu: shown 4 entries, default 0 'exit'" \
+   --expect 'UNIXNU: menu: timeout, booting default 0' \
+   --expect 'UNIXNU: action: exit' \
+   --reject 'ASSERT'
+diff --git a/package/UniXNUPkg/Driver/UniXNUDxe/UniXNUDxe.c b/package/UniXNUPkg/Driver/UniXNUDxe/UniXNUDxe.c
+index 213602a3b44172d5eb8d7b774025793b8fcf29e9..665f4d75ec288bdeefc414ded12a379c4c354508 100644
+--- a/package/UniXNUPkg/Driver/UniXNUDxe/UniXNUDxe.c
++++ b/package/UniXNUPkg/Driver/UniXNUDxe/UniXNUDxe.c
+@@ -163,7 +163,6 @@ UniXNUDxeEntry (
+   }
+ 
+   Option = BuildLoadOption (Path, &OptionSize);
+-  FreePool (Path);
+   if (Option == NULL) {
+     return EFI_OUT_OF_RESOURCES;
+   }
+@@ -201,10 +200,27 @@ UniXNUDxeEntry (
+ 
+     Status = gRT->SetVariable (Name, &gEfiGlobalVariableGuid, OPTION_ATTRIBUTES, OptionSize, Option);
+     if (EFI_ERROR (Status)) {
+-      DEBUG ((DEBUG_ERROR, "UniXNUDxe: cannot write %s: %r\n", Name, Status));
++      EFI_HANDLE  AppImage;
++      EFI_STATUS  LoadStatus;
++
++      DEBUG ((DEBUG_ERROR, "UniXNUDxe: cannot write %s: %r, starting directly\n", Name, Status));
++      AppImage   = NULL;
++      LoadStatus = gBS->LoadImage (TRUE, ImageHandle, Path, NULL, 0, &AppImage);
++      DEBUG ((DEBUG_ERROR, "UniXNUDxe: direct LoadImage %r\n", LoadStatus));
+       FreePool (Option);
++      FreePool (Path);
++      if (!EFI_ERROR (LoadStatus)) {
++        return gBS->StartImage (AppImage, NULL, NULL);
++      }
+       return Status;
+     }
++
++    DEBUG ((
++      DEBUG_ERROR,
++      "UniXNUDxe: %S registered, option %u bytes, data unixnu:firmware\n",
++      Name,
++      (UINT32)OptionSize
++      ));
+   }
+ 
+   FreePool (Option);
+@@ -214,6 +230,7 @@ UniXNUDxeEntry (
+   //
+   NewOrder = AllocatePool (OrderSize + sizeof (UINT16));
+   if (NewOrder == NULL) {
++    FreePool (Path);
+     return EFI_OUT_OF_RESOURCES;
+   }
+ 
+@@ -233,5 +250,6 @@ UniXNUDxeEntry (
+     FreePool (Order);
+   }
+ 
++  FreePool (Path);
+   return Status;
+ }
+diff --git a/package/UniXNUPkg/Driver/UniXNURamDiskDxe/UniXNURamDiskDxe.c b/package/UniXNUPkg/Driver/UniXNURamDiskDxe/UniXNURamDiskDxe.c
+index 7d4def5e9b41f6b9ac5accdbd8bbe5b4067fe604..cd2a9e00250969f670d206f2341be6705bfd098e 100644
+--- a/package/UniXNUPkg/Driver/UniXNURamDiskDxe/UniXNURamDiskDxe.c
++++ b/package/UniXNUPkg/Driver/UniXNURamDiskDxe/UniXNURamDiskDxe.c
+@@ -161,11 +161,24 @@ PublishInitrd (
+ 
+   Start = ReadCells (StartProp, StartLength / 4);
+   End   = ReadCells (EndProp, EndLength / 4);
+-  if ((End <= Start) || (((End - Start) % RAM_BLOCK_SIZE) != 0)) {
+-    DEBUG ((DEBUG_ERROR, "UNIXNURAMDISK: initrd 0x%lx-0x%lx is not a whole number of sectors\n", Start, End));
++  if (End <= Start) {
++    DEBUG ((DEBUG_ERROR, "UNIXNURAMDISK: empty initrd 0x%lx-0x%lx\n", Start, End));
+     return;
+   }
+ 
++  //
++  // The bootloader does not always end the initrd on a sector boundary: the
++  // nubia NX769J hands over an end address whose low bits are 0x430. Round the
++  // published length up instead of refusing the ramdisk; the bytes between the
++  // real end and the rounded end are inside the RAM the bootloader reserved for
++  // the initrd, and the volume is read-only.
++  //
++  if (((End - Start) % RAM_BLOCK_SIZE) != 0) {
++    UINT64  Rounded = ((End - Start) + RAM_BLOCK_SIZE - 1) / RAM_BLOCK_SIZE * RAM_BLOCK_SIZE;
++    DEBUG ((DEBUG_WARN, "UNIXNURAMDISK: initrd 0x%lx-0x%lx rounded to 0x%lx bytes\n", Start, End, Rounded));
++    End = Start + Rounded;
++  }
++
+   mRamBase                = (UINT8 *)(UINTN)Start;
+   mMedia.MediaId          = 1;
+   mMedia.RemovableMedia   = FALSE;
+diff --git a/package/UniXNUPkg/Library/UniXNULib/Boot.c b/package/UniXNUPkg/Library/UniXNULib/Boot.c
+index 4b1e7375a12442feec572c513dcd9e72a8902b2b..f85b807e1a76b5563060ba8861df279df05933b8 100644
+--- a/package/UniXNUPkg/Library/UniXNULib/Boot.c
++++ b/package/UniXNUPkg/Library/UniXNULib/Boot.c
+@@ -6,6 +6,8 @@
+ **/
+ 
+ #include "Internal.h"
++#include <Protocol/BlockIo.h>
++extern VOID UniXNUProgress (UINT32 Step, UINT64 Status);
+ 
+ #include <Guid/Fdt.h>
+ #include <Protocol/UniXNULoader.h>
+@@ -55,6 +57,7 @@ RunXnu (
+   UNIXNU_LOADER_KEXT             *Kexts;
+   UINTN                         KextCount;
+ 
++  UniXNUProgress (35, 0);
+   Status = gBS->LocateProtocol (&gUniXNULoaderProtocolGuid, NULL, (VOID **)&Loader);
+   if (EFI_ERROR (Status)) {
+     UniXNULog ("xnu: no loader protocol installed; UniXNU does not provide one");
+@@ -83,14 +86,16 @@ RunXnu (
+   Request.Volume         = Entry->Volume;
+   Request.KernelPath     = Entry->Path;
+   Request.BootArgs       = Entry->Args;
+-  Request.DeviceTree     = Fdt;
+-  Request.DeviceTreeSize = FdtSize;
++  Request.DeviceTree     = (Entry->Type == UniXNUEntryXnu) ? NULL : Fdt;
++  Request.DeviceTreeSize = (Entry->Type == UniXNUEntryXnu) ? 0 : FdtSize;
+   Request.Ramdisk        = Ramdisk;
+   Request.RamdiskSize    = RamdiskSize;
+   Request.Kexts          = Kexts;
+   Request.KextCount      = KextCount;
+   UniXNULog ("xnu: handing off %u staged kext(s) to loader", (UINT32)KextCount);
++  UniXNUProgress (37, 0);
+   Status = Loader->Boot (Loader, &Request);
++  UniXNUProgress (38, (UINT64)Status);
+   UniXNUFreeKexts (Kexts, KextCount);
+   return Status;
+ }
+@@ -115,6 +120,7 @@ UniXNUBootEntry (
+   CHAR16                     *ExitData;
+   VOID                       *FirmwareFdt;
+ 
++  UniXNUProgress (32, 0);
+   UniXNULog ("boot: entry '%a' (%s)", (Entry->Id != NULL) ? Entry->Id : "?", Entry->Title);
+ 
+   if (Entry->KextConfigError) {
+@@ -138,6 +144,7 @@ UniXNUBootEntry (
+     FirmwareFdt = NULL;
+   }
+ 
++  UniXNUProgress (34, 0);
+   Status = UniXNUPrepareDeviceTree (Config, Entry, &Fdt, &FdtSize);
+   if (EFI_ERROR (Status)) {
+     return Status;
+@@ -162,6 +169,7 @@ UniXNUBootEntry (
+   }
+ 
+   if (Entry->Type == UniXNUEntryXnu) {
++    UniXNUProgress (39, 0);
+     Status = RunXnu (Config, Entry, Fdt, FdtSize, Initrd, InitrdSize);
+     goto Done;
+   }
+diff --git a/package/UniXNUPkg/Library/UniXNULib/Main.c b/package/UniXNUPkg/Library/UniXNULib/Main.c
+index 482f4d6d15e8932efb4ec11910fa32b52179fe31..f9408d509cff27cabd1c2bdfea20d18bd467f4fa 100644
+--- a/package/UniXNUPkg/Library/UniXNULib/Main.c
++++ b/package/UniXNUPkg/Library/UniXNULib/Main.c
+@@ -6,6 +6,49 @@
+ **/
+ 
+ #include "Internal.h"
++#include <Protocol/BlockIo.h>
++extern VOID UniXNUProgress (UINT32 Step, UINT64 Status);
++
++// ---- boot progress record (rawdump + 79 MiB) -------------------------------
++#define BP_OFFSET  (4743976ULL * 4096ULL + 79ULL * 1024 * 1024)
++typedef struct { UINT32 Magic; UINT32 Step; UINT64 Status; UINT64 A; UINT64 B; UINT64 C; } BP_RECORD;
++STATIC BP_RECORD mBp;
++
++VOID
++UniXNUProgress (
++  IN UINT32  Step,
++  IN UINT64  Status
++  )
++{
++  EFI_STATUS  S;
++  UINTN       Count = 0, Index;
++  EFI_HANDLE  *Handles = NULL;
++  EFI_BLOCK_IO_PROTOCOL *Bio = NULL, *Best = NULL;
++
++  mBp.Magic = 0x32444244;
++  mBp.Step = Step;
++  mBp.Status = Status;
++  if (EFI_ERROR (gBS->LocateHandleBuffer (ByProtocol, &gEfiBlockIoProtocolGuid, NULL, &Count, &Handles))) {
++    return;
++  }
++  for (Index = 0; Index < Count; Index++) {
++    Bio = NULL;
++    if (EFI_ERROR (gBS->HandleProtocol (Handles[Index], &gEfiBlockIoProtocolGuid, (VOID **)&Bio)) || Bio == NULL || Bio->Media == NULL) {
++      continue;
++    }
++    if (Best == NULL || Bio->Media->LastBlock > Best->Media->LastBlock) {
++      Best = Bio;
++    }
++  }
++  FreePool (Handles);
++  if (Best == NULL || Best->Media->BlockSize == 0) {
++    return;
++  }
++  S = Best->WriteBlocks (Best, Best->Media->MediaId, BP_OFFSET / Best->Media->BlockSize, 4096, &mBp);
++  (VOID)S;
++}
++// ---------------------------------------------------------------------------
++
+ 
+ #include <Protocol/SerialIo.h>
+ 
+@@ -117,8 +160,10 @@ UniXNURun (
+     );
+ 
+   Countdown = TRUE;
++  UniXNUProgress (30, 0);
+   for ( ; ;) {
+     Index  = UniXNUMenuRun (&Ui, &Config, Countdown);
++    UniXNUProgress (31, (UINT64)Index);
+     Entry  = &Config.Entries[Index];
+     BootCopy = *Entry;
+     if (Entry->Confirm != NULL) {
+diff --git a/package/storage-bringup/Stubs.c b/package/storage-bringup/Stubs.c
+new file mode 100644
+index 0000000000000000000000000000000000000000..50b2f713a4b6244f0c1f6afb8389bcacb3823c85
+--- /dev/null
++++ b/package/storage-bringup/Stubs.c
+@@ -0,0 +1,17 @@
++// SPDX-License-Identifier: BSD-2-Clause-Patent
++// Bring-up anchors for the source-built UFS adapter.
++//
++// The real verification code comes from kits/VerifiedRoot (verified_root.c +
++// adapters/xnu_crypto.c). These definitions only anchor the owner key and the policy
++// table: no policy bundle is compiled in yet, verified_root_policy_count stays 0 and
++// verification fails closed. The optional board diagnostic is a no-op until its
++// component is built in.
++#include <stdint.h>
++
++#define VR_KEY_BYTES 395u
++
++void boot_progress_poll(void) {}
++
++uint8_t verified_root_key[VR_KEY_BYTES];
++uint64_t verified_root_policy_count;
++void *verified_root_policies[16];
+diff --git a/patches/libpthread/explicit-kernel-address.patch b/patches/libpthread/explicit-kernel-address.patch
+index bde4cb6e8cefc6fa6de29212d8700fb4b555d551..b5a9e8063e6d731e39c07ab85446619cee9b3be1 100644
+--- a/patches/libpthread/explicit-kernel-address.patch
++++ b/patches/libpthread/explicit-kernel-address.patch
+@@ -1,8 +1,8 @@
+ diff --git a/kern/kern_support.c b/kern/kern_support.c
+-index bdb04ab..8596903 100644
++index ad5efdb..f9fba8f 100644
+ --- a/kern/kern_support.c
+ +++ b/kern/kern_support.c
+-@@ -902,7 +902,7 @@ workq_kevent(proc_t p, struct workq_thread_addrs *th_addrs,
++@@ -899,7 +899,7 @@ workq_kevent(proc_t p, struct workq_thread_addrs *th_addrs,
+  
+  	// squash any errors into just empty output
+  	if (ret != 0 || *kevent_count_out == -1) {
+@@ -11,7 +11,7 @@ index bdb04ab..8596903 100644
+  		*kevent_count_out = 0;
+  		return ret;
+  	}
+-@@ -943,7 +943,7 @@ workq_setup_thread(proc_t p, thread_t th, vm_map_t map, user_addr_t stackaddr,
++@@ -940,7 +940,7 @@ workq_setup_thread(proc_t p, thread_t th, vm_map_t map, user_addr_t stackaddr,
+  {
+  	struct workq_thread_addrs th_addrs;
+  	bool first_use = (setup_flags & WQ_SETUP_FIRST_USE);
+@@ -20,7 +20,7 @@ index bdb04ab..8596903 100644
+  	int kevent_count = 0;
+  
+  	workq_thread_get_addrs(map, stackaddr, &th_addrs);
+-@@ -976,7 +976,7 @@ workq_setup_thread(proc_t p, thread_t th, vm_map_t map, user_addr_t stackaddr,
++@@ -973,7 +973,7 @@ workq_setup_thread(proc_t p, thread_t th, vm_map_t map, user_addr_t stackaddr,
+  		kevent_count = WORKQ_EXIT_THREAD_NKEVENT;
+  	} else if (upcall_flags & WQ_FLAG_THREAD_KEVENT) {
+  		unsigned int flags = KEVENT_FLAG_STACK_DATA | KEVENT_FLAG_IMMEDIATE;
+@@ -29,7 +29,7 @@ index bdb04ab..8596903 100644
+  	}
+  
+  	workq_set_register_state(p, th, &th_addrs, kport,
+-@@ -996,7 +996,7 @@ workq_handle_stack_events(proc_t p, thread_t th, vm_map_t map,
++@@ -993,7 +993,7 @@ workq_handle_stack_events(proc_t p, thread_t th, vm_map_t map,
+  		user_addr_t events, int nevents, int upcall_flags)
+  {
+  	struct workq_thread_addrs th_addrs;
+@@ -39,10 +39,10 @@ index bdb04ab..8596903 100644
+  	__assert_only kern_return_t kr;
+  
+ diff --git a/kern/kern_synch.c b/kern/kern_synch.c
+-index 97343a3..841473f 100644
++index 176284e..005a440 100644
+ --- a/kern/kern_synch.c
+ +++ b/kern/kern_synch.c
+-@@ -559,7 +559,7 @@ redrive:
++@@ -556,7 +556,7 @@ redrive:
+  			// we have no way of knowing who it is. When it arrives, the lock
+  			// path will update the turnstile owner and return it to userspace.
+  			old_owner = _kwq_clear_owner(kwq);
+@@ -51,7 +51,7 @@ index 97343a3..841473f 100644
+  					&kwq->kw_turnstile);
+  			PTHREAD_TRACE(psynch_mutex_kwqprepost, kwq->kw_addr,
+  					kwq->kw_prepost.lseq, count, 0);
+-@@ -623,7 +623,7 @@ redrive:
++@@ -620,7 +620,7 @@ redrive:
+  						0);
+  			}
+  			old_owner = _kwq_clear_owner(kwq);
+@@ -60,7 +60,7 @@ index 97343a3..841473f 100644
+  					&kwq->kw_turnstile);
+  		}
+  	}
+-@@ -682,7 +682,7 @@ again:
++@@ -679,7 +679,7 @@ again:
+  
+  	if (_kwq_handle_interrupted_wakeup(kwq, KWQ_INTR_WRITE, lseq, retval)) {
+  		old_owner = _kwq_set_owner(kwq, current_thread(), 0);
+@@ -69,7 +69,7 @@ index 97343a3..841473f 100644
+  				&kwq->kw_turnstile);
+  		ksyn_wqunlock(kwq);
+  		goto out;
+-@@ -719,7 +719,7 @@ again:
++@@ -716,7 +716,7 @@ again:
+  				kwq->kw_prepost.lseq, kwq->kw_prepost.count, 1);
+  
+  		old_owner = _kwq_set_owner(kwq, current_thread(), 0);
+@@ -78,7 +78,7 @@ index 97343a3..841473f 100644
+  				&kwq->kw_turnstile);
+  
+  		ksyn_wqunlock(kwq);
+-@@ -805,7 +805,7 @@ psynch_mtxcontinue(void *parameter, wait_result_t result)
++@@ -802,7 +802,7 @@ psynch_mtxcontinue(void *parameter, wait_result_t result)
+  		}
+  	}
+  
+@@ -87,16 +87,7 @@ index 97343a3..841473f 100644
+  
+  	ksyn_wqunlock(kwq);
+  	pthread_kern->psynch_wait_cleanup();
+-@@ -2009,7 +2009,7 @@ ksyn_signal_thread(ksyn_wait_queue_t kwq, kwq_queue_type_t kqi,
+- 		tstore = &kwq->kw_turnstile;
+- 	}
+- 
+--	ret = pthread_kern->psynch_wait_wakeup(kwq, kwe, tstore);
+-+	ret = pthread_kern->psynch_wait_wakeup((uintptr_t)kwq, kwe, tstore);
+- 
+- 	if (ret != KERN_SUCCESS && ret != KERN_NOT_WAITING) {
+- 		panic("ksyn_signal: panic waking up thread %x\n", ret);
+-@@ -2053,7 +2053,7 @@ ksyn_signal(ksyn_wait_queue_t kwq, kwq_queue_type_t kqi,
++@@ -1969,7 +1969,7 @@ ksyn_signal(ksyn_wait_queue_t kwq, kwq_queue_type_t kqi,
+  		tstore = &kwq->kw_turnstile;
+  	}
+  
+diff --git a/patches/xnu/aa-new-clang-drop-auto-var-init-flag.patch b/patches/xnu/aa-new-clang-drop-auto-var-init-flag.patch
+new file mode 100644
+index 0000000000000000000000000000000000000000..5fe56a5b0b06852248ac4ab59a138cb9b78b0ae6
+--- /dev/null
++++ b/patches/xnu/aa-new-clang-drop-auto-var-init-flag.patch
+@@ -0,0 +1,12 @@
++diff --git a/makedefs/MakeInc.def b/makedefs/MakeInc.def
++index 5bd6f23..8460893 100644
++--- a/makedefs/MakeInc.def
+++++ b/makedefs/MakeInc.def
++@@ -306,7 +306,6 @@ CFLAGS_GEN = $(DEBUG_CFLAGS) -nostdinc \
++ 	-fno-builtin \
++ 	-fno-common \
++ 	-ftrivial-auto-var-init=zero \
++-	-enable-trivial-auto-var-init-zero-knowing-it-will-be-removed-from-clang \
++ 	-fsigned-bitfields \
++ 	-fmerge-all-constants \
++ 	-fno-c++-static-destructors \
+diff --git a/patches/xnu/ab-iorpc-kernelcontent.patch b/patches/xnu/ab-iorpc-kernelcontent.patch
+new file mode 100644
+index 0000000000000000000000000000000000000000..a51ff240b3ac4dd17b265a0de2b72451b3ee1c04
+--- /dev/null
++++ b/patches/xnu/ab-iorpc-kernelcontent.patch
+@@ -0,0 +1,10 @@
++--- a/iokit/DriverKit/IORPC.h
+++++ b/iokit/DriverKit/IORPC.h
++@@ -222,6 +222,7 @@
++ struct IORPC {
++ 	IORPCMessageMach * message;
++ 	IORPCMessageMach * reply;
+++	IORPCMessage *     kernelContent;
++ 	uint32_t           sendSize;
++ 	uint32_t           replySize;
++ };
+diff --git a/patches/xnu/ac-new-clang-uio-stackbuf-overaligned-array.patch b/patches/xnu/ac-new-clang-uio-stackbuf-overaligned-array.patch
+new file mode 100644
+index 0000000000000000000000000000000000000000..697f53e9db9339c31a66e6d9e5a90174567c1ffb
+--- /dev/null
++++ b/patches/xnu/ac-new-clang-uio-stackbuf-overaligned-array.patch
+@@ -0,0 +1,360 @@
++diff --git a/bsd/vfs/vfs_vnops.c b/bsd/vfs/vfs_vnops.c
++--- a/bsd/vfs/vfs_vnops.c
+++++ b/bsd/vfs/vfs_vnops.c
++@@ -964,7 +964,7 @@
++ 	int spacetype;
++ 	struct vfs_context context;
++ 	int error = 0;
++-	uio_stackbuf_t uio_buf[UIO_SIZEOF(1)];
+++	char uio_buf[UIO_SIZEOF(1)] __attribute__((aligned(_Alignof(union iovecs))));
++ 
++ 	context.vc_thread = current_thread();
++ 	context.vc_ucred = cred;
++diff --git a/bsd/vfs/vfs_subr.c b/bsd/vfs/vfs_subr.c
++--- a/bsd/vfs/vfs_subr.c
+++++ b/bsd/vfs/vfs_subr.c
++@@ -11021,7 +11021,7 @@
++ 	uio_t auio = NULL;
++ 	int eofflag, siz = UIO_BUFF_SIZE, alloc_size = 0, nentries = 0;
++ 	int open_flag = 0, full_erase_flag = 0;
++-	uio_stackbuf_t uio_buf[UIO_SIZEOF(1)];
+++	char uio_buf[UIO_SIZEOF(1)] __attribute__((aligned(_Alignof(union iovecs))));
++ 	char *rbuf = NULL;
++ 	void *dir_pos;
++ 	void *dir_end;
++diff --git a/bsd/vfs/vfs_lookup.c b/bsd/vfs/vfs_lookup.c
++--- a/bsd/vfs/vfs_lookup.c
+++++ b/bsd/vfs/vfs_lookup.c
++@@ -1670,7 +1670,7 @@
++ 	int error;
++ 	char *cp;               /* pointer into pathname argument */
++ 	uio_t auio;
++-	uio_stackbuf_t uio_buf[UIO_SIZEOF(1)];
+++	char uio_buf[UIO_SIZEOF(1)] __attribute__((aligned(_Alignof(union iovecs))));
++ 	int need_newpathbuf;
++ 	u_int linklen = 0;
++ 	struct componentname *cnp = &ndp->ni_cnd;
++diff --git a/bsd/vfs/vfs_attrlist.c b/bsd/vfs/vfs_attrlist.c
++--- a/bsd/vfs/vfs_attrlist.c
+++++ b/bsd/vfs/vfs_attrlist.c
++@@ -878,7 +878,7 @@
++ setattrlist_setfinderinfo(vnode_t vp, char *fndrinfo, struct vfs_context *ctx)
++ {
++ 	uio_t   auio;
++-	uio_stackbuf_t    uio_buf[UIO_SIZEOF(1)];
+++	char    uio_buf[UIO_SIZEOF(1)] __attribute__((aligned(_Alignof(union iovecs))));
++ 	int     error;
++ 
++ 	if ((auio = uio_createwithbuffer(1, 0, UIO_SYSSPACE, UIO_WRITE, uio_buf, sizeof(uio_buf))) == NULL) {
++@@ -1847,7 +1847,7 @@
++ 		error = 0;
++ 		if (vp && !is_bulk) {
++ 			uio_t   auio;
++-			uio_stackbuf_t    uio_buf[UIO_SIZEOF(1)];
+++			char    uio_buf[UIO_SIZEOF(1)] __attribute__((aligned(_Alignof(union iovecs))));
++ 
++ 			if ((auio = uio_createwithbuffer(1, 0, UIO_SYSSPACE,
++ 			    UIO_READ, uio_buf, sizeof(uio_buf))) == NULL) {
++@@ -3120,7 +3120,7 @@
++ 	int             pack_invalid;
++ 	int             vtype = 0;
++ 	uio_t           auio;
++-	uio_stackbuf_t uio_buf[UIO_SIZEOF(1)];
+++	char uio_buf[UIO_SIZEOF(1)] __attribute__((aligned(_Alignof(union iovecs))));
++ 	// must be true for fork attributes to be used as new common attributes
++ 	const int use_fork = (options & FSOPT_ATTR_CMN_EXTENDED) != 0;
++ 
++@@ -3474,7 +3474,7 @@
++     int *eofflagp)
++ {
++ 	uio_t rdir_uio;
++-	uio_stackbuf_t uio_buf[UIO_SIZEOF(1)];
+++	char uio_buf[UIO_SIZEOF(1)] __attribute__((aligned(_Alignof(union iovecs))));
++ 	size_t rdirbufsiz;
++ 	size_t rdirbufused;
++ 	int eofflag;
++@@ -4048,7 +4048,7 @@
++ 	enum uio_seg segflg;
++ 	int count;
++ 	uio_t auio = NULL;
++-	uio_stackbuf_t uio_buf[UIO_SIZEOF(1)];
+++	char uio_buf[UIO_SIZEOF(1)] __attribute__((aligned(_Alignof(union iovecs))));
++ 	kauth_action_t action;
++ 	int eofflag;
++ 	uint64_t options;
++diff --git a/bsd/vfs/vfs_syscalls.c b/bsd/vfs/vfs_syscalls.c
++--- a/bsd/vfs/vfs_syscalls.c
+++++ b/bsd/vfs/vfs_syscalls.c
++@@ -7264,7 +7264,7 @@
++ 	uio_t auio;
++ 	int error;
++ 	struct nameidata nd;
++-	uio_stackbuf_t uio_buf[UIO_SIZEOF(1)];
+++	char uio_buf[UIO_SIZEOF(1)] __attribute__((aligned(_Alignof(union iovecs))));
++ 	bool put_vnode;
++ 
++ 	if (bufsize > INT32_MAX) {
++@@ -10317,7 +10317,7 @@
++ 	int spacetype = proc_is64bit(vfs_context_proc(&context)) ? UIO_USERSPACE64 : UIO_USERSPACE32;
++ 	off_t loff;
++ 	int error, numdirent;
++-	uio_stackbuf_t uio_buf[UIO_SIZEOF(1)];
+++	char uio_buf[UIO_SIZEOF(1)] __attribute__((aligned(_Alignof(union iovecs))));
++ 
++ get_from_fd:
++ 	error = fp_getfvp(vfs_context_proc(&context), fd, &fp, &vp);
++@@ -10616,7 +10616,7 @@
++ 	struct attrlist attributelist;
++ 	vfs_context_t ctx = vfs_context_current();
++ 	int fd = uap->fd;
++-	uio_stackbuf_t uio_buf[UIO_SIZEOF(1)];
+++	char uio_buf[UIO_SIZEOF(1)] __attribute__((aligned(_Alignof(union iovecs))));
++ 	kauth_action_t action;
++ 
++ 	AUDIT_ARG(fd, fd);
++@@ -10957,7 +10957,7 @@
++ 	size_t mallocsize;
++ 	uint32_t nameiflags;
++ 	vfs_context_t ctx = vfs_context_current();
++-	uio_stackbuf_t uio_buf[UIO_SIZEOF(1)];
+++	char uio_buf[UIO_SIZEOF(1)] __attribute__((aligned(_Alignof(union iovecs))));
++ 
++ 	/* Start by copying in fsearchblock parameter list */
++ 	if (IS_64BIT_PROCESS(p)) {
++@@ -12909,7 +12909,7 @@
++ 	size_t namelen;
++ 	u_int32_t nameiflags;
++ 	int error;
++-	uio_stackbuf_t uio_buf[UIO_SIZEOF(1)];
+++	char uio_buf[UIO_SIZEOF(1)] __attribute__((aligned(_Alignof(union iovecs))));
++ 
++ 	if (uap->options & (XATTR_NOSECURITY | XATTR_NODEFAULT)) {
++ 		return EINVAL;
++@@ -12993,7 +12993,7 @@
++ 	size_t attrsize = 0;
++ 	size_t namelen;
++ 	int error;
++-	uio_stackbuf_t uio_buf[UIO_SIZEOF(1)];
+++	char uio_buf[UIO_SIZEOF(1)] __attribute__((aligned(_Alignof(union iovecs))));
++ 
++ 	if (uap->options & (XATTR_NOFOLLOW | XATTR_NOSECURITY | XATTR_NODEFAULT)) {
++ 		return EINVAL;
++@@ -13041,7 +13041,7 @@
++ struct setxattr_ctx {
++ 	struct nameidata nd;
++ 	char attrname[XATTR_MAXNAMELEN + 1];
++-	uio_stackbuf_t uio_buf[UIO_SIZEOF(1)];
+++	char uio_buf[UIO_SIZEOF(1)] __attribute__((aligned(_Alignof(union iovecs))));
++ };
++ 
++ /*
++@@ -13137,7 +13137,7 @@
++ 	int spacetype = IS_64BIT_PROCESS(p) ? UIO_USERSPACE64 : UIO_USERSPACE32;
++ 	size_t namelen;
++ 	int error;
++-	uio_stackbuf_t uio_buf[UIO_SIZEOF(1)];
+++	char uio_buf[UIO_SIZEOF(1)] __attribute__((aligned(_Alignof(union iovecs))));
++ 
++ 	if (uap->options & (XATTR_NOFOLLOW | XATTR_NOSECURITY | XATTR_NODEFAULT)) {
++ 		return EINVAL;
++@@ -13314,7 +13314,7 @@
++ 	size_t attrsize = 0;
++ 	u_int32_t nameiflags;
++ 	int error;
++-	uio_stackbuf_t uio_buf[UIO_SIZEOF(1)];
+++	char uio_buf[UIO_SIZEOF(1)] __attribute__((aligned(_Alignof(union iovecs))));
++ 
++ 	if (uap->options & (XATTR_NOSECURITY | XATTR_NODEFAULT)) {
++ 		return EINVAL;
++@@ -13356,7 +13356,7 @@
++ 	int spacetype = proc_is64bit(p) ? UIO_USERSPACE64 : UIO_USERSPACE32;
++ 	size_t attrsize = 0;
++ 	int error;
++-	uio_stackbuf_t uio_buf[UIO_SIZEOF(1)];
+++	char uio_buf[UIO_SIZEOF(1)] __attribute__((aligned(_Alignof(union iovecs))));
++ 
++ 	if (uap->options & (XATTR_NOFOLLOW | XATTR_NOSECURITY | XATTR_NODEFAULT)) {
++ 		return EINVAL;
++diff --git a/bsd/vfs/vfs_quota.c b/bsd/vfs/vfs_quota.c
++--- a/bsd/vfs/vfs_quota.c
+++++ b/bsd/vfs/vfs_quota.c
++@@ -382,7 +382,7 @@
++ 	off_t file_size;
++ 	uio_t auio;
++ 	int error = 0;
++-	uio_stackbuf_t uio_buf[UIO_SIZEOF(1)];
+++	char uio_buf[UIO_SIZEOF(1)] __attribute__((aligned(_Alignof(union iovecs))));
++ 
++ 	context.vc_thread = current_thread();
++ 	context.vc_ucred = qfp->qf_cred;
++@@ -440,7 +440,7 @@
++ 	struct dqfilehdr header;
++ 	struct vfs_context context;
++ 	uio_t auio;
++-	uio_stackbuf_t uio_buf[UIO_SIZEOF(1)];
+++	char uio_buf[UIO_SIZEOF(1)] __attribute__((aligned(_Alignof(union iovecs))));
++ 
++ 	auio = uio_createwithbuffer(1, 0, UIO_SYSSPACE, UIO_READ,
++ 	    &uio_buf[0], sizeof(uio_buf));
++@@ -767,7 +767,7 @@
++ 	int i, skip, last;
++ 	u_int32_t mask;
++ 	int error = 0;
++-	uio_stackbuf_t uio_buf[UIO_SIZEOF(1)];
+++	char uio_buf[UIO_SIZEOF(1)] __attribute__((aligned(_Alignof(union iovecs))));
++ 
++ 
++ 	qf_lock(qfp);
++@@ -986,7 +986,7 @@
++ 	struct dqblk dqb, *dqblkp;
++ 	uio_t auio;
++ 	int error;
++-	uio_stackbuf_t uio_buf[UIO_SIZEOF(1)];
+++	char uio_buf[UIO_SIZEOF(1)] __attribute__((aligned(_Alignof(union iovecs))));
++ 
++ 	if (dq->dq_id == 0) {
++ 		dq->dq_flags &= ~DQ_MOD;
++diff --git a/bsd/nfs/nfs_serv.c b/bsd/nfs/nfs_serv.c
++--- a/bsd/nfs/nfs_serv.c
+++++ b/bsd/nfs/nfs_serv.c
++@@ -769,7 +769,7 @@
++ 	struct nfsm_chain *nmreq, nmrep;
++ 	mbuf_t mpath, mp;
++ 	uio_t auio = NULL;
++-	uio_stackbuf_t uio_buf[UIO_SIZEOF(4)];
+++	char uio_buf[UIO_SIZEOF(4)] __attribute__((aligned(_Alignof(union iovecs))));
++ 	char *uio_bufp = &uio_buf[0];
++ 	int uio_buflen = UIO_SIZEOF(4);
++ 
++@@ -917,7 +917,7 @@
++ 	struct vnode_attr vattr, *vap = &vattr;
++ 	off_t off;
++ 	uid_t saved_uid;
++-	uio_stackbuf_t uio_buf[UIO_SIZEOF(0)];
+++	char uio_buf[UIO_SIZEOF(0)] __attribute__((aligned(_Alignof(union iovecs))));
++ 	struct nfsm_chain *nmreq, nmrep;
++ 
++ 	error = 0;
++@@ -3559,7 +3559,7 @@
++ 	struct nfs_export *nx = NULL;
++ 	struct nfs_export_options *nxo = NULL;
++ 	uio_t auio = NULL;
++-	uio_stackbuf_t uio_buf[UIO_SIZEOF(1)];
+++	char uio_buf[UIO_SIZEOF(1)] __attribute__((aligned(_Alignof(union iovecs))));
++ 	struct nfsm_chain *nmreq, nmrep;
++ 	__unused const int nfs_vers = nd->nd_vers;
++ 	assert(nd->nd_vers == NFS_VER2 || nd->nd_vers == NFS_VER3);
++@@ -4215,7 +4215,7 @@
++ 	struct nfs_export *nx;
++ 	struct nfs_export_options *nxo;
++ 	uio_t auio = NULL;
++-	uio_stackbuf_t uio_buf[UIO_SIZEOF(1)];
+++	char uio_buf[UIO_SIZEOF(1)] __attribute__((aligned(_Alignof(union iovecs))));
++ 	int len, nlen, rem, xfer, error, attrerr;
++ 	int siz, count, fullsiz, eofflag, nentries;
++ 	u_quad_t off, toff, verf = 0;
++@@ -4462,7 +4462,7 @@
++ 	struct nfs_export *nx;
++ 	struct nfs_export_options *nxo;
++ 	uio_t auio = NULL;
++-	uio_stackbuf_t uio_buf[UIO_SIZEOF(1)];
+++	char uio_buf[UIO_SIZEOF(1)] __attribute__((aligned(_Alignof(union iovecs))));
++ 	struct vnode_attr attr, va, *vap = &va;
++ 	int len, nlen, rem, xfer, error, attrerr, gotfh, gotattr;
++ 	int siz, dircount, maxcount, fullsiz, eofflag, dirlen, nentries, isdotdot;
++diff --git a/bsd/kern/sys_generic.c b/bsd/kern/sys_generic.c
++--- a/bsd/kern/sys_generic.c
+++++ b/bsd/kern/sys_generic.c
++@@ -303,7 +303,7 @@
++     user_addr_t bufp, user_size_t nbyte, off_t offset, int flags,
++     user_ssize_t *retval)
++ {
++-	uio_stackbuf_t uio_buf[UIO_SIZEOF(1)];
+++	char uio_buf[UIO_SIZEOF(1)] __attribute__((aligned(_Alignof(union iovecs))));
++ 	uio_t uio;
++ 	int spacetype;
++ 
++@@ -350,7 +350,7 @@
++ read_internal(struct proc *p, int fd, user_addr_t buf, user_size_t nbyte,
++     off_t offset, int flags, user_ssize_t *retval)
++ {
++-	uio_stackbuf_t uio_buf[UIO_SIZEOF(1)];
+++	char uio_buf[UIO_SIZEOF(1)] __attribute__((aligned(_Alignof(union iovecs))));
++ 	uio_t uio;
++ 	int spacetype = IS_64BIT_PROCESS(p) ? UIO_USERSPACE64 : UIO_USERSPACE32;
++ 
++@@ -631,7 +631,7 @@
++     user_addr_t bufp, user_size_t nbyte, off_t offset, int flags,
++     user_ssize_t *retval)
++ {
++-	uio_stackbuf_t uio_buf[UIO_SIZEOF(1)];
+++	char uio_buf[UIO_SIZEOF(1)] __attribute__((aligned(_Alignof(union iovecs))));
++ 	uio_t uio;
++ 	int spacetype;
++ 
++@@ -678,7 +678,7 @@
++ write_internal(struct proc *p, int fd, user_addr_t buf, user_size_t nbyte,
++     off_t offset, int flags, guardid_t *puguard, user_ssize_t *retval)
++ {
++-	uio_stackbuf_t uio_buf[UIO_SIZEOF(1)];
+++	char uio_buf[UIO_SIZEOF(1)] __attribute__((aligned(_Alignof(union iovecs))));
++ 	uio_t uio;
++ 	int spacetype = IS_64BIT_PROCESS(p) ? UIO_USERSPACE64 : UIO_USERSPACE32;
++ 
++diff --git a/bsd/kern/decmpfs.c b/bsd/kern/decmpfs.c
++--- a/bsd/kern/decmpfs.c
+++++ b/bsd/kern/decmpfs.c
++@@ -515,7 +515,7 @@
++ 	const bool no_additional_data = ((cp != NULL)
++ 	    && (cp->cmp_type != 0)
++ 	    && (cp->cmp_minimal_xattr != 0));
++-	uio_stackbuf_t uio_buf[UIO_SIZEOF(1)];
+++	char uio_buf[UIO_SIZEOF(1)] __attribute__((aligned(_Alignof(union iovecs))));
++ 	decmpfs_header *hdr = NULL;
++ 
++ 	/*
++diff --git a/bsd/kern/uipc_syscalls.c b/bsd/kern/uipc_syscalls.c
++--- a/bsd/kern/uipc_syscalls.c
+++++ b/bsd/kern/uipc_syscalls.c
++@@ -3561,7 +3561,7 @@
++ 		mbuf_t  m;
++ 		unsigned int    nbufs = SFUIOBUFS, i;
++ 		uio_t   auio;
++-		uio_stackbuf_t    uio_buf[UIO_SIZEOF(SFUIOBUFS)]; /* 1 KB !!! */
+++		char    uio_buf[UIO_SIZEOF(SFUIOBUFS)] __attribute__((aligned(_Alignof(union iovecs)))); /* 1 KB !!! */
++ 		size_t  uiolen;
++ 		user_ssize_t    rlen;
++ 		off_t   pgoff;
++diff --git a/bsd/kern/kpi_socket.c b/bsd/kern/kpi_socket.c
++--- a/bsd/kern/kpi_socket.c
+++++ b/bsd/kern/kpi_socket.c
++@@ -727,7 +727,7 @@
++ 	int error = 0;
++ 	user_ssize_t length = 0;
++ 	struct sockaddr *fromsa = NULL;
++-	uio_stackbuf_t uio_buf[UIO_SIZEOF((msg != NULL) ? msg->msg_iovlen : 0)];
+++	char uio_buf[UIO_SIZEOF((msg != NULL) ? msg->msg_iovlen : 0)] __attribute__((aligned(_Alignof(union iovecs))));
++ 
++ 	if (sock == NULL) {
++ 		return EINVAL;
++diff --git a/security/mac_vfs_subr.c b/security/mac_vfs_subr.c
++--- a/security/mac_vfs_subr.c
+++++ b/security/mac_vfs_subr.c
++@@ -167,7 +167,7 @@
++ {
++ 	vfs_context_t ctx;
++ 	int options = XATTR_NOSECURITY;
++-	uio_stackbuf_t uio_buf[UIO_SIZEOF(1)];
+++	char uio_buf[UIO_SIZEOF(1)] __attribute__((aligned(_Alignof(union iovecs))));
++ 	uio_t auio;
++ 	int error;
++ 
++@@ -198,7 +198,7 @@
++ {
++ 	vfs_context_t ctx = vfs_context_current();
++ 	int options = XATTR_NOSECURITY;
++-	uio_stackbuf_t uio_buf[UIO_SIZEOF(1)];
+++	char uio_buf[UIO_SIZEOF(1)] __attribute__((aligned(_Alignof(union iovecs))));
++ 	uio_t auio;
++ 	int error;
++ 
+diff --git a/patches/xnu/ad-new-clang-kalloc-void-ptr-deref.patch b/patches/xnu/ad-new-clang-kalloc-void-ptr-deref.patch
+new file mode 100644
+index 0000000000000000000000000000000000000000..67cf25d9fc5091e927089ed0997d1847194f2952
+--- /dev/null
++++ b/patches/xnu/ad-new-clang-kalloc-void-ptr-deref.patch
+@@ -0,0 +1,20 @@
++diff --git a/osfmk/kern/kalloc.h b/osfmk/kern/kalloc.h
++--- a/osfmk/kern/kalloc.h
+++++ b/osfmk/kern/kalloc.h
++@@ -821,12 +821,11 @@
++  * @param ptr           the pointer whose type needs to be checked.
++  * @param type          the type which the pointer will be checked against.
++  */
+++/* Compare the pointer type itself: C++ rejects *void_pointer outright and
+++ * the -Wvoid-ptr-dereference pragma cannot suppress a hard error. */
++ #define KALLOC_TYPE_IS_COMPATIBLE_PTR(ptr, type)                   \
++-	_Pragma("clang diagnostic push")                               \
++-	_Pragma("clang diagnostic ignored \"-Wvoid-ptr-dereference\"") \
++-	(__builtin_xnu_types_compatible(__typeof__(*(ptr)), type) ||   \
++-	    __builtin_xnu_types_compatible(__typeof__(*(ptr)), void))  \
++-	_Pragma("clang diagnostic pop")
+++	(__builtin_xnu_types_compatible(__typeof__(ptr), type *) ||    \
+++	    __builtin_xnu_types_compatible(__typeof__(ptr), void *))
++ 
++ #define KALLOC_TYPE_ASSERT_COMPATIBLE_POINTER(ptr, type) \
++ 	_Static_assert(KALLOC_TYPE_IS_COMPATIBLE_PTR(ptr, type), \
+diff --git a/patches/xnu/ae-iorpc-iokit-kernelcontent.patch b/patches/xnu/ae-iorpc-iokit-kernelcontent.patch
+new file mode 100644
+index 0000000000000000000000000000000000000000..e8a06e90dc895d74ab9b166f0b2ee028effc83db
+--- /dev/null
++++ b/patches/xnu/ae-iorpc-iokit-kernelcontent.patch
+@@ -0,0 +1,11 @@
++diff --git a/iokit/IOKit/IORPC.h b/iokit/IOKit/IORPC.h
++--- a/iokit/IOKit/IORPC.h
+++++ b/iokit/IOKit/IORPC.h
++@@ -222,6 +222,7 @@
++ struct IORPC {
++ 	IORPCMessageMach * message;
++ 	IORPCMessageMach * reply;
+++	IORPCMessage *     kernelContent;
++ 	uint32_t           sendSize;
++ 	uint32_t           replySize;
++ };
+diff --git a/patches/xnu/af-missing-arm64-kpc-stub.patch b/patches/xnu/af-missing-arm64-kpc-stub.patch
+new file mode 100644
+index 0000000000000000000000000000000000000000..102613fcad7e52fd73bf739a6b32aed127f79192
+--- /dev/null
++++ b/patches/xnu/af-missing-arm64-kpc-stub.patch
+@@ -0,0 +1,164 @@
++diff --git a/osfmk/arm64/kpc.c b/osfmk/arm64/kpc.c
++new file mode 100644
++--- /dev/null
+++++ b/osfmk/arm64/kpc.c
++@@ -0,0 +1,159 @@
+++/*
+++ * sweet: arm64 kpc backend. Apple's osfmk/arm64/kpc.c programs the Apple
+++ * PMU (implementation-defined system registers) and ships only in the KDK's
+++ * closed per-SoC library. xnu does not build without kperf, and kperf needs
+++ * kpc, so this backend reports no counters at all: every class is empty and
+++ * every configuration request fails cleanly.
+++ */
+++
+++#include <mach/mach_types.h>
+++#include <machine/machine_routines.h>
+++#include <kern/processor.h>
+++#include <sys/errno.h>
+++#include <kern/kpc.h>
+++
+++int kpc_pc_capture = 0;
+++
+++void
+++kpc_arch_init(void)
+++{
+++}
+++
+++uint32_t
+++kpc_get_classes(void)
+++{
+++	return 0;
+++}
+++
+++int
+++kpc_get_pmu_version(void)
+++{
+++	return KPC_PMU_ERROR;
+++}
+++
+++uint32_t
+++kpc_fixed_count(void)
+++{
+++	return 0;
+++}
+++
+++uint32_t
+++kpc_fixed_config_count(void)
+++{
+++	return 0;
+++}
+++
+++uint64_t
+++kpc_fixed_max(void)
+++{
+++	return 0;
+++}
+++
+++uint32_t
+++kpc_configurable_count(void)
+++{
+++	return 0;
+++}
+++
+++uint32_t
+++kpc_configurable_config_count(uint64_t pmc_mask __unused)
+++{
+++	return 0;
+++}
+++
+++uint64_t
+++kpc_configurable_max(void)
+++{
+++	return 0;
+++}
+++
+++uint32_t
+++kpc_rawpmu_config_count(void)
+++{
+++	return 0;
+++}
+++
+++int
+++kpc_get_rawpmu_config(kpc_config_t *configv __unused)
+++{
+++	return 0;
+++}
+++
+++boolean_t
+++kpc_is_running_fixed(void)
+++{
+++	return FALSE;
+++}
+++
+++boolean_t
+++kpc_is_running_configurable(uint64_t pmc_mask __unused)
+++{
+++	return FALSE;
+++}
+++
+++int
+++kpc_get_fixed_config(kpc_config_t *configv __unused)
+++{
+++	return 0;
+++}
+++
+++int
+++kpc_get_fixed_counters(uint64_t *counterv __unused)
+++{
+++	return 0;
+++}
+++
+++int
+++kpc_get_configurable_config(kpc_config_t *configv __unused, uint64_t pmc_mask __unused)
+++{
+++	return 0;
+++}
+++
+++int
+++kpc_get_configurable_counters(uint64_t *counterv __unused, uint64_t pmc_mask __unused)
+++{
+++	return 0;
+++}
+++
+++int
+++kpc_get_all_cpus_counters(uint32_t classes __unused, int *curcpu, uint64_t *buf __unused)
+++{
+++	if (curcpu) {
+++		*curcpu = cpu_number();
+++	}
+++	return 0;
+++}
+++
+++int
+++kpc_set_config_arch(struct kpc_config_remote *mp_config __unused)
+++{
+++	return ENOTSUP;
+++}
+++
+++int
+++kpc_set_period_arch(struct kpc_config_remote *mp_config __unused)
+++{
+++	return ENOTSUP;
+++}
+++
+++int
+++kpc_set_running_arch(struct kpc_running_remote *mp_config __unused)
+++{
+++	return ENOTSUP;
+++}
+++
+++int
+++kpc_set_sw_inc(uint32_t mask __unused)
+++{
+++	return ENOTSUP;
+++}
+++
+++void
+++kpc_idle(void)
+++{
+++}
+++
+++void
+++kpc_idle_exit(void)
+++{
+++}
+diff --git a/patches/xnu/ag-emit-compile-records.patch b/patches/xnu/ag-emit-compile-records.patch
+new file mode 100644
+index 0000000000000000000000000000000000000000..a401af9798af70603b2565c1f6eca2e9ef4af46d
+--- /dev/null
++++ b/patches/xnu/ag-emit-compile-records.patch
+@@ -0,0 +1,30 @@
++diff --git a/makedefs/MakeInc.rule b/makedefs/MakeInc.rule
++--- a/makedefs/MakeInc.rule
+++++ b/makedefs/MakeInc.rule
++@@ -392,7 +392,7 @@
++ #
++ 
++ S_RULE_0=@$(LOG_AS) "$@"
++-S_RULE_1A=$(_v)${S_KCC} -c ${SFLAGS} -MD -MF $(@:o=d) -MP ${$@_SFLAGS_ADD} ${INCFLAGS} ${$@_INCFLAGS}
+++S_RULE_1A=$(_v)${S_KCC} -c ${SFLAGS} -MD -MF $(@:o=d) -MJ $@.json -MP ${$@_SFLAGS_ADD} ${INCFLAGS} ${$@_INCFLAGS}
++ S_RULE_1B=$(<F)
++ S_RULE_2=
++ 
++@@ -400,7 +400,7 @@
++ # Compilation rules to generate .o from .c for normal files
++ #
++ C_RULE_0=@$(LOG_CC) "$@"
++-C_RULE_1A=$(_v)${KCC} -c ${filter-out ${$@_CFLAGS_RM}, ${CFLAGS} ${CWARNFLAGS}} -MD -MF $(@:o=d) -MP ${$@_CFLAGS_ADD} ${$@_CWARNFLAGS_ADD} ${INCFLAGS} ${$@_INCFLAGS}
+++C_RULE_1A=$(_v)${KCC} -c ${filter-out ${$@_CFLAGS_RM}, ${CFLAGS} ${CWARNFLAGS}} -MD -MF $(@:o=d) -MJ $@.json -MP ${$@_CFLAGS_ADD} ${$@_CWARNFLAGS_ADD} ${INCFLAGS} ${$@_INCFLAGS}
++ C_RULE_1B=$(<F)
++ C_RULE_2=
++ 
++@@ -424,7 +424,7 @@
++ #   The config tool slickly changes the last source filename char to 'o'
++ #   for the object filename.
++ P_RULE_0=@$(LOG_CXX) "$@"
++-P_RULE_1A=$(_v)${KC++} -o $@ -c ${CXXFLAGS} ${filter-out ${$@_CFLAGS_RM}, ${CFLAGS} ${CXXWARNFLAGS}} -MD -MF $(@:o=d) -MP ${$@_CFLAGS_ADD} ${$@_CXXWARNFLAGS_ADD} ${INCFLAGS} ${$@_INCFLAGS}
+++P_RULE_1A=$(_v)${KC++} -o $@ -c ${CXXFLAGS} ${filter-out ${$@_CFLAGS_RM}, ${CFLAGS} ${CXXWARNFLAGS}} -MD -MF $(@:o=d) -MJ $@.json -MP ${$@_CFLAGS_ADD} ${$@_CXXWARNFLAGS_ADD} ${INCFLAGS} ${$@_INCFLAGS}
++ P_RULE_1B=$(<F)
++ P_RULE_2=
++ 
+diff --git a/patches/xnu/ah-backport-vfs-getvfs-with-vfsops.patch b/patches/xnu/ah-backport-vfs-getvfs-with-vfsops.patch
+new file mode 100644
+index 0000000000000000000000000000000000000000..cfc5951029bca6275a1ffa3ed5cb1b3f5de5bc22
+--- /dev/null
++++ b/patches/xnu/ah-backport-vfs-getvfs-with-vfsops.patch
+@@ -0,0 +1,44 @@
++diff --git a/bsd/vfs/vfs_subr.c b/bsd/vfs/vfs_subr.c
++--- a/bsd/vfs/vfs_subr.c
+++++ b/bsd/vfs/vfs_subr.c
++@@ -1945,6 +1945,22 @@
++ 	return mount_list_lookupby_fsid(fsid, 0, 0);
++ }
++ 
+++/*
+++ * Lookup a mount point by filesystem identifier and verify its vfsops.
+++ * The original kernelcache exports this entry point and the retained kexts
+++ * (apfs among them) import it; the 8796 source drop omits it.
+++ */
+++struct mount *
+++vfs_getvfs_with_vfsops(fsid_t *fsid, const struct vfsops * const ops)
+++{
+++	mount_t mp = mount_list_lookupby_fsid(fsid, 0, 0);
+++
+++	if (mp != NULL && mp->mnt_op != ops) {
+++		mp = NULL;
+++	}
+++	return mp;
+++}
+++
++ static struct mount *
++ vfs_getvfs_locked(fsid_t *fsid)
++ {
++diff --git a/bsd/sys/mount.h b/bsd/sys/mount.h
++--- a/bsd/sys/mount.h
+++++ b/bsd/sys/mount.h
++@@ -1281,6 +1281,14 @@
++ mount_t vfs_getvfs(fsid_t *fsid);
++ 
++ /*!
+++ *  @function vfs_getvfs_with_vfsops
+++ *  @abstract Given a filesystem ID, look up a mount structure and verify the vfsops.
+++ *  @param fsid Filesystem ID to look up.
+++ *  @return Mountpoint if found and the vfsops matches the expected value, else NULL.
+++ */
+++mount_t vfs_getvfs_with_vfsops(fsid_t *fsid, const struct vfsops *ops);
+++
+++/*!
++  *  @function vfs_mountedon
++  *  @abstract Check whether a given block device has a filesystem mounted on it.
++  *  @discussion Note that this is NOT a check for a covered vnode (the directory upon which
+diff --git a/profiles/arch/arm64/patches/xnu/series b/profiles/arch/arm64/patches/xnu/series
+index 7c32f66ff753725324cbf93a8d56e6d59c6bb380..8d8b490e6deb0e688f54b348aba38e4842ed77a7 100644
+--- a/profiles/arch/arm64/patches/xnu/series
++++ b/profiles/arch/arm64/patches/xnu/series
+@@ -1,3 +1,11 @@
++../../../../../patches/xnu/aa-new-clang-drop-auto-var-init-flag.patch
++../../../../../patches/xnu/ab-iorpc-kernelcontent.patch
++../../../../../patches/xnu/ac-new-clang-uio-stackbuf-overaligned-array.patch
++../../../../../patches/xnu/ad-new-clang-kalloc-void-ptr-deref.patch
++../../../../../patches/xnu/ae-iorpc-iokit-kernelcontent.patch
++../../../../../patches/xnu/af-missing-arm64-kpc-stub.patch
++../../../../../patches/xnu/ag-emit-compile-records.patch
++../../../../../patches/xnu/ah-backport-vfs-getvfs-with-vfsops.patch
+ ../../../../../patches/xnu/apple-only-cpu-tunables.patch
+ ../../../../../patches/xnu/architectural-timer-entry.patch
+ ../../../../../patches/xnu/armvirt-platform-personality.patch
+@@ -51,3 +59,5 @@
+ ../../../../../patches/xnu/zzx-pmap-sync-64bit-pa.patch
+ ../../../../../patches/xnu/zzy-native-gpu-addon-mount.patch
+ ../../../../../patches/xnu/zzy-staged-system-apps.patch
++component:XnuPrelink/patches/xnu-10063.141.1-security-init.patch
++component:XnuPrelink/patches/xnu-10063.141.1-sparse-index.patch
+diff --git a/profiles/os/ios-16.7.16-20H392/profile.toml b/profiles/os/ios-16.7.16-20H392/profile.toml
+index a47d9a29abd84ec5913097dfc29034b828082712..5aa4a3b0d4f65c453c84797649a11aefc7d1777f 100644
+--- a/profiles/os/ios-16.7.16-20H392/profile.toml
++++ b/profiles/os/ios-16.7.16-20H392/profile.toml
+@@ -1,20 +1,20 @@
+ ["os"]
+ "name" = "ios-16.7.16-20H392"
+ "darwin" = "22.6.0"
+-"xnu_version" = "8796.142.1.703.8"
+-"xnu_revision" = "xnu-8796.141.3"
+-"driverkit_tag" = "xnu-8796.142.1.703.8"
+-"trustcache_tag" = "xnu-8796.142.1.703.8"
++"xnu_version" = "8796.141.3"
++"xnu_revision" = "1b191cb58250d0705d8a51287127505aa4bc0789"
++"driverkit_tag" = "xnu-8796.121.2"
++"trustcache_tag" = "xnu-8796.101.5"
+ "abi" = ["IOGPUFamily", "IOHIDFamily", "IOMobileGraphicsFamily"]
+ 
+ ["ipsw"]
+-"url" = "file:///mnt/e/default-workspace/ipsw/iPhone10,3,iPhone10,6_16.7.16_20H392_Restore (1).ipsw"
++"url" = "/mnt/e/default-workspace/ipsw/iPhone10,3,iPhone10,6_16.7.16_20H392_Restore (1).ipsw"
+ "product" = "iPhone10,3"
+ "version" = "16.7.16"
+ "build" = "20H392"
+-"device_class" = "d22ap"
++"device_class" = "d221ap"
+ "chip_id" = 32789
+-"board_id" = 2
++"board_id" = 14
+ "fetch" = ["KernelCache", "DeviceTree", "StaticTrustCache", "Cryptex1,SystemTrustCache"]
+ 
+ ["ipsw"."sha256"]
+diff --git a/scripts/appsync/AppSync.m b/scripts/appsync/AppSync.m
+new file mode 100644
+index 0000000000000000000000000000000000000000..2c79c53600a470ad81dbd161bc2fa1d37fc26e10
+--- /dev/null
++++ b/scripts/appsync/AppSync.m
+@@ -0,0 +1,126 @@
++// SPDX-License-Identifier: GPL-3.0-or-later
++// UniXNU adaptation of AppSync's installation and FrontBoard strategy.
++// See README.md for the upstream attribution and the 24A446 ABI contract.
++#import <Foundation/Foundation.h>
++#import <objc/runtime.h>
++#import <dlfcn.h>
++#import "Signing.h"
++
++#ifdef AS_HOST_TEST
++#define AS_VERIFIER "ASFixtureVerifier"
++#define AS_TRUST "ASFixtureSignatureService"
++#else
++#define AS_VERIFIER "MICodeSigningVerifier"
++#define AS_TRUST "FBSSignatureValidationService"
++#endif
++
++@interface NSObject (UniXNUAppSyncPrivate)
++- (NSURL *)bundleURL;
++- (id)bundle;
++- (BOOL)allowAdhocSigning;
++- (BOOL)verifyTrustCachePresence;
++- (BOOL)performOnlineAuthorization;
++- (BOOL)skipProfileIDValidation;
++- (void)setAllowAdhocSigning:(BOOL)value;
++- (void)setVerifyTrustCachePresence:(BOOL)value;
++- (void)setPerformOnlineAuthorization:(BOOL)value;
++- (void)setSkipProfileIDValidation:(BOOL)value;
++@end
++
++static BOOL (*originalValidation)(id, SEL, NSError **);
++static NSUInteger (*originalTrust)(id, SEL, id);
++
++// Installation staging, installed apps and their nested bundles live on Data.
++// Classify their location, never their identifier, version or executable hash.
++static BOOL userBundle(NSURL *url) {
++    if (![url isKindOfClass:[NSURL class]] || !url.isFileURL) return NO;
++    NSString *path = url.URLByResolvingSymlinksInPath.URLByStandardizingPath.path;
++    if (![path hasPrefix:@"/private/var/"] && ![path hasPrefix:@"/var/"]) return NO;
++    for (NSString *component in path.pathComponents)
++        if ([component hasSuffix:@".app"] && component.length > 4) return YES;
++    return NO;
++}
++
++static BOOL validate(id self, SEL command, NSError **error) {
++    id bundle = [self bundle];
++    if (![bundle respondsToSelector:@selector(bundleURL)] || !userBundle([bundle bundleURL]))
++        return originalValidation(self, command, error);
++    // Validate ad-hoc user packages without a preloaded hash or provisioning
++    // profile ID. The kernel trusts their validated CodeDirectories on demand.
++    BOOL adhoc = [self allowAdhocSigning], trust = [self verifyTrustCachePresence];
++    BOOL online = [self performOnlineAuthorization], profile = [self skipProfileIDValidation];
++    [self setAllowAdhocSigning:YES];
++    [self setVerifyTrustCachePresence:NO];
++    [self setPerformOnlineAuthorization:NO];
++    [self setSkipProfileIDValidation:YES];
++    @try {
++        return ASValidateUserBundle([bundle bundleURL], ^BOOL(NSError **nativeError) {
++            return originalValidation(self, command, nativeError);
++        }, error);
++    } @finally {
++        [self setAllowAdhocSigning:adhoc];
++        [self setVerifyTrustCachePresence:trust];
++        [self setPerformOnlineAuthorization:online];
++        [self setSkipProfileIDValidation:profile];
++    }
++}
++
++static NSUInteger trustState(id self, SEL command, id application) {
++    NSUInteger state = originalTrust(self, command, application);
++    // AppSync's iOS 14+ trusted value, also used by the 24A446 service.
++    if (state == 8 || ![application respondsToSelector:@selector(bundleURL)]) return state;
++    return userBundle([application bundleURL]) ? 8 : state;
++}
++
++static BOOL signature(Method method, const char *result, unsigned count, const char **args) {
++    if (!method || method_getNumberOfArguments(method) != count + 2) return NO;
++    char type[64];
++    method_getReturnType(method, type, sizeof(type));
++    if (strcmp(type, result)) return NO;
++    for (unsigned i = 0; i < count; ++i) {
++        method_getArgumentType(method, i + 2, type, sizeof(type));
++        // NSError ** may carry the out qualifier in a private ABI.
++        const char *plain = type;
++        while (*plain && strchr("rnNoORV", *plain)) ++plain;
++        if (strcmp(plain, args[i])) return NO;
++    }
++    return YES;
++}
++
++__attribute__((constructor)) static void start(void) {
++    @autoreleasepool {
++        NSString *process = NSProcessInfo.processInfo.processName;
++        if ([process isEqual:@"installd"] || [process isEqual:@"com.apple.MobileInstallationHelperService"]) {
++#ifndef AS_HOST_TEST
++            dlopen("/System/Library/PrivateFrameworks/InstalledContentLibrary.framework/InstalledContentLibrary", RTLD_NOW);
++#endif
++            Class cls = objc_getClass(AS_VERIFIER);
++            SEL selector = @selector(performValidationWithError:);
++            Method method = class_getInstanceMethod(cls, selector);
++            const char *arguments[] = {"^@"};
++            const char *getters[] = {"allowAdhocSigning", "verifyTrustCachePresence", "performOnlineAuthorization", "skipProfileIDValidation"};
++            const char *setters[] = {"setAllowAdhocSigning:", "setVerifyTrustCachePresence:", "setPerformOnlineAuthorization:", "setSkipProfileIDValidation:"};
++            BOOL valid = signature(method, "B", 1, arguments) &&
++                signature(class_getInstanceMethod(cls, @selector(bundle)), "@", 0, NULL);
++            const char *boolean[] = {"B"};
++            for (unsigned i = 0; i < 4; ++i)
++                valid &= signature(class_getInstanceMethod(cls, sel_registerName(getters[i])), "B", 0, NULL) &&
++                    signature(class_getInstanceMethod(cls, sel_registerName(setters[i])), "v", 1, boolean);
++            if (!valid) { NSLog(@"[UniXNU AppSync] installation ABI mismatch; inactive"); return; }
++            originalValidation = (void *)method_setImplementation(method, (IMP)validate);
++            NSLog(@"[UniXNU AppSync] installation adapter active (all user bundles)");
++        } else if ([process isEqual:@"SpringBoard"]) {
++#ifndef AS_HOST_TEST
++            dlopen("/System/Library/PrivateFrameworks/FrontBoardServices.framework/FrontBoardServices", RTLD_NOW);
++#endif
++            Method method = class_getInstanceMethod(objc_getClass(AS_TRUST),
++                @selector(trustStateForApplication:));
++            const char *arguments[] = {"@"};
++            if (!signature(method, "Q", 1, arguments)) {
++                NSLog(@"[UniXNU AppSync] FrontBoard ABI mismatch; inactive"); return;
++            }
++            originalTrust = (void *)method_setImplementation(method, (IMP)trustState);
++            NSLog(@"[UniXNU AppSync] FrontBoard adapter active (all user bundles)");
++        }
++    }
++}
+diff --git a/scripts/appsync/BacklightMode.m b/scripts/appsync/BacklightMode.m
+new file mode 100644
+index 0000000000000000000000000000000000000000..fd6a80e91ef0af42ff0a9a6d6c31ee1b38a8d60a
+--- /dev/null
++++ b/scripts/appsync/BacklightMode.m
+@@ -0,0 +1,31 @@
++// SPDX-License-Identifier: GPL-3.0-or-later
++// CoreBrightness on iPadOS 27 selects VMBLControl when MobileGestalt reports IsVirtualDevice, and that control drops every brightness
++// request. The board reports a virtual platform for AMFI (ADT vmm-present) and many other frameworks read the same answer, so it stays
++// true. Only backboardd's choice changes: initBLControl: gets the mode a physical device gets (1 instead of 3).
++#import <Foundation/Foundation.h>
++#import <objc/runtime.h>
++#import <dlfcn.h>
++#import <stdlib.h>
++#import <string.h>
++
++static BOOL (*originalInit)(id, SEL, long long);
++
++static BOOL initBLControl(id self, SEL command, long long mode) {
++    return originalInit(self, command, mode == 3 ? 1 : mode);
++}
++
++__attribute__((constructor)) static void start(void) {
++    if (strcmp(getprogname(), "backboardd")) return;
++    @autoreleasepool {
++        dlopen("/System/Library/PrivateFrameworks/CoreBrightness.framework/CoreBrightness", RTLD_NOW);
++        Method method = class_getInstanceMethod(objc_getClass("BrightnessSystemInternal"), sel_registerName("initBLControl:"));
++        char type[16] = "";
++        if (method) method_getArgumentType(method, 2, type, sizeof(type));
++        if (!method || method_getNumberOfArguments(method) != 3 || !strchr("qQlL", type[0]) || !type[0]) {
++            NSLog(@"[UniXNU backlight] initBLControl: ABI mismatch; inactive");
++            return;
++        }
++        originalInit = (void *)method_setImplementation(method, (IMP)initBLControl);
++        NSLog(@"[UniXNU backlight] physical brightness control selected");
++    }
++}
+diff --git a/scripts/appsync/LICENSE b/scripts/appsync/LICENSE
+new file mode 100644
+index 0000000000000000000000000000000000000000..6856882bf80ec6f95d2c3b008d9132b5c3df494d
+--- /dev/null
++++ b/scripts/appsync/LICENSE
+@@ -0,0 +1,28 @@
++The Objective-C AppSync adaptation in this directory is licensed under
++GPL-3.0-or-later. The Python build tools use the repository's
++BSD-2-Clause-Patent license.
++
++Upstream AppSync Unified:
++Copyright (C) 2014-2024 Karen/あけみ, Linus Yang
++https://github.com/akemin-dayo/AppSync
++
++This program is free software: you can redistribute it and/or modify
++it under the terms of the GNU General Public License as published by
++the Free Software Foundation, either version 3 of the License, or
++(at your option) any later version.
++
++This program is distributed in the hope that it will be useful,
++but WITHOUT ANY WARRANTY; without even the implied warranty of
++MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
++GNU General Public License for more details.
++
++The complete GNU General Public License is available at
++https://www.gnu.org/licenses/gpl-3.0.html
++
++
++The separately built unixnu-ldid executable uses Procursus ldid under
++AGPL-3.0-or-later, OpenSSL 3.5.5 under Apache-2.0, and libplist 2.7.0 under
++LGPL-2.1-or-later. Their full license files accompany the runtime under
++/usr/libexec/appsync-licenses. Exact corresponding source archives and hashes
++are recorded in signer-sources.json; the ldid change is ldid-adhoc.patch.
++The signer cache retains ldid.o, libcrypto.a and libplist.a for relinking.
+diff --git a/scripts/appsync/README.md b/scripts/appsync/README.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..63fd94e896456c87f2913aa8e87b7fb8609794aa
+--- /dev/null
++++ b/scripts/appsync/README.md
+@@ -0,0 +1,116 @@
++# AppSync adapter for UniXNU
++
++The sheng iPadOS 27.0.1 (24A446) adapter applies to all user application bundles,
++including unsigned, fakesigned and expired packages. Applications and updates
++are installed on device without a build-time list or image rebuild.
++
++It follows [AppSync Unified](https://github.com/akemin-dayo/AppSync/tree/235aca6cddfbdc9fa87fcb5b2aec2df37ed6d65a)'s
++separation of installation validation, FrontBoard launch trust and the
++LSApplicationWorkspace installer. Upstream authors: Karen/あけみ and Linus Yang.
++The Objective-C adaptation is GPL-3.0-or-later. This is an independent UniXNU
++port; real device installation and launch remain unverified.
++
++## Install applications
++
++Build and boot the sheng 24A446 image with its original Data seed and firmware
++inputs. The board selects `payload.runtime.appsync = true` and `appsync=1`.
++There are no per-application build options. Transfer any compatible IPA to the
++device, then run:
++
++```sh
++/usr/libexec/unixnu-appinst /path/on/device/Example.ipa
++```
++
++Other installers using MobileInstallation use the same hooks. The optional
++older syntax `unixnu-appinst BUNDLE_ID FILE.ipa` also works. The tool gives the
++native installer a private copy so it cannot consume the supplied IPA.
++Installation is not started automatically by boot or packaging. Existing apps
++with usable signature structures are covered after boot without a general
++reinstall. Truly unsigned or structurally damaged code needs the installation
++repair path before launch.
++
++## Installation and signature repair
++
++`AppSync.m` hooks `MICodeSigningVerifier` in installd and
++MobileInstallationHelperService. It enables native ad-hoc signing, disables
++preloaded trust-cache and online authorization requirements, and skips profile
++ID validation for every `.app` tree on Data (`/private/var/` or `/var/`). This
++includes installation staging, embedded frameworks and extensions. Original
++options are restored on success, failure and exceptions.
++
++`Signing.m` first invokes the original verifier. If it rejects a user package,
++the adapter locks that bundle, preflights its Mach-O slices, removes obsolete
++embedded provisioning profiles, and runs the bundled signer recursively. The
++signer preserves existing XML/DER entitlements, regenerates code and resource
++signatures, and marks signatures without a CMS identity as ad-hoc. The original
++verifier then validates the result and creates native signing information.
++Valid packages remain unchanged. Concurrent repairs serialize on the bundle;
++a failed signer or second validation remains an installation failure.
++
++The signer is [Procursus ldid](https://github.com/ProcursusTeam/ldid), with the
++small `ldid-adhoc.patch` required by this AMFI path. `signer-sources.json` pins
++its source and the static OpenSSL/libplist dependencies by commit and archive
++SHA-256. `signer.py` builds an arm64 iOS executable with only libSystem and
++libc++ dynamic dependencies. Build downloads are cached; on-device signing is
++offline. Licenses accompany the runtime; the cache retains ldid objects and
++static libraries for relinking. See `LICENSE` and the pinned upstream sources.
++
++Malformed Mach-O commands, encrypted slices and symlinks escaping the bundle
++are rejected before repair. There is a 120-second signer deadline. This port
++does not decrypt FairPlay content or supply App Store account authorization;
++packages still need executable code compatible with the target OS and CPU.
++
++## Launch and kernel trust
++
++FrontBoard's `FBSSignatureValidationService trustStateForApplication:` returns
++its trusted state (8) for all user bundles. Every hook checks the private method
++ABI before activation. System bundle paths retain native behavior.
++
++The `sheng-appsync-user-trust.patch` calls `appsync_trust_user_code` from
++`ubc_cs_blob_add`, after XNU validates the signature structure and computes the
++CodeDirectory hash and before AMFI verifies it. The kernel adds that hash using
++the engineering trust-cache interface already used for owner boot modules.
++New applications, updated executables and nested libraries are handled on demand.
++VM page hashes and AMFI callbacks still run. No client can submit an arbitrary
++hash through a user-accessible registration API.
++
++Registration deduplicates under the trust runtime lock and retains successful
++modules until reboot. The next boot registers an app again on first mapping.
++There is a 65536-module memory bound per boot; allocation/load failures are
++reported and reject the mapping. Like other trust-cache entries, registration
++trusts the same code hash for the rest of that boot, even if its file moves.
++`appsync=0` disables both runtime mounts and automatic registration.
++
++## Packaging and verification
++
++`build.py` pins the three original 24A446 executable inputs. It routes their
++Foundation dependency through the signed adapter, which re-exports Foundation,
++preserving ordinals, code addresses and chained/PAC fixups. Native identifiers
++and entitlements are checked after signing. The boot trust bundle includes
++these runtime copies and `unixnu-ldid`; user application hashes are not build
++inputs. `appsync-service.json` records `scope = "all-user-bundles"`,
++`dynamic_user_trust = true`, `signature_repair = true` and the source pins.
++
++From UniXNU on macOS with Xcode and Python 3.13 or later:
++
++```sh
++python3.13 scripts/appsync/test.py --signing --os-root /readonly/24A446/OS \
++  --os-image /path/to/24A446/OS.dmg
++python3.13 scripts/test-runtime-inputs.py
++```
++
++The host suite runs production hooks and repair code under ASan/UBSan. It
++checks unknown apps/updates, nested bundles, unsigned and multi-architecture
++Mach-O files, non-Apple and expired certificate fixtures, resource/profile
++repair, entitlement preservation and rejected encrypted/escaping inputs.
++Repaired outputs are independently checked with Apple's codesign tool. The
++first iOS certificate rejection is modeled on the host; Apple's actual iOS
++verifier, dyld and SpringBoard still require a device test.
++
++The exact kernel registration source is extracted from the board patch and
++compiled with a mock trust runtime to test concurrent deduplication, updates,
++frameworks, disabled behavior and allocation/load failures. Full kernel and
++image builds separately check the real XNU declarations and linkage. Runtime
++packing tests verify original trust-module and Data preservation and repeat
++builds. Device checkpoints are installation, registration, launch, extensions,
++updates and persistence across reboot.
+diff --git a/scripts/appsync/Signing.h b/scripts/appsync/Signing.h
+new file mode 100644
+index 0000000000000000000000000000000000000000..39a3def8f32de03528cebebb2d27871d57c65743
+--- /dev/null
++++ b/scripts/appsync/Signing.h
+@@ -0,0 +1,3 @@
++// SPDX-License-Identifier: GPL-3.0-or-later
++#import <Foundation/Foundation.h>
++BOOL ASValidateUserBundle(NSURL *url, BOOL (^validate)(NSError **), NSError **error);
+diff --git a/scripts/appsync/Signing.m b/scripts/appsync/Signing.m
+new file mode 100644
+index 0000000000000000000000000000000000000000..548b94227891e29aaeff4d6d82537aee7ec33f80
+--- /dev/null
++++ b/scripts/appsync/Signing.m
+@@ -0,0 +1,182 @@
++// SPDX-License-Identifier: GPL-3.0-or-later
++#import "Signing.h"
++#import <mach-o/loader.h>
++#import <mach-o/fat.h>
++#import <spawn.h>
++#import <sys/file.h>
++#import <sys/stat.h>
++#import <sys/wait.h>
++#import <signal.h>
++#import <fcntl.h>
++#import <unistd.h>
++#import <time.h>
++#import <errno.h>
++
++#ifndef AS_SIGNER_PATH
++#define AS_SIGNER_PATH "/usr/libexec/unixnu-ldid"
++#endif
++
++static BOOL failure(NSError **error, NSString *reason) {
++    if (error) *error = [NSError errorWithDomain:@"org.unixnu.appsync" code:1
++        userInfo:@{NSLocalizedDescriptionKey: reason}];
++    return NO;
++}
++
++static BOOL readAt(int fd, void *data, size_t size, uint64_t at, uint64_t end) {
++    if (at > end || size > end - at || at > INT64_MAX) return NO;
++    uint8_t *bytes = data;
++    while (size) {
++        ssize_t count = pread(fd, bytes, size, (off_t)at);
++        if (count < 0 && errno == EINTR) continue;
++        if (count <= 0) return NO;
++        size -= (size_t)count; bytes += count; at += (uint64_t)count;
++    }
++    return YES;
++}
++
++// Inspect every slice before ldid writes anything. Encrypted payloads require
++// their original account authorization; never clear cryptid or sign ciphertext.
++static BOOL thinCode(int fd, uint64_t at, uint64_t end) {
++    uint32_t header[7];
++    if (!readAt(fd, header, sizeof(header), at, end) ||
++        (header[0] != MH_MAGIC && header[0] != MH_MAGIC_64)) return NO;
++    size_t head = header[0] == MH_MAGIC_64 ? 32 : 28;
++    if (at > end || head > end - at || header[5] > end - at - head || header[4] > 16384) return NO;
++    uint64_t cursor = at + head, limit = cursor + header[5];
++    for (uint32_t i = 0; i < header[4]; ++i) {
++        uint32_t command[2];
++        if (!readAt(fd, command, sizeof(command), cursor, limit) || command[1] < 8 ||
++            command[1] > limit - cursor) return NO;
++        if (command[0] == LC_ENCRYPTION_INFO || command[0] == LC_ENCRYPTION_INFO_64) {
++            uint32_t cryptid;
++            if (command[1] < 20 || !readAt(fd, &cryptid, sizeof(cryptid), cursor + 16, limit) || cryptid) return NO;
++        }
++        cursor += command[1];
++    }
++    return cursor == limit;
++}
++
++static BOOL signableFile(NSURL *url) {
++    int fd = open(url.fileSystemRepresentation, O_RDONLY | O_CLOEXEC | O_NOFOLLOW);
++    if (fd < 0) return NO;
++    struct stat st;
++    BOOL ok = fstat(fd, &st) == 0 && S_ISREG(st.st_mode) && st.st_size >= 0;
++    uint32_t magic = 0;
++    if (ok && st.st_size >= 4) ok = readAt(fd, &magic, 4, 0, (uint64_t)st.st_size);
++    if (ok && (magic == MH_MAGIC || magic == MH_MAGIC_64)) {
++        ok = thinCode(fd, 0, (uint64_t)st.st_size);
++    } else if (ok && (magic == FAT_CIGAM || magic == FAT_CIGAM_64)) {
++        uint32_t count = 0;
++        ok = readAt(fd, &count, 4, 4, (uint64_t)st.st_size);
++        count = CFSwapInt32BigToHost(count);
++        ok = ok && count > 0 && count <= 32;
++        size_t stride = magic == FAT_CIGAM_64 ? 32 : 20;
++        for (uint32_t i = 0; ok && i < count; ++i) {
++            uint8_t arch[32] = {0};
++            ok = readAt(fd, arch, stride, 8 + (uint64_t)i * stride, (uint64_t)st.st_size);
++            uint64_t offset = 0, size = 0;
++            if (magic == FAT_CIGAM_64) {
++                memcpy(&offset, arch + 8, 8); memcpy(&size, arch + 16, 8);
++                offset = CFSwapInt64BigToHost(offset); size = CFSwapInt64BigToHost(size);
++            } else {
++                uint32_t o, s; memcpy(&o, arch + 8, 4); memcpy(&s, arch + 12, 4);
++                offset = CFSwapInt32BigToHost(o); size = CFSwapInt32BigToHost(s);
++            }
++            ok = ok && offset <= (uint64_t)st.st_size && size <= (uint64_t)st.st_size - offset &&
++                thinCode(fd, offset, offset + size);
++        }
++    }
++    close(fd);
++    return ok;
++}
++
++static BOOL signableBundle(NSURL *root, NSError **error) {
++    __block NSError *walkError = nil;
++    NSArray *keys = @[NSURLIsSymbolicLinkKey, NSURLIsRegularFileKey, NSURLIsDirectoryKey];
++    NSDirectoryEnumerator *walk = [NSFileManager.defaultManager enumeratorAtURL:root
++        includingPropertiesForKeys:keys options:0 errorHandler:^BOOL(NSURL *url, NSError *problem) {
++            (void)url; walkError = problem; return NO;
++        }];
++    if (!walk) return failure(error, @"Cannot inspect application bundle");
++    NSString *prefix = [root.path stringByAppendingString:@"/"];
++    for (NSURL *url in walk) {
++        NSDictionary *values = [url resourceValuesForKeys:keys error:&walkError];
++        if (!values) break;
++        if ([values[NSURLIsSymbolicLinkKey] boolValue]) {
++            if (![url.URLByResolvingSymlinksInPath.path hasPrefix:prefix])
++                return failure(error, @"Application symlink leaves its bundle");
++        } else if ([values[NSURLIsRegularFileKey] boolValue]) {
++            if (!signableFile(url)) return failure(error, @"Malformed or encrypted application code");
++        } else if (![values[NSURLIsDirectoryKey] boolValue]) {
++            return failure(error, @"Unsupported application file type");
++        }
++    }
++    if (walkError) { if (error) *error = walkError; return NO; }
++    return YES;
++}
++
++static BOOL repair(NSURL *root, NSError **error) {
++    if (!signableBundle(root, error)) return NO;
++    // A repaired ad-hoc signature has no provisioning identity. Remove stale
++    // profiles from the private install copy before rebuilding its resources.
++    NSDirectoryEnumerator *files = [NSFileManager.defaultManager enumeratorAtURL:root
++        includingPropertiesForKeys:nil options:0 errorHandler:nil];
++    for (NSURL *file in files) {
++        if ([file.lastPathComponent isEqual:@"embedded.mobileprovision"] ||
++            [file.lastPathComponent isEqual:@"embedded.provisionprofile"])
++            if (![NSFileManager.defaultManager removeItemAtURL:file error:error]) return NO;
++    }
++    char *arguments[] = {(char *)AS_SIGNER_PATH, "-Hsha256", "-M", "-S", (char *)root.fileSystemRepresentation, NULL};
++    char *environment[] = {"PATH=/usr/bin:/bin", "LC_ALL=C", "OPENSSL_CONF=/dev/null", NULL};
++    pid_t child;
++    int result = posix_spawn(&child, AS_SIGNER_PATH, NULL, NULL, arguments, environment);
++    if (result) return failure(error, [NSString stringWithFormat:@"Cannot start application signer: %d", result]);
++    struct timespec start, now;
++    clock_gettime(CLOCK_MONOTONIC, &start);
++    int status = 0;
++    while (YES) {
++        pid_t done = waitpid(child, &status, WNOHANG);
++        if (done == child) break;
++        if (done < 0 && errno != EINTR) return failure(error, @"Cannot wait for application signer");
++        clock_gettime(CLOCK_MONOTONIC, &now);
++        if (now.tv_sec - start.tv_sec >= 120) {
++            kill(child, SIGKILL);
++            while (waitpid(child, &status, 0) < 0 && errno == EINTR) {}
++            return failure(error, @"Application signing timed out");
++        }
++        usleep(100000);
++    }
++    if (!WIFEXITED(status) || WEXITSTATUS(status)) return failure(error, @"Application signer failed");
++    NSLog(@"[UniXNU AppSync] repaired signature: %@", root.path);
++    return YES;
++}
++
++BOOL ASValidateUserBundle(NSURL *url, BOOL (^validate)(NSError **), NSError **error) {
++    NSURL *canonical = url.URLByResolvingSymlinksInPath.URLByStandardizingPath;
++    NSArray<NSString *> *parts = canonical.pathComponents;
++    NSURL *root = nil;
++    for (NSUInteger i = 0; i < parts.count; ++i) {
++        if ([parts[i] hasSuffix:@".app"] && parts[i].length > 4) {
++            root = [NSURL fileURLWithPath:[NSString pathWithComponents:[parts subarrayWithRange:NSMakeRange(0, i + 1)]]];
++            break;
++        }
++    }
++    if (!root) return validate(error);
++    int lock = open(root.fileSystemRepresentation, O_RDONLY | O_DIRECTORY | O_CLOEXEC | O_NOFOLLOW);
++    if (lock < 0) return validate(error);
++    if (flock(lock, LOCK_EX)) { close(lock); return validate(error); }
++    BOOL valid = NO;
++    @try {
++        NSError *validationError = nil, *signingError = nil;
++        valid = validate(&validationError);
++        if (!valid && repair(root, &signingError)) {
++            validationError = nil;
++            valid = validate(&validationError);
++        }
++        if (error) *error = valid ? nil : (signingError ?: validationError);
++    } @finally {
++        flock(lock, LOCK_UN);
++        close(lock);
++    }
++    return valid;
++}
+diff --git a/scripts/appsync/appinst.m b/scripts/appsync/appinst.m
+new file mode 100644
+index 0000000000000000000000000000000000000000..20dbee0b0b745ff3334da1ee1848b6963ff53205
+--- /dev/null
++++ b/scripts/appsync/appinst.m
+@@ -0,0 +1,46 @@
++// SPDX-License-Identifier: GPL-3.0-or-later
++// Uses AppSync appinst's LSApplicationWorkspace install entry point.
++#import <Foundation/Foundation.h>
++#import <objc/runtime.h>
++#import <dlfcn.h>
++
++@interface NSObject (UniXNUInstall)
+++ (id)defaultWorkspace;
++- (BOOL)installApplication:(NSURL *)url withOptions:(NSDictionary *)options error:(NSError **)error;
++@end
++
++int main(int argc, const char **argv) {
++    @autoreleasepool {
++        if (argc != 2 && argc != 3) {
++            fprintf(stderr, "usage: unixnu-appinst [BUNDLE_ID] FILE.ipa\n");
++            return 2;
++        }
++        dlopen("/System/Library/Frameworks/CoreServices.framework/CoreServices", RTLD_NOW);
++        Class cls = objc_getClass("LSApplicationWorkspace");
++        if (![cls respondsToSelector:@selector(defaultWorkspace)]) return 3;
++        id workspace = [cls defaultWorkspace];
++        if (![workspace respondsToSelector:@selector(installApplication:withOptions:error:)]) return 3;
++        NSFileManager *files = NSFileManager.defaultManager;
++        NSString *directory = [NSTemporaryDirectory() stringByAppendingPathComponent:NSUUID.UUID.UUIDString];
++        NSError *error = nil;
++        if (![files createDirectoryAtPath:directory withIntermediateDirectories:NO
++            attributes:@{NSFilePosixPermissions: @0755} error:&error]) {
++            NSLog(@"%@", error); return 4;
++        }
++        NSString *copy = [directory stringByAppendingPathComponent:@"install.ipa"];
++        BOOL installed = NO;
++        @try {
++            // MobileInstallation may consume the input. Keep the caller's IPA.
++            if ([files copyItemAtPath:@(argv[argc - 1]) toPath:copy error:&error])
++                installed = [workspace installApplication:[NSURL fileURLWithPath:copy]
++                    withOptions:argc == 3 ? @{@"CFBundleIdentifier": @(argv[1]), @"ApplicationType": @"User"} :
++                        @{@"ApplicationType": @"User"} error:&error];
++            if (!installed) NSLog(@"Install failed: %@", error);
++        } @catch (NSException *exception) {
++            NSLog(@"Install exception: %@", exception);
++        } @finally {
++            [files removeItemAtPath:directory error:NULL];
++        }
++        return installed ? 0 : 1;
++    }
++}
+diff --git a/scripts/appsync/build.py b/scripts/appsync/build.py
+new file mode 100644
+index 0000000000000000000000000000000000000000..d1ac326447b14b83153539cf4e56cd0b260363f2
+--- /dev/null
++++ b/scripts/appsync/build.py
+@@ -0,0 +1,144 @@
++#!/usr/bin/env python3
++"""Build the 24A446 AppSync adapter for all user applications."""
++import argparse
++import hashlib
++import json
++from pathlib import Path
++import plistlib
++import re
++import shutil
++import subprocess
++import tempfile
++
++from macho import add_dylib
++import signer
++
++ROOT = Path(__file__).resolve().parent
++DYLIB = '/usr/lib/UniXNUAppSync.dylib'
++HELPER = ('System/Library/PrivateFrameworks/MobileInstallation.framework/XPCServices/'
++          'com.apple.MobileInstallationHelperService.xpc')
++SPRINGBOARD = 'System/Library/CoreServices/SpringBoard.app'
++# The kernel union-mounts coreservices over /System/Library/CoreServices. SpringBoard.app must stay an ordinary
++# directory there: LaunchServices refuses a mount root as a bundle (isVolume), and SpringBoard aborts without its record.
++SPRINGBOARD_COPY = 'coreservices/SpringBoard.app'
++PINS = {
++    'usr/libexec/installd': ('libexec/installd', '5c80de3423681dec4c8c16dce4d8dd86d26039e8d29639b8b2cd1f53d187aac1'),
++    'usr/libexec/backboardd': ('libexec/backboardd', 'fbba7fd2925990dd859b24629ecab5cdbf6f2fac8c1c357ec0f9e412ded75559'),
++    HELPER + '/com.apple.MobileInstallationHelperService':
++        ('helper/com.apple.MobileInstallationHelperService', '154bb529fd044777c0f823740955f65b0ba96a169d3953df5d117e9b8b5e1914'),
++    SPRINGBOARD + '/SpringBoard': ('coreservices/SpringBoard.app/SpringBoard', '85dfb1b386ee009dfc0b7eb914c66aa7646d062254d18881a99647b55d7ffaee'),
++}
++MACHO = (b'\xcf\xfa\xed\xfe', b'\xca\xfe\xba\xbe', b'\xca\xfe\xba\xbf')
++
++
++def run(*args, capture=False):
++    return subprocess.run([str(arg) for arg in args], check=True,
++                          capture_output=capture, text=capture)
++
++
++def sha(path):
++    digest = hashlib.sha256()
++    with path.open('rb') as source:
++        for chunk in iter(lambda: source.read(1024 * 1024), b''):
++            digest.update(chunk)
++    return digest.hexdigest()
++
++
++def details(path):
++    result = run('codesign', '-d', '--verbose=4', path, capture=True).stderr
++    return {name: re.search(r'^' + key + r'=(.+)$', result, re.M)[1]
++            for name, key in (('cdhash', 'CDHash'), ('identifier', 'Identifier'))}
++
++
++def entitlements(path):
++    value = run('codesign', '-d', '--entitlements', ':-', path, capture=True).stdout
++    return plistlib.loads(value.encode()) if value.strip() else {}
++
++
++def sign(path, identifier=None, entitlement_file=None):
++    options = ['--identifier', identifier] if identifier else ['--preserve-metadata=identifier,entitlements,flags']
++    if entitlement_file:
++        options += ['--entitlements', str(entitlement_file)]
++    run('codesign', '--force', '--sign', '-', '--pagesize', '4096', '--digest-algorithm', 'sha256', *options, path)
++    run('codesign', '--verify', '--strict', path)
++
++
++def build(os_root, output):
++    output.mkdir(parents=True, exist_ok=True)
++    (output / 'report.json').unlink(missing_ok=True)
++    # Preflight every input before creating executable outputs.
++    patched = {dest: add_dylib((os_root / source).read_bytes(), DYLIB, pin)
++               for source, (dest, pin) in PINS.items()}
++    with tempfile.TemporaryDirectory(prefix='build-', dir=output) as temporary:
++        work = Path(temporary)
++        for directory in ('lib', 'libexec', 'helper', SPRINGBOARD_COPY):
++            (work / directory).mkdir(parents=True)
++        sdk = run('xcrun', '--sdk', 'iphoneos', '--show-sdk-path', capture=True).stdout.strip()
++        flags = ['-target', 'arm64e-apple-ios27.0', '-isysroot', sdk, '-fobjc-arc', '-O2',
++                 '-Wall', '-Wextra', '-Werror', '-framework', 'Foundation']
++        run('xcrun', 'clang', *flags, '-dynamiclib', ROOT / 'AppSync.m', ROOT / 'Signing.m', ROOT / 'BacklightMode.m', '-install_name', DYLIB,
++            '-Wl,-reexport_framework,Foundation', '-Wl,-compatibility_version,3000',
++            '-Wl,-current_version,5027.0.69',
++            '-o', work / 'lib/UniXNUAppSync.dylib')
++        sign(work / 'lib/UniXNUAppSync.dylib', 'org.unixnu.appsync')
++        signing = signer.build(work / 'libexec/unixnu-ldid')
++        sign(work / 'libexec/unixnu-ldid', 'org.unixnu.ldid')
++        shutil.copytree(Path(signing['cache']) / 'licenses', work / 'libexec/appsync-licenses')
++        run('xcrun', 'clang', *flags, ROOT / 'appinst.m', '-o', work / 'libexec/unixnu-appinst')
++        entitlement_file = work / 'appinst-entitlements.plist'
++        entitlement_file.write_bytes(plistlib.dumps({
++            'application-identifier': 'org.unixnu.appinst', 'platform-application': True,
++            'com.apple.private.mobileinstall.allowedSPI': ['Install', 'InstallForLaunchServices'],
++            'com.apple.security.exception.mach-lookup.global-name': ['com.apple.mobile.installd']}))
++        sign(work / 'libexec/unixnu-appinst', 'org.unixnu.appinst', entitlement_file)
++        # Sign complete bundles so Info.plist and resource envelopes remain
++        # consistent when the copies appear at their original system paths.
++        for source, dest in ((HELPER, 'helper'), (SPRINGBOARD, SPRINGBOARD_COPY)):
++            shutil.copytree(os_root / source, work / dest, dirs_exist_ok=True)
++            (work / dest / 'UniXNUAppSync.runtime').write_text('24A446\n')
++        originals = {}
++        for source, (dest, pin) in PINS.items():
++            original, target = os_root / source, work / dest
++            before = entitlements(original)
++            identity = details(original)['identifier']
++            target.write_bytes(patched[dest])
++            target.chmod(0o755)
++            sign(target)
++            if entitlements(target) != before or details(target)['identifier'] != identity:
++                raise ValueError('OS entitlements or identifier changed: ' + source)
++            originals[source] = dict(sha256=pin, entitlements_preserved=True)
++        files = {}
++        for relative in ['lib/UniXNUAppSync.dylib', 'libexec/unixnu-appinst', 'libexec/unixnu-ldid', *patched]:
++            path = work / relative
++            files[relative] = dict(details(path), sha256=sha(path))
++        system_executables = {}
++        for original_dir, directory in ((HELPER, 'helper'), (SPRINGBOARD, SPRINGBOARD_COPY)):
++            for path in (work / directory).rglob('*'):
++                if not path.is_file() or path.relative_to(work).as_posix() in files:
++                    continue
++                with path.open('rb') as stream:
++                    magic = stream.read(4)
++                if magic in MACHO:
++                    original = os_root / original_dir / path.relative_to(work / directory)
++                    if sha(path) != sha(original):
++                        raise ValueError('nested system executable changed')
++                    system_executables['appsync/' + path.relative_to(work).as_posix()] = sha(original)
++        report = dict(target='ios27', build='24A446', hardware_verified=False, originals=originals,
++                      files=files, scope="all-user-bundles", dynamic_user_trust=True, signature_repair=True, signer=signing,
++                      system_executables=system_executables,
++                      directories={f'appsync/{name}': name for name in ('lib', 'libexec', 'helper', 'coreservices')})
++        for directory in ('lib', 'libexec', 'helper', 'coreservices'):
++            previous = output / directory
++            if previous.exists():
++                shutil.rmtree(previous)
++            shutil.move(work / directory, previous)
++        (output / 'report.json').write_text(json.dumps(report, indent=2) + '\n')
++    print(f'Built AppSync 24A446 adapter: all user bundles; {output}')
++
++
++if __name__ == '__main__':
++    parser = argparse.ArgumentParser(description=__doc__)
++    parser.add_argument('--os-root', type=Path, required=True)
++    parser.add_argument('--output', type=Path, required=True)
++    args = parser.parse_args()
++    build(args.os_root.resolve(), args.output.resolve())
+diff --git a/scripts/appsync/ldid-adhoc.patch b/scripts/appsync/ldid-adhoc.patch
+new file mode 100644
+index 0000000000000000000000000000000000000000..4de9f4b7f6fb9b21333bd2de5d07534bfbcc1916
+--- /dev/null
++++ b/scripts/appsync/ldid-adhoc.patch
+@@ -0,0 +1,12 @@
++--- a/ldid.cpp
+++++ b/ldid.cpp
++@@ -2438,6 +2438,9 @@
++ Hash Sign(const void *idata, size_t isize, std::streambuf &output, const std::string &identifier, const std::string &entitlements, bool merge, const std::string &requirements, const ldid::Signer &signer, const Slots &slots, uint32_t flags, uint8_t platform, const Progress &progress) {
++     Hash hash;
++ 
+++    // UniXNU retains AMFI: a signature without CMS must be marked ad-hoc.
+++    // Apply this inside the shared signer so nested bundles get it too.
+++    if (!signer) flags |= kSecCodeSignatureAdhoc;
++ 
++     std::string team;
++     std::string common;
+diff --git a/scripts/appsync/macho.py b/scripts/appsync/macho.py
+new file mode 100644
+index 0000000000000000000000000000000000000000..8faa6d2697a1802c1859c5fe640c0f16badcd33a
+--- /dev/null
++++ b/scripts/appsync/macho.py
+@@ -0,0 +1,53 @@
++"""Route Foundation through an adapter that re-exports it, without moving code.
++
++Only the Foundation dependency's name is changed. Chained fixups, authenticated
++pointers, instructions, sections and the original code signature stay in place;
++the caller must re-sign the resulting copy.
++"""
++import hashlib
++import struct
++
++
++def add_dylib(data, name, expected_sha256):
++    if hashlib.sha256(data).hexdigest() != expected_sha256:
++        raise ValueError('OS executable does not match the 24A446 source pin')
++    if len(data) < 32:
++        raise ValueError('truncated Mach-O header')
++    magic, cpu, subtype, kind, count, size = struct.unpack_from('<6I', data)
++    if (magic, cpu, subtype, kind) != (0xfeedfacf, 0x100000c, 0x80000002, 2):
++        raise ValueError('expected an arm64e MH_EXECUTE image')
++    end = 32 + size
++    if end > len(data):
++        raise ValueError('truncated load commands')
++    at, replacements = 32, []
++    foundation = b'/System/Library/Frameworks/Foundation.framework/Foundation'
++    for _ in range(count):
++        if at + 8 > end:
++            raise ValueError('truncated load command')
++        command, length = struct.unpack_from('<II', data, at)
++        if length < 8 or length % 8 or at + length > end:
++            raise ValueError('invalid load command size')
++        if command in (0xc, 0x80000018, 0x8000001f, 0x80000023):
++            if length < 24:
++                raise ValueError('truncated dependency')
++            offset = struct.unpack_from('<I', data, at + 8)[0]
++            if not 24 <= offset < length:
++                raise ValueError('invalid dependency name offset')
++            if data[at + offset:at + length].split(b'\0', 1)[0] == name.encode():
++                raise ValueError('dependency already present')
++            if data[at + offset:at + length].split(b'\0', 1)[0] == foundation:
++                if command != 0xc:
++                    raise ValueError('Foundation is not a required dependency')
++                replacements.append((at + offset, length - offset))
++        at += length
++    if at != end:
++        raise ValueError('load command count differs from size')
++    raw = name.encode() + b'\0'
++    if len(replacements) != 1:
++        raise ValueError('expected exactly one Foundation dependency')
++    start, length = replacements[0]
++    if len(raw) > length:
++        raise ValueError('adapter path does not fit the dependency command')
++    result = bytearray(data)
++    result[start:start + length] = raw.ljust(length, b'\0')
++    return bytes(result)
+diff --git a/scripts/appsync/signer-sources.json b/scripts/appsync/signer-sources.json
+new file mode 100644
+index 0000000000000000000000000000000000000000..49b948134796135cd6f7ce299e1d79499e58b4dc
+--- /dev/null
++++ b/scripts/appsync/signer-sources.json
+@@ -0,0 +1,23 @@
++{
++  "ldid": {
++    "repository": "ProcursusTeam/ldid",
++    "commit": "af86971ae72ec3ed3d0a699107c4e882324c941b",
++    "url": "https://codeload.github.com/ProcursusTeam/ldid/tar.gz/af86971ae72ec3ed3d0a699107c4e882324c941b",
++    "sha256": "26be4e97a9c0bf608e1b7b301bf1e51cdb77e6069bf20981f615923cc080b1b1",
++    "directory": "ldid-af86971ae72ec3ed3d0a699107c4e882324c941b"
++  },
++  "libplist": {
++    "repository": "libimobiledevice/libplist",
++    "commit": "cf5897a71ea412ea2aeb1e2f6b5ea74d4fabfd8c",
++    "url": "https://codeload.github.com/libimobiledevice/libplist/tar.gz/cf5897a71ea412ea2aeb1e2f6b5ea74d4fabfd8c",
++    "sha256": "fef07306584241e003c8f2078a0ababb1b8ab1ebf68828670df0725d87bf352f",
++    "directory": "libplist-cf5897a71ea412ea2aeb1e2f6b5ea74d4fabfd8c"
++  },
++  "openssl": {
++    "repository": "openssl/openssl",
++    "commit": "67b5686b4419b4cb8caa502711c41815f5279751",
++    "url": "https://codeload.github.com/openssl/openssl/tar.gz/67b5686b4419b4cb8caa502711c41815f5279751",
++    "sha256": "f7c4a5e19fa02056e2bff4240bf474a3935207eb8fce6ee56175350acc6e2c32",
++    "directory": "openssl-67b5686b4419b4cb8caa502711c41815f5279751"
++  }
++}
+diff --git a/scripts/appsync/signer.py b/scripts/appsync/signer.py
+new file mode 100644
+index 0000000000000000000000000000000000000000..71ac6e2bca2652b68b7abd598221b5cef583df5f
+--- /dev/null
++++ b/scripts/appsync/signer.py
+@@ -0,0 +1,136 @@
++#!/usr/bin/env python3
++"""Build the pinned on-device ldid signer and its static dependencies."""
++import argparse
++import concurrent.futures
++import hashlib
++import json
++import os
++from pathlib import Path
++import shutil
++import subprocess
++import tarfile
++import tempfile
++import urllib.request
++
++ROOT = Path(__file__).resolve().parent
++SOURCES = json.loads((ROOT / 'signer-sources.json').read_text())
++
++
++def sha(path):
++    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
++
++
++def run(*args, **kwargs):
++    return subprocess.run([str(arg) for arg in args], check=True, **kwargs)
++
++
++def build(output, host=False):
++    # Resolve through scripts/appsync to share the cache with the assembled tree.
++    cache = ROOT.parents[1] / '.cache/appsync-signer'
++    cache.mkdir(parents=True, exist_ok=True)
++    sdk_name = 'macosx' if host else 'iphoneos'
++    sdk = subprocess.check_output(['xcrun', '--sdk', sdk_name, '--show-sdk-path'], text=True).strip()
++    target = 'arm64-apple-macos12.0' if host else 'arm64-apple-ios27.0'
++    identity = dict(sources=SOURCES, builder=sha(__file__), sdk=sdk, target=target,
++                    ldid_patch=sha(ROOT / 'ldid-adhoc.patch'), compiler=subprocess.check_output(['xcrun', 'clang', '--version'], text=True))
++    key = hashlib.sha256(json.dumps(identity, sort_keys=True).encode()).hexdigest()[:16]
++    destination = cache / key
++    binary, report = destination / 'unixnu-ldid', destination / 'build.json'
++    if report.is_file() and binary.is_file() and json.loads(report.read_text())['sha256'] == sha(binary):
++        output.parent.mkdir(parents=True, exist_ok=True)
++        shutil.copyfile(binary, output)
++        output.chmod(0o755)
++        return json.loads(report.read_text())
++    archives = cache / 'sources'
++    archives.mkdir(exist_ok=True)
++
++    def fetch(item):
++        name, record = item
++        archive = archives / (record['directory'] + '.tar.gz')
++        if not archive.is_file():
++            with urllib.request.urlopen(record['url'], timeout=120) as response:
++                data = response.read()
++            if hashlib.sha256(data).hexdigest() != record['sha256']:
++                raise ValueError('source archive digest mismatch: ' + name)
++            archive.write_bytes(data)
++        if sha(archive) != record['sha256']:
++            raise ValueError('source archive digest mismatch: ' + name)
++        return name, archive
++
++    with concurrent.futures.ThreadPoolExecutor(max_workers=3) as pool:
++        fetched = dict(pool.map(fetch, SOURCES.items()))
++    destination.mkdir(exist_ok=True)
++    with tempfile.TemporaryDirectory(prefix='build-', dir=destination) as tmp:
++        work = Path(tmp)
++        sources = {}
++        for name, archive in fetched.items():
++            with tarfile.open(archive) as source:
++                source.extractall(work, filter='data')
++            sources[name] = work / SOURCES[name]['directory']
++        flags = ['-target', target, '-isysroot', sdk, '-O2']
++        crypto_key = hashlib.sha256(json.dumps([SOURCES['openssl'], sdk, target, identity['compiler']]).encode()).hexdigest()[:16]
++        crypto = cache / ('crypto-' + crypto_key)
++        crypto_record = crypto / 'sha256'
++        if not (crypto_record.is_file() and (crypto / 'libcrypto.a').is_file() and
++                crypto_record.read_text() == sha(crypto / 'libcrypto.a')):
++            build_dir = work / 'crypto'
++            build_dir.mkdir()
++            env = dict(os.environ, CC='xcrun clang', CFLAGS=' '.join(flags),
++                       AR='xcrun ar', RANLIB='xcrun ranlib')
++            run('perl', sources['openssl'] / 'Configure', 'darwin64-arm64-cc',
++                'no-shared', 'no-tests', 'no-apps', 'no-asm', 'no-module', 'no-engine',
++                '--prefix=' + str(build_dir / 'install'), cwd=build_dir, env=env)
++            run('make', '-j' + str(min(os.cpu_count() or 4, 8)), 'build_libs', cwd=build_dir, env=env)
++            crypto.mkdir(exist_ok=True)
++            shutil.copytree(sources['openssl'] / 'include', crypto / 'include', dirs_exist_ok=True)
++            shutil.copytree(build_dir / 'include', crypto / 'include', dirs_exist_ok=True)
++            shutil.copyfile(build_dir / 'libcrypto.a', crypto / 'libcrypto.a')
++            crypto_record.write_text(sha(crypto / 'libcrypto.a'))
++        plist = sources['libplist']
++        config = work / 'config.h'
++        config.write_text('\n'.join('#define ' + name + ' 1' for name in (
++            'HAVE_STRDUP', 'HAVE_STRNDUP', 'HAVE_STRERROR', 'HAVE_GMTIME_R', 'HAVE_LOCALTIME_R',
++            'HAVE_TIMEGM', 'HAVE_STRPTIME', 'HAVE_MEMMEM', 'HAVE_TM_TM_GMTOFF', 'HAVE_TM_TM_ZONE',
++            '__LITTLE_ENDIAN__')) + '\n#define PACKAGE_VERSION "2.7.0"\n')
++        objects = []
++        for source in sorted((plist / 'src').glob('*.c')) + sorted((plist / 'libcnary').glob('*.c')):
++            obj = work / (source.stem + '.o')
++            run('xcrun', 'clang', *flags, '-DHAVE_CONFIG_H', '-DLIBPLIST_STATIC', '-I', work,
++                '-I', plist / 'include', '-I', plist / 'src', '-I', plist / 'libcnary/include', '-c', source, '-o', obj)
++            objects.append(obj)
++        run('xcrun', 'ar', 'rcs', work / 'libplist.a', *objects)
++        ldid = sources['ldid']
++        run('patch', '-p1', '-i', ROOT / 'ldid-adhoc.patch', cwd=ldid)
++        run('xcrun', 'clang++', *flags, '-std=c++11', '-DLDID_VERSION="UniXNU-af86971"',
++            '-I', ldid, '-I', crypto / 'include', '-I', plist / 'include',
++            '-c', ldid / 'ldid.cpp', '-o', work / 'ldid.o')
++        run('xcrun', 'clang++', *flags, work / 'ldid.o', crypto / 'libcrypto.a',
++            work / 'libplist.a', '-o', work / 'unixnu-ldid')
++        shutil.copyfile(work / 'unixnu-ldid', binary)
++        binary.chmod(0o755)
++        # Keep relinkable objects for the statically linked LGPL dependency.
++        shutil.copyfile(work / 'libplist.a', destination / 'libplist.a')
++        shutil.copyfile(work / 'ldid.o', destination / 'ldid.o')
++        shutil.copyfile(crypto / 'libcrypto.a', destination / 'libcrypto.a')
++        licenses = destination / 'licenses'
++        licenses.mkdir(exist_ok=True)
++        for name, candidates in {'ldid': ['COPYING', 'LICENSE'], 'openssl': ['LICENSE.txt'],
++                                 'libplist': ['COPYING.LESSER', 'COPYING']}.items():
++            for filename in candidates:
++                source = sources[name] / filename
++                if source.is_file():
++                    shutil.copyfile(source, licenses / (name + '-' + filename))
++        record = dict(identity, sha256=sha(binary), cache=str(destination))
++        report.write_text(json.dumps(record, indent=2) + '\n')
++    output.parent.mkdir(parents=True, exist_ok=True)
++    shutil.copyfile(binary, output)
++    output.chmod(0o755)
++    return record
++
++
++if __name__ == '__main__':
++    parser = argparse.ArgumentParser(description=__doc__)
++    parser.add_argument('--host', action='store_true')
++    parser.add_argument('--output', type=Path, required=True)
++    args = parser.parse_args()
++    print(json.dumps(build(args.output.resolve(), args.host), indent=2))
+diff --git a/scripts/appsync/test-runtime.m b/scripts/appsync/test-runtime.m
+new file mode 100644
+index 0000000000000000000000000000000000000000..e257fe32993dfafc8dc0981f23fe9e75036de48f
+--- /dev/null
++++ b/scripts/appsync/test-runtime.m
+@@ -0,0 +1,92 @@
++// Execute the production Objective-C hooks against host ABI fixtures.
++#import <Foundation/Foundation.h>
++#import <dlfcn.h>
++#import <assert.h>
++#define MICodeSigningVerifier ASFixtureVerifier
++#define FBSSignatureValidationService ASFixtureSignatureService
++
++@interface ASBundle : NSObject
++@property NSURL *bundleURL;
++@end
++@implementation ASBundle
++@end
++
++@interface MICodeSigningVerifier : NSObject
++@property ASBundle *bundle;
++@property BOOL allowAdhocSigning;
++@property BOOL verifyTrustCachePresence;
++@property BOOL performOnlineAuthorization;
++@property BOOL trusted;
++@property BOOL skipProfileIDValidation;
++@property BOOL raiseException;
++@property NSUInteger calls;
++- (BOOL)performValidationWithError:(NSError **)error;
++@end
++@implementation MICodeSigningVerifier
++- (BOOL)performValidationWithError:(NSError **)error {
++    ++self.calls;
++    if (self.raiseException) [NSException raise:@"fixture" format:@"validation interrupted"];
++    BOOL accepted = self.trusted && self.allowAdhocSigning && !self.verifyTrustCachePresence && !self.performOnlineAuthorization && self.skipProfileIDValidation;
++    if (!accepted && error) *error = [NSError errorWithDomain:@"fixture" code:17 userInfo:nil];
++    return accepted;
++}
++@end
++
++@interface FBSSignatureValidationService : NSObject
++- (NSUInteger)trustStateForApplication:(id)application;
++@end
++@implementation FBSSignatureValidationService
++- (NSUInteger)trustStateForApplication:(id)application { (void)application; return 4; }
++@end
++
++static MICodeSigningVerifier *activeVerifier;
++static BOOL repairAllowed;
++BOOL ASValidateUserBundle(NSURL *url, BOOL (^validate)(NSError **), NSError **error) {
++    (void)url;
++    if (validate(error)) return YES;
++    if (!repairAllowed) return NO;
++    activeVerifier.trusted = YES;
++    BOOL result = validate(error);
++    if (result && error) *error = nil;
++    return result;
++}
++
++int main(int argc, const char **argv) {
++    @autoreleasepool {
++        assert(argc == 4);
++        assert(dlopen(argv[1], RTLD_NOW | RTLD_LOCAL));
++        ASBundle *bundle = [ASBundle new];
++        bundle.bundleURL = [NSURL fileURLWithPath:@(argv[2])];
++        BOOL expected = [@(argv[3]) isEqual:@"user"];
++        if ([NSProcessInfo.processInfo.processName isEqual:@"SpringBoard"]) {
++            FBSSignatureValidationService *service = [FBSSignatureValidationService new];
++            assert([service trustStateForApplication:bundle] == (expected ? 8 : 4));
++            assert([service trustStateForApplication:nil] == 4);
++        } else {
++            MICodeSigningVerifier *verifier = [MICodeSigningVerifier new];
++            activeVerifier = verifier;
++            verifier.bundle = bundle;
++            verifier.trusted = YES;
++            verifier.performOnlineAuthorization = YES;
++            NSError *error = nil;
++            assert([verifier performValidationWithError:&error] == expected);
++            assert(verifier.calls == 1);
++            assert(!verifier.allowAdhocSigning && !verifier.verifyTrustCachePresence && verifier.performOnlineAuthorization && !verifier.skipProfileIDValidation);
++            verifier.trusted = NO;
++            assert(![verifier performValidationWithError:&error]);
++            assert(error.code == 17);
++            assert(![verifier performValidationWithError:NULL]);
++            repairAllowed = YES;
++            assert([verifier performValidationWithError:&error] == expected);
++            if (expected) assert(error == nil);
++            assert(!verifier.allowAdhocSigning && !verifier.verifyTrustCachePresence && verifier.performOnlineAuthorization && !verifier.skipProfileIDValidation);
++            verifier.raiseException = YES;
++            BOOL caught = NO;
++            @try { [verifier performValidationWithError:NULL]; }
++            @catch (NSException *exception) { (void)exception; caught = YES; }
++            assert(caught);
++            assert(!verifier.allowAdhocSigning && !verifier.verifyTrustCachePresence && verifier.performOnlineAuthorization && !verifier.skipProfileIDValidation);
++        }
++    }
++    return 0;
++}
+diff --git a/scripts/appsync/test-signing.m b/scripts/appsync/test-signing.m
+new file mode 100644
+index 0000000000000000000000000000000000000000..1744d6478cf4e0a9b1c0155bf49fedf986e8d50a
+--- /dev/null
++++ b/scripts/appsync/test-signing.m
+@@ -0,0 +1,36 @@
++// Exercise the production repair and locking code with the real source-built signer.
++#import "Signing.h"
++#import <assert.h>
++#import <spawn.h>
++#import <sys/wait.h>
++#import <errno.h>
++
++int main(int argc, const char **argv) {
++    @autoreleasepool {
++        assert(argc == 3);
++        NSURL *bundle = [NSURL fileURLWithPath:@(argv[1])];
++        NSString *mode = @(argv[2]);
++        __block unsigned calls = 0;
++        NSError *error = nil;
++        BOOL accepted = ASValidateUserBundle(bundle, ^BOOL(NSError **nativeError) {
++            ++calls;
++            // The host cannot execute the iOS certificate/provisioning verifier.
++            // Model its first rejection for non-Apple and expired identities,
++            // then independently verify the repaired on-disk signature.
++            if (calls == 1 && ![mode isEqual:@"valid"]) {
++                if (nativeError) *nativeError = [NSError errorWithDomain:@"native-fixture" code:13 userInfo:nil];
++                return NO;
++            }
++            char *args[] = {"/usr/bin/codesign", "--verify", "--deep", "--strict", (char *)bundle.fileSystemRepresentation, NULL};
++            char *env[] = {"PATH=/usr/bin:/bin", NULL};
++            pid_t child;
++            int status;
++            if (posix_spawn(&child, args[0], NULL, NULL, args, env)) return NO;
++            while (waitpid(child, &status, 0) < 0 && errno == EINTR) {}
++            return WIFEXITED(status) && WEXITSTATUS(status) == 0;
++        }, &error);
++        if ([mode isEqual:@"reject"]) { assert(!accepted && error && calls == 1); }
++        else { assert(accepted && error == nil); assert(calls == ([mode isEqual:@"valid"] ? 1 : 2)); }
++    }
++    return 0;
++}
+diff --git a/scripts/appsync/test-trust.c b/scripts/appsync/test-trust.c
+new file mode 100644
+index 0000000000000000000000000000000000000000..5d81cdb0288018d1c2c618b14af6837005e94582
+--- /dev/null
++++ b/scripts/appsync/test-trust.c
+@@ -0,0 +1,102 @@
++/* Run the exact kernel registration implementation with a locked mock runtime. */
++#include <assert.h>
++#include <pthread.h>
++#include <stdatomic.h>
++#include <stdbool.h>
++#include <stdint.h>
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++typedef int kern_return_t;
++enum { KERN_SUCCESS, KERN_FAILURE, KERN_NOT_SUPPORTED, KERN_INVALID_ARGUMENT, KERN_RESOURCE_SHORTAGE };
++enum { kTCReturnSuccess, kTCReturnNotFound, kTCReturnFailure, kTCQueryTypeAll = 0, kTCTypeEngineering = 1 };
++#define Z_WAITOK_ZERO 0
++typedef struct { uint8_t CDHash[20], hashType, flags, constraintCategory, reserved0; } TrustCacheEntry2_t;
++typedef struct { uint32_t version; uint8_t uuid[16]; uint32_t numEntries; TrustCacheEntry2_t entries[]; } TrustCacheModule2_t;
++typedef struct Cache { struct Cache *next; TrustCacheModule2_t *module; } TrustCache_t;
++typedef struct { int unused; } TrustCacheQueryToken_t;
++typedef struct { int error; } TCReturn_t;
++static uint32_t enabled = 1;
++static bool fail_load, fail_query, fail_alloc;
++static atomic_int allocations;
++static unsigned loads;
++static TrustCache_t *head;
++static int runtime, *trust_cache_rt = &runtime;
++static pthread_mutex_t trust_cache_rt_lock = PTHREAD_MUTEX_INITIALIZER;
++static void *allocate(size_t size) {
++    if (fail_alloc) return NULL;
++    void *p = calloc(1, size); assert(p); atomic_fetch_add(&allocations, 1); return p;
++}
++static void release(void *p) { assert(p); atomic_fetch_sub(&allocations, 1); free(p); }
++#define kalloc_type(type, flags) ((type *)allocate(sizeof(type)))
++#define kalloc_data(size, flags) allocate(size)
++#define kfree_type(type, ptr) release(ptr)
++#define kfree_data(ptr, size) release(ptr)
++#define lck_rw_lock_exclusive(lock) assert(pthread_mutex_lock(lock) == 0)
++#define lck_rw_unlock_exclusive(lock) assert(pthread_mutex_unlock(lock) == 0)
++static void PE_parse_boot_argn(const char *arg, void *output, size_t size) {
++    assert(!strcmp(arg, "appsync") && size == sizeof(enabled)); memcpy(output, &enabled, size);
++}
++static TCReturn_t query(int *rt, int type, const uint8_t *hash, TrustCacheQueryToken_t *token) {
++    assert(rt == trust_cache_rt && type == kTCQueryTypeAll && token);
++    if (fail_query) return (TCReturn_t){kTCReturnFailure};
++    for (TrustCache_t *c = head; c; c = c->next)
++        if (!memcmp(c->module->entries[0].CDHash, hash, 20)) return (TCReturn_t){kTCReturnSuccess};
++    return (TCReturn_t){kTCReturnNotFound};
++}
++static TCReturn_t load(int *rt, int type, TrustCache_t *cache, uintptr_t address, size_t size) {
++    assert(rt == trust_cache_rt && type == kTCTypeEngineering);
++    assert(size == sizeof(TrustCacheModule2_t) + sizeof(TrustCacheEntry2_t));
++    TrustCacheModule2_t *m = (void *)address;
++    assert(m->version == 2 && m->numEntries == 1);
++    assert(m->entries[0].flags == 0 && m->entries[0].constraintCategory == 0);
++    if (fail_load) return (TCReturn_t){kTCReturnFailure};
++    cache->module = m; cache->next = head; head = cache; ++loads;
++    return (TCReturn_t){kTCReturnSuccess};
++}
++static struct AMFI { struct {
++    TCReturn_t (*query)(int *, int, const uint8_t *, TrustCacheQueryToken_t *);
++    TCReturn_t (*loadModule)(int *, int, TrustCache_t *, uintptr_t, size_t);
++} TrustCache; } mock_amfi = {{query, load}}, *amfi = &mock_amfi;
++static kern_return_t xnu_query_trust_cache(int type, const uint8_t *hash, TrustCacheQueryToken_t *token) {
++    lck_rw_lock_exclusive(&trust_cache_rt_lock);
++    int error = query(trust_cache_rt, type, hash, token).error;
++    lck_rw_unlock_exclusive(&trust_cache_rt_lock);
++    return error == kTCReturnSuccess ? KERN_SUCCESS : KERN_FAILURE;
++}
++#include "appsync_trust.inc"
++
++static const char *user_path = "/private/var/containers/Bundle/Application/NEW/New.app/New";
++static void *racing_load(void *hash) {
++    assert(appsync_trust_user_code(user_path, hash, 2) == KERN_SUCCESS); return NULL;
++}
++int main(void) {
++    uint8_t hashes[5][20] = {{1}, {2}, {3}, {4}, {5}};
++    const char *foreign[] = {"/System/Applications/One.app/One", "/private/var-other/One.app/One",
++        "/private/var/One.appx/One", "/private/var/.app/One", "/private/var/One.app/../Other/Code"};
++    for (unsigned i = 0; i < sizeof(foreign)/sizeof(*foreign); ++i)
++        assert(appsync_trust_user_code(foreign[i], hashes[0], 2) == KERN_SUCCESS);
++    enabled = 0;
++    assert(appsync_trust_user_code(user_path, hashes[0], 2) == KERN_SUCCESS);
++    assert(loads == 0 && allocations == 0);
++    enabled = 1;
++    pthread_t threads[32];
++    for (unsigned i = 0; i < 32; ++i) assert(!pthread_create(&threads[i], NULL, racing_load, hashes[0]));
++    for (unsigned i = 0; i < 32; ++i) assert(!pthread_join(threads[i], NULL));
++    assert(loads == 1 && allocations == 2);
++    assert(appsync_trust_user_code("/var/containers/Bundle/Application/NEW/New.app/Frameworks/F.framework/F", hashes[1], 1) == KERN_SUCCESS);
++    assert(appsync_trust_user_code(user_path, hashes[2], 2) == KERN_SUCCESS); // new app version, same path
++    assert(loads == 3 && allocations == 6);
++    fail_load = true;
++    assert(appsync_trust_user_code(user_path, hashes[3], 2) == KERN_FAILURE);
++    fail_load = false; fail_query = true;
++    assert(appsync_trust_user_code(user_path, hashes[3], 2) == KERN_FAILURE);
++    fail_query = false; fail_alloc = true;
++    assert(appsync_trust_user_code(user_path, hashes[3], 2) == KERN_RESOURCE_SHORTAGE);
++    fail_alloc = false;
++    assert(appsync_trust_user_code(user_path, hashes[3], 0) == KERN_INVALID_ARGUMENT);
++    assert(loads == 3 && allocations == 6);
++    while (head) { TrustCache_t *next = head->next; release(head->module); release(head); head = next; }
++    assert(allocations == 0);
++    puts("PASS: dynamic user trust, unlisted apps/updates/frameworks, concurrency, disabled scope and failures");
++}
+diff --git a/scripts/appsync/test.py b/scripts/appsync/test.py
+new file mode 100644
+index 0000000000000000000000000000000000000000..5832df55b3cffc0262204c792ea69f0e2894da32
+--- /dev/null
++++ b/scripts/appsync/test.py
+@@ -0,0 +1,277 @@
++#!/usr/bin/env python3
++"""Host regressions and optional build against the real, pinned OS inputs."""
++import argparse
++import hashlib
++import json
++import plistlib
++import shutil
++from pathlib import Path
++import struct
++import subprocess
++import sys
++import tempfile
++import unittest
++
++from macho import add_dylib
++import build
++import signer
++
++ROOT = Path(__file__).resolve().parent
++
++
++def digest(data):
++    return hashlib.sha256(data).hexdigest()
++
++
++def fixture():
++    name = b'/System/Library/Frameworks/Foundation.framework/Foundation\0'
++    length = (24 + len(name) + 7) & ~7
++    header = struct.pack('<8I', 0xfeedfacf, 0x100000c, 0x80000002, 2, 1, length, 0, 0)
++    command = struct.pack('<6I', 0xc, length, 24, 0, 0, 0) + name
++    return header + command.ljust(length, b'\0') + b'CODE AND CHAINED FIXUPS'
++
++
++class MachOTests(unittest.TestCase):
++    def test_dependency_preserves_header_ordinals_and_code(self):
++        original = fixture()
++        patched = add_dylib(original, build.DYLIB, digest(original))
++        self.assertEqual(len(original), len(patched))
++        self.assertEqual(original[:56], patched[:56])
++        self.assertEqual(original[-22:], patched[-22:])
++        self.assertEqual(patched.count(build.DYLIB.encode()), 1)
++
++    def test_foreign_or_modified_os_rejected(self):
++        with self.assertRaisesRegex(ValueError, 'source pin'):
++            add_dylib(fixture() + b'changed', build.DYLIB, digest(fixture()))
++
++    def test_bad_command_and_duplicate_dependency_rejected(self):
++        data = bytearray(fixture())
++        struct.pack_into('<I', data, 36, 0)
++        with self.assertRaisesRegex(ValueError, 'size'):
++            add_dylib(data, build.DYLIB, digest(data))
++        data = add_dylib(fixture(), build.DYLIB, digest(fixture()))
++        with self.assertRaisesRegex(ValueError, 'already present'):
++            add_dylib(data, build.DYLIB, digest(data))
++
++    def test_truncated_commands_and_long_name_rejected(self):
++        for data in (fixture()[:20], fixture()[:40]):
++            with self.assertRaises(ValueError):
++                add_dylib(data, build.DYLIB, digest(data))
++        with self.assertRaisesRegex(ValueError, 'does not fit'):
++            add_dylib(fixture(), '/' + 'x' * 256, digest(fixture()))
++
++
++def runtime_tests(work):
++    dylib = work / 'AppSync.dylib'
++    flags = ['-fobjc-arc', '-O1', '-g', '-Wall', '-Wextra', '-Werror', '-framework', 'Foundation',
++             '-fsanitize=address,undefined']
++    build.run('xcrun', 'clang', *flags, '-DAS_HOST_TEST=1', '-dynamiclib', ROOT / 'AppSync.m', '-Wl,-undefined,dynamic_lookup', '-o', dylib)
++    # No applications, identifiers, hashes or policy section are passed to the builder.
++    paths = [('/private/var/containers/Bundle/Application/NEW/Unseen.app', 'user'),
++             ('/var/containers/Bundle/Application/NEW/Unseen.app/Frameworks/New.framework', 'user'),
++             ('/private/var/installd/Library/Caches/staging/Another.app/PlugIns/Widget.appex', 'user'),
++             ('/private/var/mobile/Media/PublicStaging/Third.app', 'user'),
++             ('/System/Library/CoreServices/SpringBoard.app', 'system'),
++             ('/private/var/ngpu/appsync/helper', 'system'),
++             ('/private/var-other/Unseen.app', 'system'),
++             ('/private/var/X.app/../../System/Invalid.app', 'system')]
++    for process in ('installd', 'com.apple.MobileInstallationHelperService', 'SpringBoard'):
++        binary = work / process
++        build.run('xcrun', 'clang', *flags, ROOT / 'test-runtime.m', '-o', binary)
++        for path, scope in paths:
++            build.run(binary, dylib, path, scope)
++
++
++def trust_tests(work, device):
++    # Extract the complete new source file from the actual ordered kernel patch.
++    patch = (device / 'patches/xnu-12377/sheng-appsync-user-trust.patch').read_text()
++    section = patch.split('+++ b/bsd/kern/appsync_trust.inc\n', 1)[1].split('diff --git ', 1)[0]
++    source = ''.join(line[1:] + '\n' for line in section.splitlines() if line.startswith('+'))
++    assert 'appsync_trust_user_code' in source
++    (work / 'appsync_trust.inc').write_text(source)
++    binary = work / 'test-trust'
++    build.run('xcrun', 'clang', '-std=c11', '-O1', '-g', '-Wall', '-Wextra', '-Werror',
++              '-fsanitize=address,undefined', '-pthread', '-I', work, ROOT / 'test-trust.c', '-o', binary)
++    build.run(binary)
++
++
++def signing_tests(work):
++    signing_tool = work / 'ldid'
++    signer.build(signing_tool, host=True)
++    harness = work / 'test-signing'
++    build.run('xcrun', 'clang', '-fobjc-arc', '-fblocks', '-O1', '-g', '-Wall', '-Wextra', '-Werror',
++              '-fsanitize=address,undefined', '-framework', 'Foundation',
++              '-DAS_SIGNER_PATH="' + str(signing_tool) + '"', ROOT / 'Signing.m', ROOT / 'test-signing.m', '-o', harness)
++    base = work / 'Base.app'
++    framework = base / 'Frameworks/Kit.framework'
++    extension = base / 'PlugIns/Widget.appex'
++    for bundle, name, identifier, kind in ((base, 'Main', 'org.unixnu.fixture', 'APPL'),
++            (framework, 'Kit', 'org.unixnu.fixture.kit', 'FMWK'),
++            (extension, 'Widget', 'org.unixnu.fixture.widget', 'XPC!')):
++        bundle.mkdir(parents=True, exist_ok=True)
++        (bundle / 'Info.plist').write_bytes(plistlib.dumps(dict(CFBundleIdentifier=identifier,
++            CFBundleExecutable=name, CFBundleVersion='1', CFBundlePackageType=kind)))
++        (bundle / 'resource.txt').write_text('original resource')
++    source = work / 'main.c'
++    source.write_text('int main(void) { return 0; }\n')
++    sdk = build.run('xcrun', '--sdk', 'iphoneos', '--show-sdk-path', capture=True).stdout.strip()
++    binaries = ['Main', 'Frameworks/Kit.framework/Kit', 'PlugIns/Widget.appex/Widget']
++    entitlement_file = work / 'entitlements.plist'
++    entitlements = {'application-identifier': 'EXAMPLE.org.unixnu.fixture', 'get-task-allow': True}
++    entitlement_file.write_bytes(plistlib.dumps(entitlements))
++    for name in reversed(binaries):
++        binary = base / name
++        build.run('xcrun', 'clang', '-target', 'arm64-apple-ios17.0', '-isysroot', sdk,
++                  *(['-dynamiclib'] if binary.name == 'Kit' else []), source, '-o', binary)
++        build.sign(binary, 'org.unixnu.fixture.' + binary.name, entitlement_file)
++    build.run(signing_tool, '-Hsha256', '-M', '-S', base)
++    original = build.sha(base / 'Main')
++    build.run(harness, base, 'valid')
++    assert original == build.sha(base / 'Main')
++
++    unsigned = work / 'Unsigned.app'
++    shutil.copytree(base, unsigned)
++    for name in binaries:
++        build.run('codesign', '--remove-signature', unsigned / name)
++    for resource in unsigned.glob('**/_CodeSignature'):
++        shutil.rmtree(resource)
++    build.run(harness, unsigned, 'repair')
++    for name in binaries:
++        build.run('codesign', '--verify', '--strict', unsigned / name)
++
++    modified = work / 'Modified.app'
++    shutil.copytree(base, modified)
++    (modified / 'Frameworks/Kit.framework/resource.txt').write_text('new resource')
++    (modified / 'embedded.mobileprovision').write_bytes(b'expired profile fixture')
++    (modified / 'PlugIns/Widget.appex/embedded.mobileprovision').write_bytes(b'expired nested profile')
++    build.run(harness, modified, 'repair')
++    assert not list(modified.glob('**/embedded.mobileprovision'))
++    assert build.entitlements(modified / 'Main') == entitlements
++    assert build.entitlements(modified / 'PlugIns/Widget.appex/Widget') == entitlements
++
++    universal = work / 'Universal.app'
++    shutil.copytree(base, universal)
++    arm64e = work / 'arm64e'
++    build.run('xcrun', 'clang', '-target', 'arm64e-apple-ios17.0', '-isysroot', sdk, source, '-o', arm64e)
++    build.run('codesign', '--remove-signature', universal / 'Main')
++    build.run('codesign', '--remove-signature', arm64e)
++    fat = work / 'fat'
++    build.run('xcrun', 'lipo', '-create', universal / 'Main', arm64e, '-output', fat)
++    shutil.copyfile(fat, universal / 'Main')
++    build.run(harness, universal, 'repair')
++    for arch in ('arm64', 'arm64e'):
++        build.run('codesign', '--verify', '--strict', '-a', arch, universal / 'Main')
++
++    openssl = '/opt/homebrew/opt/openssl@3/bin/openssl'
++    for name, days in [('FakeIdentity', '365'), ('Expired', '-1')]:
++        key, request, certificate, identity = (work / (name + suffix) for suffix in ('.key', '.csr', '.crt', '.p12'))
++        build.run(openssl, 'req', '-new', '-newkey', 'rsa:2048', '-nodes', '-keyout', key, '-out', request,
++                  '-subj', '/CN=UniXNU Test/OU=EXAMPLE', capture=True)
++        build.run(openssl, 'x509', '-req', '-in', request, '-signkey', key, '-out', certificate, *(['-not_before', '20200101000000Z', '-not_after', '20210101000000Z'] if name == 'Expired' else ['-days', days]), capture=True)
++        if name == 'Expired':
++            assert subprocess.run([openssl, 'x509', '-in', str(certificate), '-checkend', '0'], capture_output=True).returncode != 0
++        build.run(openssl, 'pkcs12', '-export', '-inkey', key, '-in', certificate, '-out', identity, '-passout', 'pass:fixture', capture=True)
++        app = work / (name + '.app')
++        shutil.copytree(base, app)
++        build.run(signing_tool, '-K' + str(identity), '-Ufixture', '-M', '-S', app)
++        build.run(harness, app, 'repair')
++        display = build.run('codesign', '-d', '--verbose=4', app / 'Main', capture=True).stderr
++        assert 'Signature=adhoc' in display
++        assert build.entitlements(app / 'Main') == entitlements
++
++    linked = work / 'Linked.app'
++    shutil.copytree(base, linked)
++    (linked / 'outside').symlink_to(work / 'main.c')
++    before = build.sha(linked / 'Main')
++    build.run(harness, linked, 'reject')
++    assert build.sha(linked / 'Main') == before
++
++    encrypted = work / 'Encrypted.app'
++    shutil.copytree(base, encrypted)
++    code = bytearray((encrypted / 'Main').read_bytes())
++    count, size = struct.unpack_from('<II', code, 16)
++    at = 32
++    for _ in range(count):
++        command, length = struct.unpack_from('<II', code, at)
++        if command == 0x2c:
++            struct.pack_into('<I', code, at + 16, 1)
++            break
++        at += length
++    else:
++        # The minimal linked fixture can lack an encryption command; append it
++        # in zero header padding, leaving executable data at its original offset.
++        at = 32 + size
++        assert code[at:at+24] == bytes(24)
++        code[at:at+24] = struct.pack('<6I', 0x2c, 24, 0, 0, 1, 0)
++        struct.pack_into('<II', code, 16, count + 1, size + 24)
++    (encrypted / 'Main').write_bytes(code)
++    before = build.sha(encrypted / 'Main')
++    build.run(harness, encrypted, 'reject')
++    assert build.sha(encrypted / 'Main') == before
++    print('PASS: unsigned/fat/nested code, fake/expired identities, resource/profile repair, entitlement preservation, encrypted and escaping-symlink rejection')
++
++
++def target_tests(os_root, output, os_image=None):
++    build.build(os_root, output)
++    report = json.loads((output / 'report.json').read_text())
++    assert report['scope'] == 'all-user-bundles' and report['dynamic_user_trust']
++    assert 'enrolled_bundles' not in report and 'app_cdhashes' not in report
++    if os_image:
++        runtime_integration(os_image, output / 'runtime')
++
++
++def modules(path):
++    data = path.read_bytes()
++    count = struct.unpack_from('<I', data)[0]
++    starts = list(struct.unpack_from(f'<{count}I', data, 4)) + [len(data)]
++    return [data[starts[i]:starts[i + 1]] for i in range(count)]
++
++
++def runtime_integration(os_image, output):
++    output.mkdir(parents=True, exist_ok=True)
++    addon, trust, seed = (output / name for name in ('input-addon.bin', 'input-trust.bundle', 'data.fixture'))
++    addon.write_bytes(b'NGPUADD2' + struct.pack('<IIQ', 0, 0, 24))
++    original = struct.pack('<I16sI', 2, bytes(16), 1) + bytes.fromhex('12' * 20) + bytes([2, 0, 0, 0])
++    trust.write_bytes(struct.pack('<II', 1, 8) + original)
++    seed.write_bytes(b'preserved Data input fixture')
++    request = dict(output=str(output), data_ramdisk=str(seed), gpu_addon=str(addon), trust_cache=str(trust),
++                   appsync=True, target='ios27', build='24A446', os_image=str(os_image))
++    source = ROOT.parent / 'build-boot-runtime.py'
++    request_file = output / 'request.json'
++    for iteration in range(2):
++        request_file.write_text(json.dumps(request))
++        build.run(sys.executable, source, '--request', request_file)
++        generated = json.loads((output / 'generated.json').read_text())
++        trust_modules = modules(Path(generated['trust_cache']))
++        assert trust_modules[0] == original and len(trust_modules) == 2
++        report = json.loads((output / 'appsync-service.json').read_text())
++        hashes = {m[24 + i * 24:44 + i * 24].hex() for m in trust_modules
++                  for i in range(struct.unpack_from('<I', m, 20)[0])}
++        assert report['scope'] == 'all-user-bundles'
++        assert 'enrolled_bundles' not in report
++        assert {file['cdhash'] for file in report['files'].values()} <= hashes
++        assert seed.read_bytes() == b'preserved Data input fixture'
++        request.update(gpu_addon=generated['gpu_addon'], trust_cache=generated['trust_cache'])
++    print('PASS: runtime addon/trust integration, original module and Data preservation, repeat-build idempotence')
++
++
++if __name__ == '__main__':
++    parser = argparse.ArgumentParser(description=__doc__)
++    parser.add_argument('--device', type=Path, default=ROOT.parents[2] / 'UniXNU-sheng')
++    parser.add_argument('--signing', action='store_true', help='build the host signer and exercise automatic signature repair')
++    parser.add_argument('--os-root', type=Path)
++    parser.add_argument('--os-image', type=Path, help='also exercise the full runtime packer and trust merge')
++    parser.add_argument('--output', type=Path, default=ROOT.parents[1] / 'build/appsync-check')
++    args = parser.parse_args()
++    result = unittest.TextTestRunner(verbosity=2).run(unittest.defaultTestLoader.loadTestsFromTestCase(MachOTests))
++    if not result.wasSuccessful():
++        raise SystemExit(1)
++    with tempfile.TemporaryDirectory(prefix='appsync-runtime-') as td:
++        runtime_tests(Path(td))
++        trust_tests(Path(td), args.device.resolve())
++        if args.signing:
++            signing_tests(Path(td))
++    if args.os_root:
++        target_tests(args.os_root.resolve(), args.output.resolve(), args.os_image.resolve() if args.os_image else None)
++    print('PASS: Mach-O guards and production hooks under ASan/UBSan' +
++          ('; signed arm64e adapter, native executable copies and global user-app scope' if args.os_root else ''))
+diff --git a/scripts/audit-storage-interface.py b/scripts/audit-storage-interface.py
+index a79fd8bcf3c9a0f0e361980142c144a81e31478f..74dd5646214fbdb285929a51e8e215f8b2875c90 100644
+--- a/scripts/audit-storage-interface.py
++++ b/scripts/audit-storage-interface.py
+@@ -47,7 +47,8 @@ while index < len(arguments):
+ command += ['-I', str(out / 'include'), '-I', str(ROOT / '.cache/xnu-work/osfmk'),
+             '-Wall', '-Wextra', '-Werror', '-Wno-unused-parameter', '-Wno-deprecated-declarations',
+             '-Wno-c99-designator', '-Wno-reorder-init-list', '-Wno-unnecessary-virtual-specifier',
+-            '-Wno-deprecated-enum-enum-conversion']
++            '-Wno-deprecated-enum-enum-conversion',
++            '-Wno-error=missing-designated-field-initializers', '-Wno-macro-redefined']
+ (out / 'compile-command.json').write_text(json.dumps(command, indent=2) + '\n')
+ r = subprocess.run(command, cwd=record['directory'], capture_output=True, text=True)
+ (out / 'compile.log').write_text(r.stdout + r.stderr)
+diff --git a/scripts/build-libpthread-kernel.py b/scripts/build-libpthread-kernel.py
+index c6ac86063abfaa78558a5a275d1335b7aab98416..2ae421f7924ae47ed545a47e8d265b7a01850932 100644
+--- a/scripts/build-libpthread-kernel.py
++++ b/scripts/build-libpthread-kernel.py
+@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
+ sys.path.insert(0, str(ROOT / 'scripts'))
+ from xnu_symbols import kernel_names
+ SOURCE = ROOT / 'refer/libpthread'
+-REVISION = 'c0e60fb5ecfc54cf379c261d3f9572cc22ded891'
++REVISION = 'cf9e1c7e611440e511af230905be2cfefc5c6121'
+ if subprocess.check_output(['git', '-C', SOURCE, 'rev-parse', 'HEAD'], text=True).strip() != REVISION:
+     raise SystemExit('Unexpected libpthread source revision')
+ if subprocess.check_output(['git', '-C', SOURCE, 'status', '--porcelain'], text=True):
+diff --git a/scripts/build-storage-bringup.py b/scripts/build-storage-bringup.py
+new file mode 100644
+index 0000000000000000000000000000000000000000..a7f7e6b2323c18b96f2d8a40de73df9d2affae5b
+--- /dev/null
++++ b/scripts/build-storage-bringup.py
+@@ -0,0 +1,57 @@
++#!/usr/bin/env python3
++"""Build and fold the storage ABI support into build/sheng-ufs/libShengUfs.a.
++
++The archive ends up containing:
++  * IOBlockStorageDevice-reference.o  (official ABI audit reference object)
++  * verified_root.o / xnu_crypto.o    (real VerifiedRoot implementation)
++  * Stubs.o                           (owner-key/policy anchors + board diagnostic hook)
++
++No kernel build-script patch is required: ShengUfs is already force-loaded by the
++native-UFS branch, so appending the members to its archive makes them part of the link.
++"""
++import json
++import subprocess
++from pathlib import Path
++
++ROOT = Path(__file__).resolve().parents[1]
++OUT = ROOT / 'build/storage-bringup'
++OUT.mkdir(parents=True, exist_ok=True)
++
++reference = ROOT / 'build/storage-abi/IOBlockStorageDevice-reference.o'
++if not reference.is_file():
++    raise SystemExit('Missing build/storage-abi/IOBlockStorageDevice-reference.o; run scripts/audit-storage-interface.py')
++
++record = json.loads((ROOT / 'build/xnu/ios-obj/DEVELOPMENT_ARM64_BCM2837/osfmk/DEVELOPMENT/startup.o.json').read_text().strip().rstrip(','))
++
++def compile_c(source: Path, obj: Path, extra=()):
++    command, args, i = [], record['arguments'], 0
++    while i < len(args):
++        a = args[i]
++        if a == record['file']:
++            command.append(str(source))
++        elif a in ('-o', '-MF', '-MT', '-MJ'):
++            if a == '-o':
++                command += ['-o', str(obj)]
++            i += 1
++        elif a == '-Xclang' and args[i + 1].startswith('-W'):
++            i += 1
++        elif not a.startswith(('-W', '-DXNU_BOOT_PROGRESS=')):
++            command.append(a)
++        i += 1
++    command += ['-mgeneral-regs-only', '-Wall', '-Wextra', '-Werror',
++                '-I', str(ROOT / '.cache/xnu-work/osfmk'),
++                '-I', str(ROOT / 'kits/VerifiedRoot/include')]
++    command += list(extra)
++    subprocess.run(command, cwd=record['directory'], check=True, timeout=120)
++
++compile_c(ROOT / 'kits/VerifiedRoot/src/verified_root.c', OUT / 'verified_root.o')
++compile_c(ROOT / 'kits/VerifiedRoot/adapters/xnu_crypto.c', OUT / 'xnu_crypto.o')
++compile_c(ROOT / 'package/storage-bringup/Stubs.c', OUT / 'Stubs.o')
++
++archive = ROOT / 'build/sheng-ufs/libShengUfs.a'
++if not archive.is_file():
++    raise SystemExit('Missing build/sheng-ufs/libShengUfs.a; build the ShengUfs component first')
++subprocess.run(['llvm-ar', 'r', str(archive), str(reference),
++                str(OUT / 'verified_root.o'), str(OUT / 'xnu_crypto.o'), str(OUT / 'Stubs.o')],
++               check=True, timeout=120)
++print(f'== storage-bringup: folded into {archive}')
+diff --git a/scripts/build-xnu-4k-baseline.sh b/scripts/build-xnu-4k-baseline.sh
+index 7c49d9d67e399b71c0747189e8dee50c6179f05a..b2e71a8cf007a1edb7106bd0032eb7cefe4e7284 100644
+--- a/scripts/build-xnu-4k-baseline.sh
++++ b/scripts/build-xnu-4k-baseline.sh
+@@ -551,6 +551,11 @@ if [ "$NATIVE_PAN" != 0 ] && [ "$NATIVE_PAN" != 1 ]; then
+   echo 'XNU_NATIVE_PAN must be 0 or 1' >&2
+   exit 1
+ fi
++OWN_STORAGE=${UNIXNU_OWN_STORAGE:-${XNU_OWN_STORAGE:-0}}
++if [ "$OWN_STORAGE" != 0 ] && [ "$OWN_STORAGE" != 1 ]; then
++  echo 'XNU_OWN_STORAGE must be 0 or 1' >&2
++  exit 1
++fi
+ EXTRA_CFLAGS="$EXTRA_CFLAGS -DXNU_NATIVE_PAN=$NATIVE_PAN"
+ if [ "$NATIVE_PAN" = 1 ]; then
+   EXTRA_MAKE_ARGS+=("copyio.o_CFLAGS_ADD=-march=armv8.1-a")
+@@ -746,12 +751,21 @@ PY_BINDINGS
+     KERNEL_EXTRA_ARCHIVES="$KERNEL_EXTRA_ARCHIVES -Wl,-force_load,$PMGR_ARCHIVE"
+     KERNEL_ARCHIVE_DEPENDENCIES="$KERNEL_ARCHIVE_DEPENDENCIES $PMGR_ARCHIVE"
+   fi
++  if [ "$OWN_STORAGE" = 1 ]; then
++    STORAGE_ARCHIVE=$ROOT/build/iostorage/libIOStorageFamily.a
++    test -f "$STORAGE_ARCHIVE"
++    KERNEL_EXTRA_ARCHIVES="$KERNEL_EXTRA_ARCHIVES -Wl,-force_load,$STORAGE_ARCHIVE"
++    KERNEL_ARCHIVE_DEPENDENCIES="$KERNEL_ARCHIVE_DEPENDENCIES $STORAGE_ARCHIVE"
++  fi
+   # Optional extra link inputs (e.g. a stub for an unselected offline probe hook).
+   if [ "$BOOT_PROGRESS" = 1 ]; then
+     KERNEL_EXTRA_ARCHIVES="$KERNEL_EXTRA_ARCHIVES -Wl,-force_load,$ROOT/build/boot-progress/libBootProgress.a"
+     KERNEL_ARCHIVE_DEPENDENCIES="$KERNEL_ARCHIVE_DEPENDENCIES $ROOT/build/boot-progress/libBootProgress.a"
+   fi
+   KERNEL_EXTRA_ARCHIVES="$KERNEL_EXTRA_ARCHIVES ${XNU_EXTRA_LD_ARCHIVES:-}"
++  if [ "${UNIXNU_OWN_STORAGE_DEBUG:-0}" = 1 ]; then
++    printf 'OWN-STORAGE-DEBUG LD_KERNEL_ARCHIVES=%s\n' "$KERNEL_EXTRA_ARCHIVES"
++  fi
+   EXTRA_MAKE_ARGS+=("LD_KERNEL_ARCHIVES=$KERNEL_EXTRA_ARCHIVES")
+   EXTRA_MAKE_ARGS+=("XNU_EXTERNAL_KERNEL_ARCHIVES=$KERNEL_ARCHIVE_DEPENDENCIES")
+ fi
+@@ -766,7 +780,8 @@ python3 - "${XNU_NATIVE_AES:-0}" "${XNU_NATIVE_AES_ARCHIVE:-$ROOT/build/software
+   "$NATIVE_VIRTIO_CONSOLE" "$ROOT/build/virtio-mmio-console/libVirtioMmioConsole.a" \
+   "$NATIVE_OFFLINE_GPU" "$ROOT/build/native-offline-gpu/libNativeOfflineGPU.late.a" \
+   "$SHENG_PMGR" "$ROOT/build/sheng-platform-power/libShengPlatformPower.a" \
+-  "${XNU_NATIVE_ADRENO:-0}" "$ROOT/build/adreno740/libAdreno740.a" <<'PY'
++  "${XNU_NATIVE_ADRENO:-0}" "$ROOT/build/adreno740/libAdreno740.a" \
++  "$OWN_STORAGE" "$ROOT/build/iostorage/libIOStorageFamily.a" <<'PY'
+ import hashlib
+ from pathlib import Path
+ import sys
+diff --git a/scripts/unixnu/bootimg.py b/scripts/unixnu/bootimg.py
+index 8ac3274d090fdb46f7c20605a9ec61137df4b974..de568f8ab8110a665babe753f87ed782a5629887 100644
+--- a/scripts/unixnu/bootimg.py
++++ b/scripts/unixnu/bootimg.py
+@@ -17,7 +17,8 @@ from .config import load_toml
+ from .util import Error, log, run, sha256_file, tool
+ 
+ DEFAULTS = {'header_version': 0, 'base': 0, 'kernel_offset': 0x8000, 'tags_offset': 0x1e00000, 'pagesize': 4096}
+-MKBOOTIMG_FLAGS = ('base', 'kernel_offset', 'tags_offset', 'pagesize', 'header_version', 'ramdisk_offset', 'second_offset', 'cmdline')
++MKBOOTIMG_FLAGS = ('base', 'kernel_offset', 'tags_offset', 'pagesize', 'header_version', 'os_version',
++                   'os_patch_level', 'ramdisk_offset', 'second_offset', 'cmdline')
+ 
+ 
+ def compile_shim(uefi, base, size, requires_header, scratch):
+@@ -93,8 +94,15 @@ def build(ctx, uefi, fd, dtb, ramdisk=None, output=None):
+         if tree[:4] != b'\xd0\x0d\xfe\xed' or struct.unpack_from('>I', tree, 4)[0] != len(tree):
+             raise Error('invalid compiled device tree')
+         combined = shim + firmware
+-        kernel = gzip.compress(combined, mtime=0) + tree
+-        kernel_path = scratch / 'Image.gz-dtb'
++        # [bootimg.image] kernel_compression selects the kernel encoding. The
++        # default keeps the gzip convention; "none" writes the uncompressed
++        # BootShim and firmware blob, which is useful when a vendor ABL is
++        # suspected of mishandling the compressed stream.
++        compression = str(image.get('kernel_compression', 'gzip')).lower()
++        if compression not in ('gzip', 'none'):
++            raise Error(f'unsupported kernel_compression: {compression}')
++        kernel = (gzip.compress(combined, mtime=0) if compression == 'gzip' else combined) + tree
++        kernel_path = scratch / (('Image.gz-dtb' if compression == 'gzip' else 'Image-dtb'))
+         kernel_path.write_bytes(kernel)
+         if ramdisk:
+             ramdisk_path = Path(ramdisk)
+@@ -108,7 +116,7 @@ def build(ctx, uefi, fd, dtb, ramdisk=None, output=None):
+             if key in image:
+                 command += [f'--{key}', str(image[key])]
+         run(command, capture=True)
+-        report = verify(out, combined, tree, ramdisk_path, image)
++        report = verify(out, combined, tree, ramdisk_path, image, compression)
+     report.update(image_sha256=sha256_file(out), image_bytes=out.stat().st_size, fd_sha256=sha256_file(fd),
+                   dtb_sha256=sha256_file(dtb), shim_bytes=len(shim), hardware_tested=False)
+     (out.parent / 'boot.json').write_text(json.dumps(report, indent=2) + '\n')
+@@ -116,27 +124,39 @@ def build(ctx, uefi, fd, dtb, ramdisk=None, output=None):
+     return out
+ 
+ 
+-def verify(path, combined, tree, ramdisk_path, image):
++def verify(path, combined, tree, ramdisk_path, image, compression='gzip'):
+     """Unpack the image and compare every part with its input."""
+     data = Path(path).read_bytes()
+-    kernel_size, kernel_address, ramdisk_size, _, second_size, _, tags, page, version, _ = struct.unpack_from('<10I', data, 8)
+-    if image.get('header_version', 0) >= 3:
+-        kernel_size, ramdisk_size = struct.unpack_from('<2I', data, 8)
+-        version = struct.unpack_from('<I', data, 40)[0]
+-        page = image.get('pagesize', 4096)
+-        second_size = 0
+-        kernel_address = image.get('base', 0) + image.get('kernel_offset', 0x8000)
+-        tags = image.get('base', 0) + image.get('tags_offset', 0x1E00000)
+-    if data[:8] != b'ANDROID!' or second_size or version != image['header_version'] or page != image['pagesize']:
++    if data[:8] != b'ANDROID!':
++        raise Error('boot image magic missing')
++    # header_version sits at offset 40 in both the v0 and the v3/v4 layouts.
++    version = struct.unpack_from('<I', data, 40)[0]
++    if version != image['header_version']:
+         raise Error('boot image header does not match the requested parameters')
+-    if kernel_address != image['base'] + image['kernel_offset'] or tags != image['base'] + image['tags_offset']:
+-        raise Error('boot image load addresses do not match the requested offsets')
+-    kernel = data[page:page + kernel_size]
+-    unpacker = zlib.decompressobj(16 + zlib.MAX_WBITS)
+-    if unpacker.decompress(kernel) != combined or not unpacker.eof or unpacker.unused_data != tree:
+-        raise Error('gzip, firmware and appended device tree do not round-trip')
+-    start = page * (1 + -(-kernel_size // page))
+-    if data[start:start + ramdisk_size] != Path(ramdisk_path).read_bytes():
++    page = image['pagesize']
++    if version >= 3:
++        # v3/v4 drop the load addresses and the second stage: the kernel follows a
++        # header_size-padded header and the ramdisk follows the kernel.
++        kernel_size, ramdisk_size, _os_version, header_size = struct.unpack_from('<4I', data, 8)
++        kernel_address = tags = 0
++        start = page * max(1, -(-header_size // page))
++        ramdisk_start = start + page * (-(-kernel_size // page))
++    else:
++        kernel_size, kernel_address, ramdisk_size, _, second_size, _, tags, header_page, _, _ = struct.unpack_from('<10I', data, 8)
++        if second_size or header_page != page:
++            raise Error('boot image header does not match the requested parameters')
++        if kernel_address != image['base'] + image['kernel_offset'] or tags != image['base'] + image['tags_offset']:
++            raise Error('boot image load addresses do not match the requested offsets')
++        start = page
++        ramdisk_start = page * (1 + -(-kernel_size // page))
++    kernel = data[start:start + kernel_size]
++    if compression == 'gzip':
++        unpacker = zlib.decompressobj(16 + zlib.MAX_WBITS)
++        if unpacker.decompress(kernel) != combined or not unpacker.eof or unpacker.unused_data != tree:
++            raise Error('gzip, firmware and appended device tree do not round-trip')
++    elif kernel != combined + tree:
++        raise Error('firmware and appended device tree do not round-trip')
++    if data[ramdisk_start:ramdisk_start + ramdisk_size] != Path(ramdisk_path).read_bytes():
+         raise Error('ramdisk bytes differ')
+     return {'kernel_sha256': hashlib.sha256(kernel).hexdigest(), 'ramdisk_bytes': ramdisk_size,
+             'header_version': version, 'kernel_address': hex(kernel_address), 'tags_address': hex(tags)}
+diff --git a/scripts/unixnu/cli.py b/scripts/unixnu/cli.py
+index f4001420d1462aa063335b5878d505238f3255e3..b92b2099a4c87a160342dac71e974cace9ad40d2 100644
+--- a/scripts/unixnu/cli.py
++++ b/scripts/unixnu/cli.py
+@@ -5,18 +5,19 @@ import platform
+ import shutil
+ import sys
+ 
+-from . import bootimg, components, feeds, firmware, ipsw, kernel, package, patches, payload, profiles, tree, userdata
++from . import bootimg, components, feeds, firmware, ipsw, kernel, package, patches, payload, pipeline, profiles, runtime, tree, userdata
+ from .config import LOCAL_KINDS, Context, parse_config
+ from .util import Error, expand, git, log
+ 
+ STEPS = ('kernel', 'package', 'firmware', 'payload')
+-OPTIONAL_STEPS = ('userdata',)   # large; built only when named
++OPTIONAL_STEPS = ('userdata', 'runtime')   # large; built only when named
+ 
+ 
+ def common():
+     p = argparse.ArgumentParser(add_help=False)
+     p.add_argument('--config', metavar='FILE', help='local build inputs (default: unixnu.local.toml in the UniXNU checkout)')
+     p.add_argument('-D', '--device', metavar='DIR', help='device repository (remembered; or UNIXNU_DEVICE)')
++    p.add_argument('--os', metavar='VERSION', help='OS profile for this run: 17, 26, 27 or a profiles/os directory name (default: the board os_profile)')
+     p.add_argument('--out', metavar='DIR', help='output root (default: out/ here, or UNIXNU_OUT)')
+     p.add_argument('-j', '--jobs', type=int, help='parallel jobs')
+     p.add_argument('--local', metavar='DIR', help='directory laid out like this repository; its drivers, kits, patches, scripts and package are used')
+@@ -67,6 +68,9 @@ def parser():
+     status = sub.add_parser('status', parents=[c], help='show the device, configuration and where each module comes from')
+     status.add_argument('--json', action='store_true', help='print resolved configuration as JSON without fetching sources')
+     sub.add_parser('clean', parents=[c], help='remove the build output of the device (keeps fetched sources)')
++    k = sub.add_parser('release', parents=[c], help='dependencies, patches, build steps and boot image of the device in one run, with a manifest')
++    k.add_argument('--no-deps', action='store_true', help='skip fetching sources and the IPSW members')
++    k.add_argument('--check', action='store_true', help='fetch, resolve and list the patch series, then stop before any build step')
+     return top
+ 
+ 
+@@ -150,6 +154,8 @@ def cmd_build(ctx):
+     if 'firmware' in steps:
+         need_uefi(ctx)   # fail before fetching anything
+     modules = prepare(ctx, steps + (['kernel'] if 'prelink' in steps else []))
++    if 'payload' in steps or 'runtime' in steps:
++        runtime.prepare(ctx, kernel_build='kernel' in steps)
+     if 'kernel' in steps:
+         kernel.build(ctx, modules)
+         kernel.prelink(ctx)
+@@ -259,6 +265,47 @@ def cmd_status(ctx):
+         print(f'\nnot reproducible: {len(unpinned)} local source(s) are not pinned by unixnu.lock')
+ 
+ 
++def cmd_release(ctx):
++    """deps, patches, build, pack, verify: the fixed steps of the device packaging script."""
++    ctx.refuse_example()
++    args = ctx.args
++    log('step deps')
++    if args.no_deps:
++        log('deps skipped (--no-deps)')
++    else:
++        args.names, args.update = [], False
++        cmd_fetch(ctx)
++        if ctx.board.get('ipsw', {}).get('url') or getattr(args, 'ipsw', None):
++            args.action, args.components = 'fetch', []
++            cmd_ipsw(ctx)
++    log('step preflight')
++    args.name = ctx.config_name
++    cmd_defconfig(ctx)
++    modules = feeds.resolve(ctx)
++    if ctx.soc:
++        modules[('soc', ctx.soc.name)] = ctx.soc
++    log('step patches')
++    order = patches.plan(ctx, modules) if ctx.schema_version == 2 else []
++    for number, path in enumerate(order, 1):
++        log(f'patch {number:02} {path}')
++    if args.check:
++        log(f'check done: {len(order)} patches, configuration {ctx.config_name}, OS {ctx.work.parent.name}')
++        return
++    log('step build')
++    args.steps = list(STEPS)
++    cmd_build(ctx)
++    log('step pack')
++    args.fd = args.ramdisk = args.output = None
++    dtb = ctx.board.get('bootimg', {}).get('dtb')
++    args.dtb = str(ctx.tree / dtb) if dtb else None
++    cmd_bootimg(ctx)
++    log('step verify')
++    files = pipeline.outputs(ctx)
++    manifest = pipeline.write_manifest(ctx, modules, order, files)
++    pipeline.verify(ctx, files, manifest)
++    log(f'manifest {manifest}')
++
++
+ def cmd_clean(ctx):
+     for name in ('tree', 'logs', 'kernel', 'package', 'boot', 'edk2-conf'):
+         shutil.rmtree(ctx.work / name, ignore_errors=True)
+@@ -280,7 +327,7 @@ def main(argv=None):
+     try:
+         ctx = Context(args)
+         {'defconfig': cmd_defconfig, 'fetch': cmd_fetch, 'tree': lambda c: prepare(c), 'build': cmd_build,
+-         'bootimg': cmd_bootimg, 'ipsw': cmd_ipsw, 'status': cmd_status, 'clean': cmd_clean}[args.command](ctx)
++         'bootimg': cmd_bootimg, 'ipsw': cmd_ipsw, 'status': cmd_status, 'clean': cmd_clean, 'release': cmd_release}[args.command](ctx)
+     except Error as error:
+         sys.exit(f'unixnu: {error}')
+     except KeyboardInterrupt:
+diff --git a/scripts/unixnu/components.py b/scripts/unixnu/components.py
+index 6d170389aee94c31bd8e887e140c017b77341109..ece8fc220a0d8a51665956a05d593d18d475bd70 100644
+--- a/scripts/unixnu/components.py
++++ b/scripts/unixnu/components.py
+@@ -99,7 +99,10 @@ def resolve(ctx, modules):
+     """Select catalog components while retaining explicit device sources."""
+     from .feeds import Module
+     ctx.component_specs = selected(ctx, modules)
+-    result = {key: value for key, value in modules.items() if key[0] in ('refer', 'patch', 'package', 'script')}
++    entries = catalog(ctx)
++    result = {key: value for key, value in modules.items()
++              if key[0] in ('refer', 'patch', 'package', 'script') or
++              (value.origin == 'local (--local-module)' and key[1] not in entries)}
+     for spec in ctx.component_specs:
+         identifier, kind = spec['id'], spec['kind']
+         key = (kind, identifier)
+diff --git a/scripts/unixnu/config.py b/scripts/unixnu/config.py
+index 0d96c639d552b9bae69a108f078aee361c98e859..296c11774becb17600b2db9475fd325c71da35e4 100644
+--- a/scripts/unixnu/config.py
++++ b/scripts/unixnu/config.py
+@@ -136,7 +136,7 @@ class Context:
+         self.board = self.raw_board
+         if self.schema_version == 2:
+             from . import profiles
+-            self.board = profiles.load(self, allow_fetch=args.command in ('fetch', 'tree', 'build', 'defconfig'))
++            self.board = profiles.load(self, allow_fetch=args.command in ('fetch', 'tree', 'build', 'defconfig', 'release'))
+         self.name = self.board.get('board', {}).get('name')
+         if not self.name:
+             raise Error('board.toml needs [board] name')
+@@ -148,11 +148,19 @@ class Context:
+         if self.schema_version == 2:
+             configurations = state.get('configurations', {})
+             selected = (getattr(args, 'name', None) if args.command == 'defconfig' else None)
+-            selected = selected or configurations.get(str(self.device)) or self.board.get('kernel', {}).get('defconfig')
++            from . import profiles
++            os_name = profiles.resolve_os(self, args.os) if getattr(args, 'os', None) else self.board['board']['os_profile']
++            # [package.defconfig] maps an OS profile to its defconfig; the packaging command always uses it, other commands when --os is given.
++            per_os = self.raw_board.get('package', {}).get('defconfig', {}).get(os_name)
++            if per_os and (args.command == 'release' or getattr(args, 'os', None)):
++                selected = selected or per_os
++            else:
++                selected = selected or configurations.get(str(self.device))
++            selected = selected or per_os or self.board.get('kernel', {}).get('defconfig')
+             if not selected or Path(selected).name != selected or selected in ('.', '..'):
+                 raise Error('schema_version = 2 needs [kernel] defconfig or a selected defconfig')
+             self.config_name = selected
+-            self.work /= self.board['board']['os_profile']
++            self.work /= os_name
+             self.work /= selected.removesuffix('_defconfig')
+         self.tree = self.work / 'tree'
+         self.logs = self.work / 'logs'
+@@ -187,6 +195,8 @@ class Context:
+     def need_config(self):
+         if not self.config_path.is_file():
+             raise Error(f'no configuration: run "unixnu defconfig NAME" first (see {self.device / "configs"})')
++        # Re-read: a release writes the configuration at its preflight step, after this context exists.
++        self.config = parse_config(self.config_path.read_text())
+         return self.config
+ 
+     def option_text(self, flag, env=None):
+diff --git a/scripts/unixnu/devicetree.py b/scripts/unixnu/devicetree.py
+index cdf0f908c2a0c733a818f8863acdca1f657304c6..dd4839f9b6e2d551b212b6f81dc91ec6032b996b 100644
+--- a/scripts/unixnu/devicetree.py
++++ b/scripts/unixnu/devicetree.py
+@@ -203,7 +203,7 @@ def arm_io_window(hardware):
+ 
+ 
+ STRINGS = {'compatible', 'device_type', 'reg-names', 'interrupt-names', 'clock-names', 'method'}
+-U32 = {'phandle', 'linux,phandle', '#interrupt-cells', '#iommu-cells', '#clock-cells', 'clock-frequency', 'timebase-frequency'}
++U32 = {'phandle', 'linux,phandle', '#interrupt-cells', '#iommu-cells', '#clock-cells', 'clock-frequency', 'timebase-frequency', 'transport-encoding', 'transport-speed'}
+ U64 = {'redistributor-stride'}
+ FLAGS = {'interrupt-controller', 'dma-coherent'}
+ REFERENCES = {'interrupt-parent': None, 'iommus': '#iommu-cells', 'clocks': '#clock-cells'}
+@@ -256,10 +256,13 @@ def hardware_properties(entry, handles, base=0):
+     return properties
+ 
+ 
++PROPERTY_TYPES = ('string', 'strings', 'u32', 'u64', 'bytes')
++
++
+ def typed_properties(table):
+     result = []
+     for kind, properties in table.items():
+-        if kind not in ('string', 'strings', 'u32', 'u64', 'bytes'):
++        if kind not in PROPERTY_TYPES:
+             raise Error(f'Unknown ADT property type: {kind}')
+         for key, value in properties.items():
+             if kind == 'string':
+@@ -274,7 +277,17 @@ def typed_properties(table):
+     return result
+ 
+ 
+-def generate(dtb, config, *, unique_chip_id=None, data=False, trust=False, addon=False):
++def platform_node(name, table):
++    """A configured ADT node: its property tables by type, and any other key as a child node of the same form."""
++    properties = typed_properties({kind: value for kind, value in table.items() if kind in PROPERTY_TYPES})
++    children = [platform_node(child, value) for child, value in table.items() if child not in PROPERTY_TYPES]
++    for child, value in table.items():
++        if child not in PROPERTY_TYPES and not isinstance(value, dict):
++            raise Error(f'ADT node {name}: {child} is neither a property type nor a child node')
++    return node(name, properties, children)
++
++
++def generate(dtb, config, *, unique_chip_id=None, data=False, trust=False, addon=False, root_policies=False):
+     root = read_fdt(Path(dtb).read_bytes())
+     entries = list(root.walk())
+     handles = {}
+@@ -292,7 +305,8 @@ def generate(dtb, config, *, unique_chip_id=None, data=False, trust=False, addon
+     dram_base, dram_size = registers(memory[0])[0]
+     if payload.get('dram_size') is not None and int(str(payload['dram_size']), 0) != dram_size:
+         raise Error('payload.dram_size differs from the hardware DTS')
+-    chosen = [('random-seed', os.urandom(64)), ('dram-base', struct.pack('<Q', dram_base)),
++    # xnu-12377 takes 4 x 64 seed bytes on ARM and panics with fewer; older kernels read the first 64.
++    chosen = [('random-seed', os.urandom(256)), ('dram-base', struct.pack('<Q', dram_base)),
+               ('dram-size', struct.pack('<Q', dram_size)), *empty_nvram_proxy()]
+     if unique_chip_id:
+         seed = int(str(unique_chip_id), 16)
+@@ -322,6 +336,7 @@ def generate(dtb, config, *, unique_chip_id=None, data=False, trust=False, addon
+     mappings = [('PackedRAMDisk' if options.get('packed_data_ramdisk') else 'RAMDisk', bytes(16))] if data else []
+     mappings += [('TrustCache', bytes(16))] if trust else []
+     mappings += [('GpuAddon', bytes(16))] if addon else []
++    mappings += [('RootPolicies', bytes(16))] if root_policies else []
+     children = [node('chosen', chosen, [node('memory-map', mappings), node('manifest-properties')])]
+     cpus = next((entry for entry in root.children if entry.name == 'cpus'), None)
+     if cpus is None:
+@@ -333,10 +348,17 @@ def generate(dtb, config, *, unique_chip_id=None, data=False, trust=False, addon
+         values = registers(entry)
+         if len(values) != 1 or values[0][0] > 0xffffffff:
+             raise Error(f'{entry.name}: CPU affinity must fit a u32')
+-        cpu_nodes.append(node(f'cpu{len(cpu_nodes)}', [('reg', struct.pack('<I', values[0][0])),
+-                         ('state', b'running\0' if not cpu_nodes else b'waiting\0'), ('device_type', b'cpu\0'),
+-                         ('compatible', entry.properties['compatible']),
+-                         ('timebase-frequency', struct.pack('<I', cpus.scalar('timebase-frequency')))]))
++        properties = [('reg', struct.pack('<I', values[0][0])),
++                      ('state', b'running\0' if not cpu_nodes else b'waiting\0'), ('device_type', b'cpu\0'),
++                      ('compatible', entry.properties['compatible']),
++                      ('timebase-frequency', struct.pack('<I', cpus.scalar('timebase-frequency')))]
++        if 'unixnu,cluster-type' in entry.properties:
++            # XNU reads the cluster type as an integer character: 'E' or 'P'.
++            kind = entry.strings('unixnu,cluster-type')
++            if kind not in (['E'], ['P']):
++                raise Error(f'{entry.name}: unixnu,cluster-type must be "E" or "P"')
++            properties.append(('cluster-type', struct.pack('<I', ord(kind[0]))))
++        cpu_nodes.append(node(f'cpu{len(cpu_nodes)}', properties))
+     if not cpu_nodes:
+         raise Error('Hardware DTS requires an enabled boot CPU')
+     children.append(node('cpus', children=cpu_nodes))
+@@ -355,9 +377,13 @@ def generate(dtb, config, *, unique_chip_id=None, data=False, trust=False, addon
+                          [node(name, hardware_properties(entry, handles, base)) for name, entry in zip(names, hardware)]))
+     for name in ('defaults', 'options', 'product', 'buttons'):
+         if name in platform or name in ('defaults', 'options', 'product'):
+-            children.append(node(name, typed_properties(platform.get(name, {}))))
+-    root_properties = [('compatible', root.properties['compatible']), ('#address-cells', struct.pack('<I', 2)),
+-                       ('#size-cells', struct.pack('<I', 2)), *typed_properties(platform.get('root', {}))]
++            children.append(platform_node(name, platform.get(name, {})))
++    # A configured root 'compatible' goes before the hardware DTS's own entries: an OS identity's board name comes first (the OS
++    # reads the first entry as the hardware model) and the board's compatible strings stay matchable after it.
++    configured = dict(typed_properties(platform.get('root', {})))
++    compatible = configured.pop('compatible', b'') + root.properties['compatible']
++    root_properties = [('compatible', compatible), ('#address-cells', struct.pack('<I', 2)),
++                       ('#size-cells', struct.pack('<I', 2)), *configured.items()]
+     if not any(key == 'model' for key, _ in root_properties):
+         root_properties.append(('model', root.properties['model']))
+     return node('device-tree', root_properties, children)
+diff --git a/scripts/unixnu/feeds.py b/scripts/unixnu/feeds.py
+index 76e6716e52a21ed1b1859e95820174030ada424d..a20e9fe14f29788655a45afff12c1cebeafccf77 100644
+--- a/scripts/unixnu/feeds.py
++++ b/scripts/unixnu/feeds.py
+@@ -214,7 +214,18 @@ def update_submodules(ctx):
+         if not (base / '.gitmodules').is_file():
+             continue
+         log(f'submodules {base}')
+-        git(base, 'submodule', 'update', '--init', '--recursive')
++        # A submodule with modified tracked files is under local development; leave its checkout alone.
++        dirty = git(base, 'submodule', 'foreach', '--quiet',
++                    'git diff --quiet HEAD -- 2>/dev/null || echo "$sm_path"', capture=True).split()
++        for path in dirty:
++            log(f'submodules: {path} has local changes, not updated')
++        if not dirty:
++            git(base, 'submodule', 'update', '--init', '--recursive')
++            continue
++        paths = [line.split()[1] for line in git(base, 'submodule', 'status', capture=True).splitlines()
++                 if line.split()[1] not in dirty]
++        if paths:
++            git(base, 'submodule', 'update', '--init', '--recursive', '--', *paths)
+ 
+ 
+ def _clone_dir(ctx, entry, revision=None):
+diff --git a/scripts/unixnu/kernel.py b/scripts/unixnu/kernel.py
+index 19558bd756fccfa08574b60f8a28b6e451736d2d..fd2d617ad036396f13b6e44d2ffa0de55d64cd61 100644
+--- a/scripts/unixnu/kernel.py
++++ b/scripts/unixnu/kernel.py
+@@ -1,4 +1,5 @@
+ """XNU kernel: build from the patched Apple source, then prelink against the original kernelcache."""
++import json
+ import os
+ import platform
+ import shlex
+@@ -216,8 +217,34 @@ def prelink(ctx):
+                f'--slide={spec["slide"]}', '--output', output]
+     for root in spec.get('roots', []):
+         command += ['--root', root]
++    for identifier in spec.get('exclude', []):
++        command += ['--exclude', identifier]
+     if spec.get('early_security_init'):
+         command += ['--early-security-init', spec['early_security_init']]
++    text_literals = spec.get('text_literals', [])
++    if not isinstance(text_literals, list):
++        raise Error('[kernel.prelink] text_literals must be an array of tables')
++    if text_literals:
++        patches = []
++        allowed = {'bundle', 'section', 'offset', 'expect', 'literal'}
++        for index, patch in enumerate(text_literals, 1):
++            if not isinstance(patch, dict):
++                raise Error(f'[kernel.prelink] text_literals entry {index} is not a table')
++            unknown = sorted(set(patch) - allowed)
++            if unknown:
++                raise Error(
++                    f'[kernel.prelink] text_literals entry {index} has unknown fields: '
++                    + ', '.join(unknown)
++                )
++            if any(key not in patch for key in ('bundle', 'offset', 'expect', 'literal')):
++                raise Error(f'[kernel.prelink] text_literals entry {index} is incomplete')
++            if not isinstance(patch['offset'], (int, str)):
++                raise Error(f'[kernel.prelink] text_literals entry {index} offset must be an integer or hex string')
++            patches.append(patch)
++        patch_file = ctx.work / 'kernel/prelink-text-literals.json'
++        patch_file.parent.mkdir(parents=True, exist_ok=True)
++        patch_file.write_text(json.dumps(patches, indent=2) + '\n')
++        command += ['--text-literal-file', str(patch_file)]
+     command += spec.get('extra_args', [])
+     run(command, cwd=ctx.tree, log_file=ctx.logs / 'prelink.log')
+     log(f'kernel: {output} sha256 {sha256_file(output)}')
+diff --git a/scripts/unixnu/payload.py b/scripts/unixnu/payload.py
+index 1bb9ad039b2e30f171595eb38ffcc23496ee3799..c87d78674171d7fb2b20d149684f804063a7693d 100644
+--- a/scripts/unixnu/payload.py
++++ b/scripts/unixnu/payload.py
+@@ -26,6 +26,21 @@ def paths(ctx):
+     return out, out / 'payload.img', out / 'payload.json'
+ 
+ 
++def check_data_input(ctx, data):
++    """An owner-Data kernel needs a seed even when it resumes a persistent overlay."""
++    if data:
++        return
++    from .config import parse_config
++    config = ctx.config
++    if not ctx.config_path.is_file() and ctx.config_name:
++        selected = ctx.device / 'configs' / ctx.config_name
++        if selected.is_file():
++            config = parse_config(selected.read_text())
++    if config.get('XNU_OWNER_DATA_MOUNT'):
++        raise Error('CONFIG_XNU_OWNER_DATA_MOUNT requires --data-ramdisk FILE (or [build] data_ramdisk); '
++                    'persistent Data still needs its original seed to publish the volume')
++
++
+ def check_args(arguments):
+     for value in arguments:
+         if not re.fullmatch(r'[A-Za-z0-9_.\-]+(=[A-Za-z0-9_.,/\-]+)?', value):
+@@ -178,9 +193,32 @@ def build(ctx, kernel=None):
+         run(command, cwd=ctx.tree, env=dict(os.environ, UNIXNU_UEFI=str(ctx.uefi or '')), log_file=ctx.logs / 'payload-adt.log')
+     initrd = 'initrd = "Payloads/scratch-data.img"\n' if data else ''
+     loader = '' if spec.get('loader', 'firmware') == 'firmware' else '[[driver]]\npath = "Payloads/DarwinBoot.efi"\n'
+-    config = (f'version = 1\n[boot]\ntimeout = {spec.get("timeout", 3)}\ndefault = "xnu"\n[kits]\nautoload = false\n{loader}'
+-              f'[[entry]]\nid = "xnu"\ntitle = "{spec.get("title", "UniXNU")}"\ntype = "xnu"\npath = "Payloads/kernel.macho"\n{initrd}'
+-              f'args = "{line}"\n')
++    # [boot] and [ui] are documented in reference/boot-configuration; a board sets the optional
++    # keys under [payload] (timeout/rotate/fallback_timeout/connect_all) and [payload.ui].
++    boot_lines = [f'timeout = {spec.get("timeout", 5)}']
++    for key in ('rotate', 'fallback_timeout', 'connect_all'):
++        if key in spec:
++            value = spec[key]
++            boot_lines.append(f'{key} = {str(value).lower() if isinstance(value, bool) else value}')
++    boot_lines.append('default = "xnu"')
++    ui = spec.get('ui') or {}
++    ui_lines = [f'title = {json.dumps(ui.get("title", spec.get("title", "UniXNU")))}']
++    for key in ('scale', 'logo', 'layout', 'portrait_below', 'console'):
++        if key in ui:
++            value = ui[key]
++            if isinstance(value, bool):
++                value = str(value).lower()
++            elif isinstance(value, str):
++                value = json.dumps(value)
++            ui_lines.append(f'{key} = {value}')
++    kits = spec.get('kits') or {}
++    kit_lines = [f'autoload = {str(kits.get("autoload", False)).lower()}']
++    if kits.get('directory'):
++        kit_lines.append(f'directory = {json.dumps(kits["directory"])}')
++    config = ('version = 1\n[boot]\n' + '\n'.join(boot_lines) + '\n[ui]\n' + '\n'.join(ui_lines) +
++              '\n[kits]\n' + '\n'.join(kit_lines) + '\n' + loader +
++              f'[[entry]]\nid = "xnu"\ntitle = {json.dumps(spec.get("title", "UniXNU"))}\ntype = "xnu"\n'
++              f'path = "Payloads/kernel.macho"\n{initrd}args = "{line}"\n')
+     install = spec.get('install')
+     if install:
+         if not data:
+diff --git a/scripts/unixnu/pipeline.py b/scripts/unixnu/pipeline.py
+new file mode 100644
+index 0000000000000000000000000000000000000000..fbeac31e1d6e9efb5b192de7d38032ee087363f3
+--- /dev/null
++++ b/scripts/unixnu/pipeline.py
+@@ -0,0 +1,66 @@
++"""One-command packaging of a device: dependencies, patches, build steps, outputs and a manifest.
++
++Every value comes from the device repository's board.toml ([package] and the sections the build steps
++already read), the profiles and the local build inputs. Nothing here names a device.
++"""
++import json
++from pathlib import Path
++
++from . import payload
++from .util import Error, git, log, sha256_file
++
++MAX_COMMAND_LINE = 1000
++
++
++def outputs(ctx):
++    return {'boot.img': ctx.work / 'boot/boot.img', 'payload.img': payload.paths(ctx)[1], 'kernel.macho': ctx.work / 'kernel/kernel.macho'}
++
++
++def command_line(ctx):
++    """The kernel command line the payload carries, from payload.json written by the payload step."""
++    report = payload.paths(ctx)[2]
++    if not report.is_file():
++        raise Error(f'{report} missing: the payload step did not run')
++    return json.loads(report.read_text())['kernel_args']
++
++
++def write_manifest(ctx, modules, patch_order, files):
++    revisions = {}
++    for (kind, name), module in sorted(modules.items()):
++        revision = module.commit
++        if module.path and not revision:
++            try:
++                revision = git(module.path, 'rev-parse', 'HEAD').strip()
++            except Error:
++                revision = None
++        revisions[f'{kind}:{name}'] = revision
++    manifest = {'device': ctx.name, 'os_profile': ctx.work.parent.name, 'configuration': ctx.config_name,
++                'revisions': revisions, 'patches': [str(path) for path in patch_order],
++                'kernel_command_line_bytes': len(command_line(ctx)),
++                'outputs': {name: {'bytes': path.stat().st_size, 'sha256': sha256_file(path)} for name, path in files.items()}}
++    runtime = ctx.work / 'runtime/inputs.json'
++    if runtime.is_file():
++        inputs = json.loads(runtime.read_text())
++        manifest['runtime'] = {'data_volume_uuid': inputs['data_volume_uuid'],
++                               'inputs': {key: value['sha256'] for key, value in inputs['inputs'].items()}}
++    target = ctx.work / 'package.manifest.json'
++    target.write_text(json.dumps(manifest, indent=2, sort_keys=True) + '\n')
++    return target
++
++
++def verify(ctx, files, manifest):
++    recorded = json.loads(manifest.read_text())
++    for name, path in files.items():
++        if not path.is_file():
++            raise Error(f'output missing: {name} ({path})')
++        if sha256_file(path) != recorded['outputs'][name]['sha256']:
++            raise Error(f'{name} differs from the manifest')
++    length = len(command_line(ctx))
++    if length >= MAX_COMMAND_LINE:
++        raise Error(f'kernel command line is {length} bytes; the limit is {MAX_COMMAND_LINE - 1}')
++    partition = ctx.board.get('package', {}).get('boot_partition_bytes')
++    size = files['boot.img'].stat().st_size
++    if partition and size > partition:
++        raise Error(f'boot.img is {size} bytes; the boot partition holds {partition}')
++    for name, path in files.items():
++        log(f'{name}: {path.stat().st_size} bytes sha256 {sha256_file(path)}')
+diff --git a/scripts/unixnu/profiles.py b/scripts/unixnu/profiles.py
+index 51f054b311d2de17012a04495b636b8f0fdda94e..3ca8c9bf69344e74edfb2aa73d6f3f70d827d75d 100644
+--- a/scripts/unixnu/profiles.py
++++ b/scripts/unixnu/profiles.py
+@@ -16,22 +16,52 @@ def merge(base, overlay):
+     return result
+ 
+ 
++def resolve_os(ctx, wanted):
++    """--os 17, 26 or 27 (the OS major version) or a full profiles/os directory name."""
++    names = sorted(path.name for path in (ctx.root / 'profiles/os').iterdir() if path.is_dir())
++    if wanted in names:
++        return wanted
++    matches = [name for name in names if name.startswith(f'ipados-{wanted}.')]
++    if len(matches) != 1:
++        raise Error(f'--os {wanted}: expected one of {", ".join(names)} or 17, 26, 27')
++    return matches[0]
++
++
+ def load(ctx, allow_fetch=False):
+     from . import feeds
+     board = ctx.raw_board.get('board', {})
+     soc_name, os_name = board.get('soc_source'), board.get('os_profile')
++    if getattr(ctx.args, 'os', None):
++        os_name = resolve_os(ctx, ctx.args.os)
+     if not soc_name or not os_name:
+         raise Error('schema_version = 2 requires [board] soc_source and os_profile')
+     if Path(os_name).name != os_name or os_name in ('.', '..'):
+         raise Error('[board] os_profile must be a profile directory name')
+     ctx.soc = feeds.resolve_soc(ctx, soc_name, allow_fetch)
+-    ctx.profile_roots = {'arch': ctx.root / 'profiles/arch/arm64', 'soc': ctx.soc.path,
+-                         'os': ctx.root / 'profiles/os' / os_name, 'device': ctx.device}
++    os_root = ctx.root / 'profiles/os' / os_name
++    arch_name = load_toml(os_root / 'profile.toml').get('os', {}).get('arch', 'arm64')
++    if arch_name not in ('arm64', 'arm64e'):
++        raise Error(f'{os_name}: [os] arch must be arm64 or arm64e')
++    ctx.profile_roots = {'arch': ctx.root / 'profiles/arch' / arch_name, 'soc': ctx.soc.path,
++                         'os': os_root, 'device': ctx.device}
+     ctx.profile_files = [ctx.profile_roots['arch'] / 'profile.toml', ctx.soc.path / 'soc.toml',
+                          ctx.profile_roots['os'] / 'profile.toml', ctx.device / 'board.toml']
+     result = {}
+     for path in ctx.profile_files:
+         result = merge(result, load_toml(path))
++    # board.toml [os_overrides."<profile>"] holds the board values that differ for one OS profile (kernel archives, kernel
++    # arguments); the table of the selected profile is merged over the board, the others are dropped.
++    overrides = result.pop('os_overrides', {})
++    chosen = deepcopy(overrides.get(os_name, {}))
++    removed = chosen.pop('remove', [])
++    result = merge(result, chosen)
++    for dotted in removed:   # keys the board sets for other profiles and this one does not have
++        *parents, leaf = dotted.split('.')
++        node = result
++        for key in parents:
++            node = node.get(key, {})
++        node.pop(leaf, None)
++    result.setdefault('board', {})['os_profile'] = os_name
+     return result
+ 
+ 
+diff --git a/scripts/unixnu/runtime.py b/scripts/unixnu/runtime.py
+new file mode 100644
+index 0000000000000000000000000000000000000000..cc46007050c8448d474c18491470db004a149e6a
+--- /dev/null
++++ b/scripts/unixnu/runtime.py
+@@ -0,0 +1,120 @@
++"""Prepare reproducible runtime inputs before compiling the kernel.
++
++The board supplies a builder. An existing Data seed is immutable: generating a
++replacement is an explicit first-install operation, never a cache-miss fallback.
++"""
++import importlib.util
++import json
++import os
++import re
++import sys
++import uuid
++from pathlib import Path
++
++from .ipsw import Ipsw
++from .util import Error, log, run, sha256_file
++
++
++def seed_uuid(tree, path):
++    spec = importlib.util.spec_from_file_location('runtime_packed_ramdisk', tree / 'drivers/DarwinBoot/Test/packed_ramdisk.py')
++    module = importlib.util.module_from_spec(spec)
++    spec.loader.exec_module(module)
++    _, extents = module.regions(path.read_bytes())
++    identities = set()
++    for _, data in extents:
++        for at in range(0, len(data), 4096):
++            block = data[at:at + 4096]
++            if block[32:36] == b'APSB':
++                identities.add(str(uuid.UUID(bytes=bytes(block[240:256]))).upper())
++    if len(identities) != 1:
++        raise Error(f'{path}: require a packed APFS seed with exactly one volume UUID')
++    return identities.pop()
++
++
++def prepare(ctx, kernel_build=False):
++    spec = ctx.board.get('payload', {}).get('runtime')
++    if not spec or not spec.get('enabled', True):
++        from .payload import check_data_input
++        check_data_input(ctx, getattr(ctx.args, 'data_ramdisk', None))
++        return
++    if getattr(ctx, '_runtime_prepared', False):
++        return
++    args = ctx.args
++    out = ctx.work / 'runtime'
++    out.mkdir(parents=True, exist_ok=True)
++    seed = Path(args.data_ramdisk).expanduser().resolve() if args.data_ramdisk else out / 'data.dbr'
++    init = bool(getattr(args, 'init_data', False))
++    if init and args.data_ramdisk:
++        raise Error('--init-data cannot replace --data-ramdisk; use one first-install seed or reuse the original')
++    if init and not kernel_build:
++        raise Error('--init-data needs a kernel build to bind its new Data volume UUID')
++    if not seed.is_file() and not init:
++        raise Error('No preserved Data seed. Pass --data-ramdisk FILE for an existing installation, '
++                    'or --init-data for a FIRST installation; a missing cache never regenerates Data automatically')
++    previous = out / 'inputs.json'
++    if not args.data_ramdisk and seed.is_file() and previous.is_file():
++        expected = json.loads(previous.read_text())['inputs']['data_ramdisk']['sha256']
++        if sha256_file(seed) != expected:
++            raise Error('Saved Data seed differs from its recorded SHA-256; restore the original installation seed')
++    owner = getattr(args, 'owner_trust_cache', None)
++    trust = owner or getattr(args, 'trust_cache', None)
++    addon = getattr(args, 'gpu_addon', None)
++    for name, path in [('Data seed', args.data_ramdisk), ('trust bundle', trust), ('GPU addon', addon)]:
++        if path and not Path(path).expanduser().is_file():
++            raise Error(f'{name} not found: {path}')
++    # Preserve explicit inputs. A source-built addon must be paired with newly
++    # collected CDHashes, so an explicit trust bundle alone is not sufficient.
++    if trust and not addon:
++        raise Error('Pass both --gpu-addon and its --owner-trust-cache, or omit both to build them from source')
++    request = dict(spec, tree=str(ctx.tree), device=str(ctx.device), output=str(out),
++                   data_ramdisk=str(seed), init_data=init,
++                   gpu_addon=str(Path(addon).expanduser().resolve()) if addon else None,
++                   trust_cache=str(Path(trust).expanduser().resolve()) if trust else None)
++    if spec.get('appsync'):
++        if spec.get('target') != 'ios27' or spec.get('build') != '24A446':
++            raise Error('AppSync currently requires the inspected iPadOS 27 build 24A446')
++    bluetooth = getattr(ctx, 'modules', {}).get(('driver', 'QcaBluetooth'))
++    if spec.get('bluetooth_tool') and bluetooth is not None:
++        if bluetooth.path is None:
++            raise Error('QcaBluetooth source missing; run unixnu fetch')
++        request['bluetooth_component'] = str(bluetooth.path.resolve())
++    if not seed.is_file() or not trust or not addon or spec.get('wifi_tool') or spec.get('bluetooth_tool') or spec.get('appsync'):
++        source = Ipsw(ctx)
++        if not seed.is_file() or not addon or spec.get('wifi_launchd_cache') or spec.get('bluetooth_tool') or spec.get('appsync'):
++            request['os_image'] = str(source.disk_image('OS'))
++        if not trust:
++            request['trust_modules'] = [str(source.extract(name)) for name in spec['trust_components']]
++        request_path = out / 'request.json'
++        request_path.write_text(json.dumps(request, indent=2) + '\n')
++        report = out / 'generated.json'
++        report.unlink(missing_ok=True)
++        run([sys.executable, ctx.tree / spec['tool'], '--request', request_path], cwd=ctx.tree,
++            env=dict(os.environ, UNIXNU_DEVICE=str(ctx.device)), log_file=ctx.logs / 'runtime.log')
++        if not report.is_file():
++            raise Error('runtime builder did not produce generated.json')
++        generated = json.loads(report.read_text())
++        seed = Path(generated['data_ramdisk'])
++        trust, addon = generated['trust_cache'], generated['gpu_addon']
++        owner = trust
++    identity = seed_uuid(ctx.tree, seed)
++    config = ctx.need_config()
++    if identity != config.get('XNU_OWNER_DATA_VOLUME_UUID'):
++        if not kernel_build:
++            raise Error('Data seed UUID differs from the compiled configuration; rebuild the kernel with this seed')
++        text = ctx.config_path.read_text()
++        text, count = re.subn(r'^CONFIG_XNU_OWNER_DATA_VOLUME_UUID=.*$',
++                             f'CONFIG_XNU_OWNER_DATA_VOLUME_UUID="{identity}"', text, flags=re.M)
++        if count != 1:
++            raise Error('runtime Data requires exactly one CONFIG_XNU_OWNER_DATA_VOLUME_UUID')
++        ctx.config_path.write_text(text)
++        ctx.need_config()
++    args.data_ramdisk, args.gpu_addon = str(seed), str(addon)
++    if owner:
++        args.owner_trust_cache = str(trust)
++    else:
++        args.trust_cache = str(trust)
++    inputs = {name: {'path': str(path), 'sha256': sha256_file(Path(path))}
++              for name, path in [('data_ramdisk', seed), ('trust_cache', trust), ('gpu_addon', addon)]}
++    (out / 'inputs.json').write_text(json.dumps(dict(inputs=inputs, data_volume_uuid=identity), indent=2) + '\n')
++    log(f'runtime: Data UUID {identity}; preserved seed sha256 {inputs["data_ramdisk"]["sha256"]}')
++    ctx._runtime_prepared = True

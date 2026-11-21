@@ -23,7 +23,7 @@
 | 3 | **硬件资源** | 设备 `dts/board.dts` + SoC 仓库 `dtsi`；固件侧 `Platforms/ZTE/nx741jPkg/FdtBlob/*.dtb` 与 `Library/MemoryMapLib/MemoryMapLib.c` | DT：改 dts → `dtc -I dts -O dtb` 校验 → 更新 FdtBlob；内存映射：在 `MemoryMapLib.c` 的 `AddDev` 增删区间 → 重建固件 |
 | 4 | **驱动行为** | 所选组件源码（`UniXNU/drivers/<Component>`，版本见 `components.toml`）；设备 `package/UniXNUPkg`（`UniXNUDxe`、`UniXNURamDiskDxe`、`Application/UniXNU`） | 改组件或 package 源码 → `./unixnu build kernel`（组件）/ `./unixnu build firmware`（package）→ 更新 `docs/FIRMWARE-DRIVERS.md` |
 | 5 | **内核行为** | `profiles/os/ios-16.7.16-20H392/patches/xnu/series` + `configs/ios.config`；`profiles/arch/arm64`；设备 `patches/xnu/series`；SoC `patches/xnu/series` | 改补丁序列或 config → `./unixnu build kernel` → 检查 `logs/kernel*.log` 与 `kernel/kernel.macho` |
-| 6 | **XNU 启动参数** | `board.toml [payload] kernel_args`（当前 `["-v","serial=3"]`）；本地 `[build] kernel_args`（`unixnu.local.toml`） | 改参数 → `./unixnu build payload` → `out/.../payload/payload.json` 核对参数 |
+| 6 | **XNU 启动参数** | `board.toml [payload] kernel_args`（当前为 UFS bring-up 参数）；本地 `[build] kernel_args` 仅用于临时覆盖，不再保存旧 `serial=3` | 改参数 → `./unixnu build payload` → `out/.../payload/payload.json` 核对参数 |
 | 7 | **启动菜单 / kit** | `board.toml [payload]`（`title`/`timeout`/`tools`/`panic_screen`）→ 生成 payload ESP 内的 `EFI/UniXNU/unixnu.toml`（**构建期生成**，非源码）；kit 在 `UniXNU/kits/<Kit>/`（Python 模块，无 `Kit.toml`） | 改 `[payload]` → `./unixnu build payload` → 用 `efi-loader` 或 boot.img 上机验证菜单 |
 | 8 | **设备支持记录** | 设备 `porting.toml`（14 area，含 `paths`/`procedure`）；主仓库 `devices.toml`（`nx741j` = `32b9855fb815…`） | 改 area → `python3 scripts/porting-record.py check --device ../UniXNU-nx741j`（须 `14 structured areas checked`）→ 发布时更新 `devices.toml` 的 revision |
 | 9 | **文档** | 主仓库 `docs/`（英文站点页：`guide/`、`reference/`、`porting/`、`concepts/`、`devices/`）；设备仓库 `docs/`（中文记录：本目录） | 站点文档改主仓库 `docs/*.md`；移植记录/分析改设备仓库 `docs/`，并在 `AGENTS.md` 顶部索引 |
@@ -84,7 +84,7 @@ profile.device: UniXNU-nx741j
 |---|---|---|---|
 | 内核、驱动或补丁 | `./unixnu build kernel`，再按[启动验证顺序](https://unixnu.com/zh/porting/bring-up) | 内核与预链接成功 | ✅ `kernel.macho` 51,691,520 B（2026-11-07 10:30） |
 | 固件或 payload | `./unixnu build firmware` / `build payload` | FD、payload、启动镜像用指定输入 | ✅ FD 4,194,304 B、`payload.img` 67,108,864 B、`boot.img` 69,402,624 B |
-| 启动参数 | 检查 `payload/payload.json` 的 `kernel_args` | 与 `board.toml [payload] kernel_args` 一致 | ✅ `-v serial=3` |
+| 启动参数 | 检查 `payload/payload.json` 的 `kernel_args` | 与 `board.toml [payload] kernel_args` 一致 | 以当前 `board.toml` 为准；本地配置不再覆盖 |
 | 公共 UEFI 行为 | [QEMU](https://unixnu.com/zh/reference/qemu#procedure) | 场景出现预期日志标记 | ✅ **6/6 场景 PASS**（见下） |
 | 适配记录 | `python3 scripts/porting-record.py check --device ../UniXNU-nx741j` | 记录校验通过 | ✅ `nx741j: 14 structured areas checked` |
 | 文档 | 站点构建（`docs/package.json` → `vitepress build`） | 文档构建通过 | ✅ 构建通过（80.12s）；nx741j 记录受发布命名空间限制，见 6.2 |

@@ -3,13 +3,18 @@
 > 把此前四个工作区里的任务、产物线索与未完成项，统一收敛到这里。
 > 更新：2026-11-11 14:35（Asia/Shanghai）
 
+> 2026-11-22：阶段 6 的 publication 与 IOStorageFamily content-hint 已推进，
+> QEMU 引导门禁通过。最新事实和验收边界以
+> `docs/INTEGRATION-2026-11-22.md`、`docs/STATUS-2026-11-22.md` 为准；
+> 下方早期 UFS 排查记录保留为过程证据。
+
 ## 1. 工作区清单与归属
 
 | # | 工作区 | 内容 | 处理 |
 |---|---|---|---|
-| 1 | `C:\Users\MengHanYooo\Documents\deepseek-harness\default-workspace` | 旧 UniXNU 克隆（`UniXNU/`）、git 辅助脚本（`_tools/gh.ps1`、`gitcache.ps1`）、`port_trace.txt` | 只保留 `port_trace.txt` 作证据，已复制到 `_tmp/consolidated/`；其余不再是工作副本 |
+| 1 | `E:\default-workspace\z80u-collect\archive\deepseek-harness-default-workspace-2026-11-22` | 旧 UniXNU 克隆（`UniXNU/`）、git 辅助脚本（`_tools/gh.ps1`、`gitcache.ps1`）、`port_trace.txt` | 已从 C 盘完整迁移并逐文件 SHA-256 校验；C 盘旧副本已移除 |
 | 2 | `E:\default-workspace` | iOS 固件 `ipsw/`（16.7.16 20H392 与三个 dmg）、`tools/`（platform-tools、ffmpeg）、`FMMT_Build.log`、`x.bin`、`分配` | 固件与工具就地保留（体积大、只读）；日志复制到 `_tmp/consolidated/` |
-| 3 | WSL：`/opt/work`、`/home/loongko` | UEFI 树 `/opt/work/uefi-sheng-main`、构建树 `/home/loongko/nx741j-build/UniXNU`、本地组件覆盖 `/opt/work/work-local/ShengUfs-canoe` | 构建必须就地运行；**唯一权威源码副本**是 `work-local` 与设备仓库，已在本文档登记 |
+| 3 | WSL：`/opt/work` | UEFI 树 `/opt/work/uefi-sheng-main`、构建树 `/opt/work/nx741j-build/UniXNU`、本地组件覆盖 `/opt/work/work-local/ShengUfs-fd420df` | 构建必须就地运行；Linux 文件系统位于 `E:\wsl\Ubuntu\ext4.vhdx`，**唯一权威源码副本**是 `work-local` 与设备仓库，已在本文档登记 |
 | 4 | `E:\default-workspace\z80u-collect` | **当前工作区**：`repos/UniXNU-nx741j`（设备仓库）、`repos/UniXNU`（框架）、`stock/`、`wsl/`（刷机脚本）、`_tmp/`（镜像与证据） | 全部新产物、脚本、证据只写这里 |
 
 ## 2. 阶段状态
@@ -62,7 +67,7 @@
 
 ```
 UNIXNU_ADT_NO_INTERRUPTS=1 XNU_NATIVE_UFS=1 \
-  repos/UniXNU-nx741j/scripts/build-and-test.sh /home/loongko/nx741j-build/UniXNU
+  repos/UniXNU-nx741j/scripts/build-and-test.sh /opt/work/nx741j-build/UniXNU
 ```
 
 kernel → payload → firmware → 官方 smoke（6 场景，`KEXT_TIMEOUT=180`，失败重试一次）→ QEMU（fixture ADT，三标记）→ 新鲜度检查。**未过闸门不刷机。**

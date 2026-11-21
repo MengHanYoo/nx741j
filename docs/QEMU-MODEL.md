@@ -9,7 +9,9 @@
 sudo ./scripts/qemu-nx741j.sh ~/nx741j-build/UniXNU 60      # 第二个参数是超时秒数
 ```
 
-脚本在 `out/qemu/` 下组一个 ESP，然后启动 `qemu-system-aarch64 -M virt -cpu cortex-a72 -m 16G -smp 8`：
+脚本在 `out/qemu/` 下组一个 ESP，然后启动 `qemu-system-aarch64 -M virt -cpu cortex-a72 -m 8G -smp 8`。
+`QEMU_MEM` 可以显式提高到 16G，用于 `QEMU_ADT=real` 或更大内存实验；完整门禁的 fixture 模式使用 8G，
+避免在 20 GB 的 WSL2 内同时占满构建缓存和虚拟机内存。
 
 | ESP 内容 | 来源 |
 |---|---|
@@ -25,7 +27,7 @@ sudo ./scripts/qemu-nx741j.sh ~/nx741j-build/UniXNU 60      # 第二个参数是
 | 参数 | 真机 | QEMU 模型 |
 |---|---|---|
 | CPU | 8（1+3+4 三簇） | `-smp 8`（同核数，拓扑不同） |
-| 内存 | DRAM 5 GiB @0x8C0000000 | `-m 16G`（留足余量，地址不同） |
+| 内存 | DRAM 5 GiB @0x8C0000000 | `-m 8G`（足够 fixture；`QEMU_MEM=16G` 可覆盖） |
 | 交接窗口 | `owned_memory_size = 256 MiB` | 同（ADT 里的 `darwinboot-memory-size`） |
 | payload | `kernel.macho` 49.4 MB + ADT 13 KB + trustcache 1.5 KB | **原样**从真机 payload 取 |
 | DarwinBoot | 真机同一份 DEBUG 二进制 | 同 |

@@ -286,7 +286,7 @@ for anchor, replacement in ((DECL_ANCHOR, DECL_FIX), (ENTRY_ANCHOR, ENTRY_FIX), 
         notes.append('entry marker')
 
 for anchor, replacement in ((KEEPQ_DECL, KEEPQ_DECL_FIX), (KEEPQ_STOP, KEEPQ_STOP_FIX), (KEEPQ_BASE, KEEPQ_BASE_FIX), (KEEPQ_START, KEEPQ_START_FIX)):
-    if anchor in text:
+    if anchor in text and replacement not in text:
         text = text.replace(anchor, replacement, 1)
         notes.append('keepqueue guard')
 

@@ -14,6 +14,7 @@ stops where the model has no device.
     scripts/mk-qemu-adt.py --device <repo> --out <file.adt> [--ram-base 0x40000000] [--ram-size 0x400000000]
 """
 import argparse
+import os
 import pathlib
 import struct
 import subprocess
@@ -45,6 +46,7 @@ def main(argv):
     parser.add_argument('--ram-base', default='0x40000000')
     parser.add_argument('--ram-size', default='0x400000000')
     parser.add_argument('--seed', default='0x5eed5eed5eed5eed')
+    parser.add_argument('--tree', default=os.environ.get('UNIXNU'))
     args = parser.parse_args(argv[1:])
 
     device = pathlib.Path(args.device)
@@ -56,7 +58,16 @@ def main(argv):
     if base % 0x10000000 or size % 0x10000000:
         raise SystemExit('the ADT generator aligns DRAM to 256 MiB')
 
-    tree = pathlib.Path('/home/loongko/nx741j-build/UniXNU')
+    if args.tree:
+        candidates = [args.tree]
+    else:
+        candidates = ['/opt/work/nx741j-build/UniXNU',
+                      '/home/loongko/nx741j-build/UniXNU',
+                      '/mnt/e/unixnu-build/UniXNU']
+    tree = next((pathlib.Path(candidate) for candidate in candidates
+                 if (pathlib.Path(candidate) / 'scripts/unixnu').is_dir()), None)
+    if tree is None:
+        raise SystemExit('cannot find UniXNU; pass --tree or set UNIXNU')
     sys.path.insert(0, str(tree / 'scripts'))
     from unixnu import devicetree  # noqa: E402
 

@@ -2,6 +2,26 @@
 
 对应官方[设备仓库 · 本地开发](https://unixnu.com/zh/porting/device-repository#本地开发)。
 
+## 2026-11-22 当前工作流
+
+Linux 构建树是 ext4 中的 `/opt/work/nx741j-build/UniXNU`，其 VHDX 位于
+`E:\wsl\Ubuntu\ext4.vhdx`。框架必须先从固定基线恢复：
+
+```sh
+./scripts/apply-framework-patch.sh /opt/work/nx741j-build/UniXNU
+./scripts/sync-framework-to-wsl.sh /opt/work/nx741j-build/UniXNU
+```
+
+`sync-framework-to-wsl.sh` 会先调用应用脚本；若框架已是精确补丁结果则跳过。
+payload 的 trust cache 不应直接指向 IPSW 的 DER/IM4P 文件，使用：
+
+```sh
+./scripts/prepare-local-inputs.sh
+# unixnu.local.toml: trust_cache = ".../build/trustcache.bundle"
+```
+
+当前本地输入、补丁与验收边界见 `docs/INTEGRATION-2026-11-22.md`。
+
 ## 已配置内容
 
 | 项 | 值 | 说明 |
@@ -32,11 +52,14 @@ DEVICE_DIR=../UniXNU-nx741j
 | 项 | 值 | 位置 |
 |---|---|---|
 | 主机 | Ryzen 9 5950X（16 核 / 32 线程）、31.9 GB、电源方案"卓越性能" | Windows |
-| WSL2 可见 CPU | **32** | `%USERPROFILE%\.wslconfig` → `[wsl2] processors=32` |
-| WSL2 内存 / swap | 24 GB / 8 GB | 同上 |
+| WSL2 可见 CPU | **24** | `%USERPROFILE%\.wslconfig` → `[wsl2] processors=24` |
+| WSL2 内存 / swap | 20 GB / 8 GB | 同上；swap 文件已放在 E 盘 |
 | 内核构建并行度 | **`-j 16`（8 核 16 线程）** | 构建树的 `unixnu.local.toml` → `jobs = 16` |
 
-验证：`nproc` = 32；构建时 `ps` 抓到 `make … -j16`，clang 进程约 30 个。改并行度只需改 `unixnu.local.toml` 的
+Linux 构建树的磁盘文件位于 `E:\wsl\Ubuntu\ext4.vhdx`；在 WSL 内仍通过 ext4 路径构建，
+不要把 `.wslconfig` 迁移成直接在 `E:\default-workspace` 的 9p 目录中编译。
+
+验证：`nproc` = 24；构建时 `ps` 抓到 `make … -j16`。改并行度只需改 `unixnu.local.toml` 的
 `jobs`（或命令行 `-j N`），改 VM 规格需编辑 `.wslconfig` 后 `wsl --shutdown`。
 
 ext4 构建树上的实测：`./unixnu kernel -j 16` 全量 **158 s**（drvfs 上 25 分钟未完成）。

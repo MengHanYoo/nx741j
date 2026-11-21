@@ -6,21 +6,33 @@
 #
 # The ESP gets the DEBUG build of UniXNU.efi, the DarwinBoot driver as an
 # autoloaded kit, and the Payloads/ directory taken from payload.img.  The
-# machine is QEMU virt with 8 CPUs and 16 GiB so DarwinBoot can find its 256 MiB
-# contiguous window; the serial log is the test output.
+# machine is QEMU virt with 8 CPUs and 8 GiB so DarwinBoot can find its 256 MiB
+# contiguous window; override QEMU_MEM=16G for the real-ADT diagnostic mode.
 set -eu
 
 TREE=${1:?usage: qemu-nx741j.sh <build-tree> [seconds]}
 TIMEOUT=${2:-90}
 REPO=$(cd "$(dirname "$0")/.." && pwd)
+SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
+# shellcheck source=wsl-env.sh
+source "$SCRIPT_DIR/wsl-env.sh"
+TREE=$(resolve_unixnu_tree "$TREE") || {
+  echo "cannot find UniXNU tree: $TREE" >&2
+  exit 1
+}
 OUT=$REPO/out/qemu
-UEFI=${UNIXNU_UEFI:-/opt/work/uefi-sheng-main}
+UEFI=$(resolve_uefi_tree "${UNIXNU_UEFI:-}") || {
+  echo 'cannot find the UEFI tree: set UNIXNU_UEFI' >&2
+  exit 1
+}
 DEV=$TREE/out/nx741j/ios-16.7.16-20H392/nx741j
 ESP=$OUT/esp
 LOG=$OUT/serial.log
+ERR=$OUT/qemu.stderr
 # Truncate before the checks: if this script bails out early, the gate must see an
 # empty log (no stale PASS from a previous run) rather than yesterday's markers.
 : > "$LOG"
+: > "$ERR"
 
 UNIXNU_EFI=$(ls "$UEFI"/Build/nx741jPkg/DEBUG_CLANGPDB/AARCH64/UniXNUPkg/Application/UniXNU/UniXNU/DEBUG/UniXNU.efi 2>/dev/null | head -1)
 DARWIN_EFI=$(ls "$UEFI"/Build/nx741jPkg/DEBUG_CLANGPDB/AARCH64/DarwinBootPkg/Driver/DarwinBoot/DEBUG/DarwinBoot.efi 2>/dev/null | head -1)
@@ -76,7 +88,7 @@ umount "$MNT"; rmdir "$MNT"
 # kernel stops where the model has no device (scripts/mk-qemu-adt.py).
 if [ "${QEMU_ADT:-fixture}" = "real" ]; then
   python3 "$REPO/scripts/mk-qemu-adt.py" --device "$REPO" \
-    --out "$ESP/EFI/UniXNU/Payloads/kernel.macho.adt"
+    --tree "$TREE" --out "$ESP/EFI/UniXNU/Payloads/kernel.macho.adt"
 else
   python3 "$TREE/out/nx741j/ios-16.7.16-20H392/nx741j/tree/scripts/qemu-entry/make-dt.py" \
     --armvirt --armcpu --smp 8 --owned-memory-size 0x10000000 \
@@ -94,13 +106,13 @@ INT_ARGS=()
 if [ "${QEMU_INT:-0}" = "1" ]; then
   INT_ARGS=(-d int -D "$OUT/int.log")
 fi
-timeout "$TIMEOUT" qemu-system-aarch64 \
-  -M virt -cpu cortex-a72 -m "${QEMU_MEM:-16G}" -smp "${QEMU_SMP:-8}" \
+timeout --foreground --kill-after=5s "${TIMEOUT}s" qemu-system-aarch64 \
+  -M virt -cpu cortex-a72 -m "${QEMU_MEM:-8G}" -smp "${QEMU_SMP:-8}" \
   -drive if=pflash,format=raw,readonly=on,file="$FW" \
   -drive format=raw,file=fat:rw:"$ESP" \
-  -nographic -serial mon:stdio \
+  -display none -serial "file:$LOG" -monitor none -no-reboot \
   "${INT_ARGS[@]}" \
-  > "$LOG" 2>&1
+  > "$ERR" 2>&1
 STATUS=$?
 set -e
 echo "qemu exit: $STATUS (log: $LOG)"
@@ -114,7 +126,7 @@ tail -20 "$LOG"
 # A timeout is how a healthy run ends: the kernel keeps running in a machine
 # model that has none of our hardware, so QEMU is killed instead of exiting.
 # Only a crash before the hand-off counts as a runner failure.
-if [ "$STATUS" -ne 0 ] && [ "$STATUS" -ne 124 ]; then
+if [ "$STATUS" -ne 0 ] && [ "$STATUS" -ne 124 ] && [ "$STATUS" -ne 137 ]; then
   exit "$STATUS"
 fi
 exit 0

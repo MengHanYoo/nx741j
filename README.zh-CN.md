@@ -122,6 +122,8 @@ wsl\flash-boota-9008.ps1 -Img <image> -StartSector <lba> -Label <label> -Lun <lu
 ## 文档
 
 - [docs/TASKS.md](docs/TASKS.md) — 任务与状态汇总
+- [docs/INTEGRATION-2026-11-22.md](docs/INTEGRATION-2026-11-22.md) — 框架补丁与可复现整合记录
+- [docs/STATUS-2026-11-22.md](docs/STATUS-2026-11-22.md) — 当前验收边界与剩余任务
 - [docs/STATUS-2026-11-11.md](docs/STATUS-2026-11-11.md) — 逐阶段状态
 - [docs/BOOT-CHAIN.md](docs/BOOT-CHAIN.md) — 与官方启动链描述的对照
 - [docs/UFS-QCOM-PHY-PORT.md](docs/UFS-QCOM-PHY-PORT.md) — 还原的 PHY 表与调用顺序
@@ -149,9 +151,15 @@ NativeUfs: OS window started (noverify)
 NATIVE_UFS: publication done=1 published=2
 ```
 
-当前阻塞：`IOBlockStorageDriver::instantiateMediaObject()` 创建媒体时把 content hint 写死为空，
-内核里的 APFS 容器因此不会匹配我们的窗口，卷媒体不会出现，也就没有 `root_match_volume_uuid`
-和 `launchd`。计划是把 `refer/IOStorageFamily` 编译成 `libIOStorageFamily.a`，让 hint 从
-provider 的 `kIOMediaContentHintKey` 读取，强制链入内核并从 prelink 闭包中剔除 kernelcache 版本。
-归档已能生成且带标记，但 `./unixnu kernel` 复用缓存导致链接没有真正执行；准确状态、偏差与下一步
-见 [docs/HANDOFF-2026-11-22.md](docs/HANDOFF-2026-11-22.md)。后续由另一个 agent 会话按该交接继续。
+prelink 现在保留 Apple 完整的 IOStorageFamily，只对
+`IOBlockStorageDriver::instantiateMediaObject()` 的 ADRP/ADD 空字符串加载点应用
+`Apple_APFS` 定点补丁。原始 8 字节指令必须完全匹配，除补丁点以外的可执行字节逐字节保持不变。
+
+当前内核/prelink 与 QEMU 引导链可复现，QEMU 已到达 `BootEntry`、`MARK #29` 和
+`EBS ok, entering the kernel`。APFS 选卷和 `launchd` 仍需真机验证，真实
+`root_match_volume_uuid` 保持未填。smoke 六场景曾完整通过，之后总门禁遇到 AAVMF/TCG
+偶发卡死，按用户决定暂缓继续修 QEMU smoke。
+
+完整的 UniXNU 框架差异在 `patches/framework/UniXNU-ba9e14fb-nx741j.patch`，应用与复现方法见
+[docs/INTEGRATION-2026-11-22.md](docs/INTEGRATION-2026-11-22.md)，当前验收边界见
+[docs/STATUS-2026-11-22.md](docs/STATUS-2026-11-22.md)。

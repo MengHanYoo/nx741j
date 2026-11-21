@@ -198,6 +198,8 @@ back the stock `efisp` (`sha256 4df18359...`) restores the vendor boot chain.
 ## Documentation
 
 - [docs/TASKS.md](docs/TASKS.md) — consolidated task and status log
+- [docs/INTEGRATION-2026-11-22.md](docs/INTEGRATION-2026-11-22.md) — reproducible framework patch and integration checkpoint
+- [docs/STATUS-2026-11-22.md](docs/STATUS-2026-11-22.md) — current acceptance boundary and remaining work
 - [docs/STATUS-2026-11-11.md](docs/STATUS-2026-11-11.md) — stage-by-stage status
 - [docs/BOOT-CHAIN.md](docs/BOOT-CHAIN.md) — boot chain against the official description
 - [docs/UFS-QCOM-PHY-PORT.md](docs/UFS-QCOM-PHY-PORT.md) — restored PHY tables and call order
@@ -210,8 +212,9 @@ individual files). Vendor-derived tables are data recovered from the device's ow
 
 ## Current status — 2026-11-22
 
-Stage 6 (UFS) conditions 1-4 are done and **both root windows now publish**: with the official
-image written to the last 9 GiB of `userdata` (absolute LBA 246,662,139) the kernel prints
+Stage 6 conditions 1-4 are done and both root windows publish. The prelink now keeps Apple's
+complete IOStorageFamily and applies one verified literal patch that supplies `Apple_APFS` to
+`IOBlockStorageDriver::instantiateMediaObject()`:
 
 ```
 NATIVE_UFS: cold init 0
@@ -225,12 +228,12 @@ NativeUfs: OS window started (noverify)
 NATIVE_UFS: publication done=1 published=2
 ```
 
-Open blocker: `IOBlockStorageDriver::instantiateMediaObject()` initialises every media with a
-hard-coded empty content hint, so the in-kernel APFS container never matches our windows and no
-root volume (hence no `root_match_volume_uuid`, no `launchd`) can appear. The planned fix is to
-build `refer/IOStorageFamily` into `libIOStorageFamily.a`, take the hint from
-`kIOMediaContentHintKey` on the provider, force-load it into the kernel and drop the kernelcache
-copy from the prelink closure. The archive builds and carries a marker, but the kernel link still
-skips it because `./unixnu kernel` reuses cached objects — see
-[docs/HANDOFF-2026-11-22.md](docs/HANDOFF-2026-11-22.md) for the exact state, deviations and next
-steps. Work continues in a different agent session from that handoff.
+The current kernel/prelink and QEMU boot path are reproducible. QEMU reaches `BootEntry`,
+`MARK #29` and `EBS ok, entering the kernel`. APFS volume selection and `launchd` still require
+hardware validation, and the real `root_match_volume_uuid` is intentionally unset.
+
+The repository also carries the complete UniXNU-side delta in
+`patches/framework/UniXNU-ba9e14fb-nx741j.patch`, with an idempotent apply script and a clean
+round-trip test. See [docs/INTEGRATION-2026-11-22.md](docs/INTEGRATION-2026-11-22.md) and
+[docs/STATUS-2026-11-22.md](docs/STATUS-2026-11-22.md). The aggregate smoke gate is deferred after
+an intermittent AAVMF/TCG boot stall; six scenarios had passed in an earlier run.

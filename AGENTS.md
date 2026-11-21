@@ -2,6 +2,8 @@
 
 ## 工作区约定
 - 构建产物/日志/临时文件放 E: 盘（E:\default-workspace\z80u-collect）。
+- 所有项目输入、旧工作区归档和 WSL 虚拟磁盘都在 E 盘；WSL 的 Linux 构建树位于
+  `E:\wsl\Ubuntu\ext4.vhdx` 内，不再依赖 C 盘项目副本。
 - 固件树在 WSL：/opt/work/uefi-sheng-main；设备仓库：repos/UniXNU-nx741j。
 - 不自动 git commit；仅在用户明确要求时提交。
 - **硬件清单与缺失输入**：`docs/HARDWARE-INVENTORY.md`（每条注明来源；缺失项随测量划掉）。
@@ -155,8 +157,8 @@ E:\default-workspace\z80u-collect\wsl\flash-boota-9008.ps1 -Img <boot.img> [-NoR
 
 ## 并行度（2026-11-07 实测）
 
-- 主机：**AMD Ryzen 9 5950X（16C/32T）**，Windows 物理内存 31.9 GiB；WSL `.wslconfig` 为
-  `processors=32`、`memory=28GB`、`swap=8GB`，WSL 内 `nproc = 32`。
+- 主机：**AMD Ryzen 9 5950X（16C/32T）**，Windows 物理内存 31.9 GiB；当前 WSL `.wslconfig` 为
+  `processors=24`、`memory=20GB`、`swap=8GB`，WSL 内 `nproc = 24`，swap VHDX 位于 E 盘。
 - 传递链：`unixnu.local.toml` 的 `jobs` → `ctx.jobs`，再传给内核（`JOBS`）、package（EDK2 `-n`）、
   firmware（EDK2 `-n`）、BaseTools（`make -j`）；`--jobs N` / `-j N` 可逐次覆盖。当前 `jobs = 32`。
 - 干净内核编译（删除 `tree/build/xnu/ios-obj` 后计时）：
@@ -174,7 +176,7 @@ E:\default-workspace\z80u-collect\wsl\flash-boota-9008.ps1 -Img <boot.img> [-NoR
 
 ## 执行与网络约束（硬性）
 
-- **一切构建、编译、刷机、测试都在本机执行**（Windows + WSL `Ubuntu`，32 vCPU / 27 GB）。
+- **一切构建、编译、刷机、测试都在本机执行**（Windows + WSL `Ubuntu`，24 vCPU / 20 GB）。
   DeepSeek Harness 只用于思考、编排与记录，不承担任何远程构建/编译。
 - **构建过程必须离线可完成**：源码只允许来自本地镜像缓存 `/opt/ghcache`（git `insteadOf`
   已指向该缓存）或已 fetch 的 `out/feeds/`；禁止构建时临时拉取网络资源。
@@ -188,7 +190,7 @@ E:\default-workspace\z80u-collect\wsl\flash-boota-9008.ps1 -Img <boot.img> [-NoR
 | 项 | 值 |
 |---|---|
 | WSL 发行版 | Ubuntu 26.04（`-d Ubuntu`，root） |
-| CPU / 内存 | 32 vCPU / 27 GB |
+| CPU / 内存 | 24 vCPU / 20 GB |
 | 工具链 | `/opt/unixnu-linux`（clang 24 + 38 个 Mach-O 工具，2026-11-06 装好） |
 | 源码缓存 | `/opt/ghcache/github.com/**`（xnu 186 MB 等 9 个仓库） |
 | 固件树 | `/opt/work/uefi-sheng-main` |

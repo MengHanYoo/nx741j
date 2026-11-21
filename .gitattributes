@@ -1,0 +1,2 @@
+# Patch payloads intentionally preserve context whitespace byte-for-byte.
+patches/framework/*.patch whitespace=-trailing-space,-space-before-tab
