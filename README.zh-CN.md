@@ -131,3 +131,27 @@ wsl\flash-boota-9008.ps1 -Img <image> -StartSector <lba> -Label <label> -Lun <lu
 
 补丁与板级代码沿用上游 UniXNU 的许可（各文件内标注 BSD-2-Clause-Patent）。厂商还原表为从本机固件
 中恢复的数据。
+
+## 当前进度 — 2026-11-22
+
+阶段 6（UFS）的条件 1-4 已完成，**两个根窗口都已发布**：把官方镜像写到 `userdata` 最后 9 GiB
+（绝对 LBA 246,662,139）后，内核日志为
+
+```
+NATIVE_UFS: cold init 0
+NATIVE_UFS: adopt bind 1
+NATIVE_UFS root: fixed lba=eb3c3fb
+NATIVE_UFS read: lba=eb3c3fb b0=53484e47      （SHNG 清单）
+NativeUfs: published SystemOS
+NativeUfs: SystemOS window started (noverify)
+NativeUfs: published OS
+NativeUfs: OS window started (noverify)
+NATIVE_UFS: publication done=1 published=2
+```
+
+当前阻塞：`IOBlockStorageDriver::instantiateMediaObject()` 创建媒体时把 content hint 写死为空，
+内核里的 APFS 容器因此不会匹配我们的窗口，卷媒体不会出现，也就没有 `root_match_volume_uuid`
+和 `launchd`。计划是把 `refer/IOStorageFamily` 编译成 `libIOStorageFamily.a`，让 hint 从
+provider 的 `kIOMediaContentHintKey` 读取，强制链入内核并从 prelink 闭包中剔除 kernelcache 版本。
+归档已能生成且带标记，但 `./unixnu kernel` 复用缓存导致链接没有真正执行；准确状态、偏差与下一步
+见 [docs/HANDOFF-2026-11-22.md](docs/HANDOFF-2026-11-22.md)。后续由另一个 agent 会话按该交接继续。

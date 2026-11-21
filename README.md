@@ -207,3 +207,30 @@ back the stock `efisp` (`sha256 4df18359...`) restores the vendor boot chain.
 
 Patches and board code follow the upstream UniXNU licensing (BSD-2-Clause-Patent where noted in the
 individual files). Vendor-derived tables are data recovered from the device's own firmware.
+
+## Current status — 2026-11-22
+
+Stage 6 (UFS) conditions 1-4 are done and **both root windows now publish**: with the official
+image written to the last 9 GiB of `userdata` (absolute LBA 246,662,139) the kernel prints
+
+```
+NATIVE_UFS: cold init 0
+NATIVE_UFS: adopt bind 1
+NATIVE_UFS root: fixed lba=eb3c3fb
+NATIVE_UFS read: lba=eb3c3fb b0=53484e47      (SHNG manifest)
+NativeUfs: published SystemOS
+NativeUfs: SystemOS window started (noverify)
+NativeUfs: published OS
+NativeUfs: OS window started (noverify)
+NATIVE_UFS: publication done=1 published=2
+```
+
+Open blocker: `IOBlockStorageDriver::instantiateMediaObject()` initialises every media with a
+hard-coded empty content hint, so the in-kernel APFS container never matches our windows and no
+root volume (hence no `root_match_volume_uuid`, no `launchd`) can appear. The planned fix is to
+build `refer/IOStorageFamily` into `libIOStorageFamily.a`, take the hint from
+`kIOMediaContentHintKey` on the provider, force-load it into the kernel and drop the kernelcache
+copy from the prelink closure. The archive builds and carries a marker, but the kernel link still
+skips it because `./unixnu kernel` reuses cached objects — see
+[docs/HANDOFF-2026-11-22.md](docs/HANDOFF-2026-11-22.md) for the exact state, deviations and next
+steps. Work continues in a different agent session from that handoff.
