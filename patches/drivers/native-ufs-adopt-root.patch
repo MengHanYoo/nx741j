@@ -80,7 +80,15 @@
        __atomic_fetch_add (&native_ufs_read_ticks, timerTicks () - t0, __ATOMIC_RELAXED);
        return r;
      }
-@@ -2620,10 +2670,31 @@
+@@ -2469,6 +2519,7 @@
+   panic ("%s", gMediaReport);
+ }
+ 
++static bool nxAdoptRootLayout (RootLayout *layout, const char **why);
+ bool NativeUfs::start (IOService *provider)
+ {
+   printf ("NATIVE_UFS start provider=%s\n", provider ? provider->getName () : "null");
+@@ -2620,10 +2671,31 @@
      return true;
    }
    if (probe == 12) {
@@ -116,7 +124,7 @@
      thread_t thread = nullptr;
      if (kernel_thread_start (mediaReportThread, nullptr, &thread) != KERN_SUCCESS) {
        panic ("NATIVE_UFS media report: cannot start the report thread");
-@@ -2642,14 +2713,16 @@
+@@ -2642,14 +2714,16 @@
  {
    const char *why = "";
    native_ufs_root_step = 1;
@@ -136,7 +144,7 @@
      rootDiagnosticFailure (layout ? why : "root layout allocation failed");
      IOLog ("NativeUfs: root layout failed: %s\n", why);
      if (layout) IOFree (layout, sizeof (RootLayout));
-@@ -2707,6 +2780,7 @@
+@@ -2707,6 +2781,7 @@
      }
      bool validate () {
        gRootDiagnostic.stage = "signed window identities";
