@@ -16,7 +16,28 @@ ROOT = Path(__file__).resolve().parents[1]
 PATCH = ROOT / 'patches/drivers/native-ufs-adopt-root.patch'
 EMBEDDED = r'''--- a/drivers/ShengUfs/NativeUfs.cpp
 +++ b/drivers/ShengUfs/NativeUfs.cpp
-@@ -442,6 +442,54 @@
+@@ -54,10 +54,20 @@
+ void boot_progress_poll (void);
+ #else
+ void boot_progress_poll (void) __attribute__((weak));
++extern "C" int board_ufs_cold_init (void);
+ #endif
+ volatile uint32_t native_ufs_probe_calls = 0;
+ volatile uint32_t native_ufs_matched = 0;
+ volatile uint32_t native_ufs_probe_requested = 0;
++extern "C" int native_ufs_probe (void);
++extern "C" int native_ufs_probe_iova (void);
++extern "C" int native_ufs_probe_dump (void);
++extern "C" int native_ufs_probe_cb (void);
++extern "C" int native_ufs_probe_bypass (void);
++extern "C" int native_ufs_probe_smmu_walk (void);
++extern "C" int native_ufs_probe_abl_list (void);
++extern "C" int native_ufs_probe_spec (void);
++extern "C" int native_ufs_probe_xpu (void);
+ volatile uint32_t native_ufs_mapped = 0;
+ volatile uint32_t native_ufs_status = 0;
+ // Root start: 1 entered, 2 host up, 3 layout found; the last soft-failure reason (a static string), for the boot page.
+@@ -432,6 +442,54 @@
    report[2] = sctlr;
  }
  
@@ -71,7 +92,7 @@ EMBEDDED = r'''--- a/drivers/ShengUfs/NativeUfs.cpp
  void NativeUfs::adoptAndRead (unsigned level)
  {
    OSSharedPtr<IOMemoryMap> hcMap;
-@@ -469,6 +517,7 @@
+@@ -459,6 +517,7 @@
    }
    uint8_t *virt = reinterpret_cast<uint8_t *> (regionMap->getVirtualAddress ());
    uint64_t phys = fwList;
@@ -79,7 +100,149 @@ EMBEDDED = r'''--- a/drivers/ShengUfs/NativeUfs.cpp
    zero32 (virt, 16384);
    cacheClean (virt, 16384);
    // Layout: [0,4096) request list (slot 0 used), [4096,5120) command + response UPIU +
-@@ -1986,6 +2035,7 @@
+@@ -471,19 +530,38 @@
+   }
+   OSSharedPtr<IOMemoryMap> smmuMap;
+   uint32_t smmuReport[3] = { 0, 0, 0 };
++  unsigned keepQueue = 0;
++  PE_parse_boot_argn ("native-ufs-keepqueue", &keepQueue, sizeof (keepQueue));
+   write32 (hc, 0x24, 0);            // mask interrupts
+   write32 (hc, 0x60, 0);            // stop the firmware's request list
+   __asm__ volatile ("dsb sy" ::: "memory");
+   unsigned stopLoops = 10000;
+   while ((read32 (hc, 0x60) & 1) && stopLoops--) IODelay (10);
+   if (read32 (hc, 0x60) & 1) panic ("NATIVE_UFS adopt: request list did not stop");
+-  smmuBypassStream (0x60, smmuMap, smmuReport, phys, 16384);
+-  write32 (hc, 0x50, static_cast<uint32_t> (phys));
+-  write32 (hc, 0x54, static_cast<uint32_t> (phys >> 32));
++  /*
++   * IDR1=0x60000051: pages=128, banks=81 -> the context-bank window would need
++   * 0xD1000 while the mapping is 0xD0000.  Stream 0x60 has no match entry
++   * (SMR=0, S2CR=0), so bypass it directly.
++   */
++  {
++    uintptr_t smmu = mapPhys (0x15000000ULL, 0xd0000, smmuMap);
++    if (!smmu) { panic ("NATIVE_UFS smmu: map failed"); }
++    write32 (smmu, 0xc00 + 4 * 0x60, 1U);        /* S2CR[0x60] TYPE=bypass */
++    __asm__ volatile ("dsb sy" ::: "memory");
++    smmuReport[0] = 0;
++    smmuReport[1] = read32 (smmu, 0xc00 + 4 * 0x60);
++    smmuReport[2] = read32 (smmu, 0x24);
++  }
++  if (!keepQueue) {
++    write32 (hc, 0x50, static_cast<uint32_t> (phys));
++    write32 (hc, 0x54, static_cast<uint32_t> (phys >> 32));
++  }
+   write32 (hc, 0x20, 0xffffffffU);  // clear stale status
+-  write32 (hc, 0x60, 1);
+-  if (!waitSet (hc, 0x30, 0x2, 100000)) {
+-    panic ("NATIVE_UFS adopt: request list not ready hcs=%08x", read32 (hc, 0x30));
++  if (keepQueue != 1) {   /* 2 = start the list, 0 = default, 1 = leave stopped */
++    write32 (hc, 0x60, 1);
++    if (!waitSet (hc, 0x30, 0x2, 100000)) {
++      panic ("NATIVE_UFS adopt: request list not ready hcs=%08x", read32 (hc, 0x30));
++    }
+   }
+   if (level == 3) {
+     panic ("NATIVE_UFS adopt: list replaced\n"
+@@ -525,7 +603,17 @@
+     }
+     cacheClean (virt, 16384);
+     write32 (hc, 0x20, 0xffffffffU);
++    printf ("NATIVE_UFS ring-before hcs=%08x rsr=%08x dbr=%08x is=%08x utrlba=%08x utrd0=%08x utrd2=%08x utrd4=%08x ie=%08x\n",
++            read32 (hc, 0x30), read32 (hc, 0x60), read32 (hc, 0x58), read32 (hc, 0x20),
++            read32 (hc, 0x50),
++            *reinterpret_cast<volatile uint32_t *> (utrd + 0),
++            *reinterpret_cast<volatile uint32_t *> (utrd + 8),
++            *reinterpret_cast<volatile uint32_t *> (utrd + 16),
++            read32 (hc, 0x24));
+     write32 (hc, 0x58, 1);          // ring slot 0
++    printf ("NATIVE_UFS ring-after  hcs=%08x rsr=%08x dbr=%08x is=%08x ocs=%02x\n",
++            read32 (hc, 0x30), read32 (hc, 0x60), read32 (hc, 0x58), read32 (hc, 0x20),
++            *reinterpret_cast<volatile uint32_t *> (utrd + 8) & 0xffU);
+     UfsResult result = { 0xf, 0xff, 0xff, 0, 0, 0 };
+     bool done = false;
+     for (unsigned loops = 0; loops < 100000; loops++) {
+@@ -1063,7 +1151,7 @@
+ 
+ static void hostEnableInterrupt (void)
+ {
+-  if (gIrqMode || !&armcpu_spi_attach || !&armcpu_spi_mask) return;
++  return;   /* board: no ArmCpu SPI helpers; poll only */
+   if (armcpu_spi_attach (kUfsIrq, false, hostInterrupt, nullptr, nullptr, nullptr) != kIOReturnSuccess) return;
+   hostWrite (0x24, 1);                      // UTRCE only
+   if (armcpu_spi_mask (kUfsIrq, false) != kIOReturnSuccess) { hostWrite (0x24, 0); return; }
+@@ -1141,6 +1229,7 @@
+ // `why` receives a short reason on failure.
+ static bool hostBringUp (const char **why)
+ {
++  printf ("NATIVE_UFS bringup: enter\n");
+   if (gHost.poisoned) {
+     *why = "transport quarantined";
+     return false;
+@@ -1150,6 +1239,8 @@
+   }
+   gRootDiagnostic.stage = "controller map";
+   gHost.hc = mapPhys (UFS_HC_BASE, UFS_HC_SIZE, gHost.hcMap);
++  printf ("NATIVE_UFS bringup: hc=%llx cap=%08x hcs=%08x hce=%08x\n",
++          (unsigned long long)gHost.hc, read32 (gHost.hc, 0), read32 (gHost.hc, 0x30), read32 (gHost.hc, 0x34));
+   if (!gHost.hc) {
+     *why = "controller map";
+     return false;
+@@ -1177,7 +1268,11 @@
+       kernel_task, static_cast<IOOptionBits> (kIODirectionInOut) | static_cast<IOOptionBits> (kIOMemoryPhysicallyContiguous) |
+       static_cast<IOOptionBits> (kIOMemoryMapperNone),
+       bytes, 4096);
+-    if (!dma) continue;
++    if (!dma) {
++      printf ("NATIVE_UFS bringup: alloc %u bytes failed\n", (unsigned)bytes);
++      continue;
++    }
++    printf ("NATIVE_UFS bringup: alloc %u bytes ok\n", (unsigned)bytes);
+     uint8_t *virt = static_cast<uint8_t *> (dma->getBytesNoCopy ());
+     IOByteCount contiguous = 0;
+     uint64_t phys = dma->getPhysicalSegment (0, &contiguous, kIOMemoryMapperNone);
+@@ -1188,6 +1283,8 @@
+       continue;
+     }
+     gHost.dma = dma; gHost.virt = virt; gHost.phys = phys; gHost.dmaBytes = bytes;
++    printf ("NATIVE_UFS bringup: dma phys=%llx bytes=%u\n",
++            (unsigned long long)phys, (unsigned)bytes);
+   }
+   if (!gHost.virt || !gHost.lock) {
+     *why = !gHost.lock ? "dma buffer" : "DMA address/contiguity";
+@@ -1200,10 +1297,19 @@
+   bzero (gHost.virt, gHost.dmaBytes);
+   cacheCivac (gHost.virt, gHost.dmaBytes);
+   uint32_t report[3] = { 0, 0, 0 };
++  printf ("NATIVE_UFS bringup: dma=%llx stopping list\n", gHost.phys);
+   gRootDiagnostic.stage = "SMMU and request list";
+   if (!hostStopQueue (why)) return false;
+-  smmuBypassStream (0x60, gHost.smmuMap, report, gHost.phys, gHost.dmaBytes);
++  {
++    /* Stream 0x60 already bypasses (CB0, SCTLR.M=0); do not touch SMMU.
++     * Writing S2CR here is what broke the descriptor fetch.
++     */
++    uintptr_t smmu = mapPhys (0x15000000ULL, 0xd0000, gHost.smmuMap);
++    report[0] = 0; report[1] = 0; report[2] = 0;
++    if (smmu) { report[2] = read32 (smmu, 0x24); }
++  }
+   gHost.smmu = gHost.smmuMap->getVirtualAddress ();
++  printf ("NATIVE_UFS bringup: smmu bypass done\n");
+   // The board's WiFi endpoint (sheng-wifi=2 or more) needs a pass-through stream of its own, set up here with the same code and at the same moment as the
+   // storage stream: the registers of the stream matching group are not safe to touch from another thread later (a read of the first one never returned).
+   uint32_t wifi = 0;
+@@ -1349,7 +1455,9 @@
+     gDmaLimit = limit;
+   }
+   hostSlotsUpgrade (regionSlots, entries, wide);
++  printf ("NATIVE_UFS bringup: starting list\n");
+   if (!hostStartQueue (why)) return false;
++  printf ("NATIVE_UFS bringup: list running\n");
+   gRootDiagnostic.stage = "NOP OUT";
+   // NOP OUT proves the transport before touching the SCSI layer.
+   if (hostNop () != kIOReturnSuccess) {
+@@ -1927,6 +2035,7 @@
  #if defined(NATIVE_VERIFIED_BLOCK) && NATIVE_VERIFIED_BLOCK
    // Reads are served only after each 4096-byte integrity block verifies against the owner-signed
    // policy; without a matching policy the device is never published.
@@ -87,7 +250,7 @@ EMBEDDED = r'''--- a/drivers/ShengUfs/NativeUfs.cpp
    return configureVerification ();
  #else
    return true;
-@@ -2205,7 +2255,7 @@
+@@ -2146,7 +2255,7 @@
      void unlock () {}
      IOReturn read (uint64_t lba, uint32_t blocks, void *out) {
        uint64_t t0 = timerTicks ();
@@ -96,25 +259,103 @@ EMBEDDED = r'''--- a/drivers/ShengUfs/NativeUfs.cpp
        __atomic_fetch_add (&native_ufs_read_ticks, timerTicks () - t0, __ATOMIC_RELAXED);
        return r;
      }
-@@ -2349,6 +2399,7 @@
- 
- static void publishThread (void *, wait_result_t)
- {
-+  printf ("NATIVE_UFS: publisher thread enter\n");
-   struct Operations {
-     bool start (unsigned index) {
+@@ -2304,6 +2413,7 @@
+     bool wait (unsigned index) {
        NativeUfsBlock *device = gPendingDevice[index];
-@@ -2366,6 +2417,9 @@
+       const char *uuid = gPendingUuid[index];
++      { uint32_t nv = 0; if (PE_parse_boot_argn ("native-ufs-noverify", &nv, sizeof (nv)) && nv) { IOLog ("NativeUfs: %s window started (noverify)\n", device->windowLabel ()); return true; } }
        gRootDiagnostic.stage = "media publication";
        gRootDiagnostic.publicationPhase = static_cast<unsigned> (UfsRootPhase::Media);
        gRootDiagnostic.publicationWindow = index;
-+      { uint32_t nv = 0; if (PE_parse_boot_argn ("native-ufs-noverify", &nv, sizeof (nv)) && nv) {
-+        IOLog ("NativeUfs: %s window published (noverify)\n", device->windowLabel ());
-+        return true; } }
-       bool ready = false;
-       // Diagnostic mode affects reporting only, never the dependency gate.
-       for (unsigned tick = 0; tick <= 300; ++tick) {
-@@ -2637,19 +2691,116 @@
+@@ -2410,11 +2520,14 @@
+   panic ("%s", gMediaReport);
+ }
+ 
++static bool nxAdoptRootLayout (RootLayout *layout, const char **why);
+ bool NativeUfs::start (IOService *provider)
+ {
++  printf ("NATIVE_UFS start provider=%s\n", provider ? provider->getName () : "null");
+   unsigned probe = 0, rootMode = 0;
+   PE_parse_boot_argn ("native-ufs-probe", &probe, sizeof (probe));
+   PE_parse_boot_argn ("native-ufs-root", &rootMode, sizeof (rootMode));
++  board_ufs_cold_init ();   /* the callee checks native-ufs-cold-init itself */
+   native_ufs_probe_requested = probe != 0;
+   // Default: match for observability only, never touch the controller. Hardware work runs once,
+   // from the root-device personality; the ufshc nub match stays observation-only.
+@@ -2439,10 +2552,57 @@
+   if ((probe >= 3 && probe <= 5) || probe == 9) {
+     adoptAndRead (probe);
+   }
++  if (probe == 37) {
++    printf ("NATIVE_UFS: TZ xPU probe\n");
++    native_ufs_probe_xpu ();
++    return true;
++  }
++  if (probe == 36) {
++    printf ("NATIVE_UFS: UFSHCI ordered bring-up\n");
++    native_ufs_probe_spec ();
++    return true;
++  }
++  if (probe == 35) {
++    printf ("NATIVE_UFS: ABL list region test\n");
++    native_ufs_probe_abl_list ();
++    return true;
++  }
++  if (probe == 34) {
++    printf ("NATIVE_UFS: smmu walk (reference layout)\n");
++    native_ufs_probe_smmu_walk ();
++    return true;
++  }
++  if (probe == 33) {
++    printf ("NATIVE_UFS: stream 0x60 bypass test\n");
++    native_ufs_probe_bypass ();
++    return true;
++  }
++  if (probe == 32) {
++    printf ("NATIVE_UFS: CB0 page read\n");
++    native_ufs_probe_cb ();
++    return true;
++  }
++  if (probe == 31) {
++    printf ("NATIVE_UFS: read-only SMMU layout dump\n");
++    native_ufs_probe_dump ();
++    return true;
++  }
++  if (probe == 30) {
++    printf ("NATIVE_UFS: IOVA probe, stream 0x60\n");
++    native_ufs_probe_iova ();
++    return true;
++  }
++  if (probe == 20) {
++    printf ("NATIVE_UFS: handing over to sweet_ufs\n");
++    int e20 = native_ufs_probe ();
++    printf ("NATIVE_UFS: sweet_ufs rc=%d\n", e20);
++    return e20 == 0;
++  }
+   if (probe == 10) {
+     // Read-only check before anything is flashed: LUN 0 GPT -> "userdata" -> its first block.
+     const char *why = "";
+     if (!hostBringUp (&why)) {
++      printf ("NATIVE_UFS root check: bring-up failed: %s\n", why);
+       panic ("NATIVE_UFS root check: bring-up failed: %s", why);
+     }
+     RootLayout *layout = static_cast<RootLayout *> (IOMalloc (sizeof (RootLayout)));
+@@ -2512,10 +2672,14 @@
+     return true;
+   }
+   if (probe == 12) {
++    printf ("NATIVE_UFS: cold init %d\n", board_ufs_cold_init ());
++    printf ("NATIVE_UFS: adopt bind %d\n", nxAdoptBind () ? 1 : 0);
+     bool published = startRoot (provider);
++    printf ("NATIVE_UFS: publication done=%d published=%u\n", published ? 1 : 0, (unsigned)native_ufs_blocks_published);
+     if (!published) {
+       panic ("NATIVE_UFS media report: root start failed (blocks=%u)", native_ufs_blocks_published);
+     }
++
+     thread_t thread = nullptr;
+     if (kernel_thread_start (mediaReportThread, nullptr, &thread) != KERN_SUCCESS) {
+       panic ("NATIVE_UFS media report: cannot start the report thread");
+@@ -2529,19 +2693,116 @@
    return false;
  }
  
@@ -234,14 +475,29 @@ EMBEDDED = r'''--- a/drivers/ShengUfs/NativeUfs.cpp
      rootDiagnosticFailure (layout ? why : "root layout allocation failed");
      IOLog ("NativeUfs: root layout failed: %s\n", why);
      if (layout) IOFree (layout, sizeof (RootLayout));
-@@ -2707,6 +2858,7 @@
+@@ -2599,6 +2860,7 @@
      }
      bool validate () {
        gRootDiagnostic.stage = "signed window identities";
-+      { uint32_t nv = 0; if (PE_parse_boot_argn ("native-ufs-noverify", &nv, sizeof (nv)) && nv) return true; }
++  { uint32_t nv = 0; if (PE_parse_boot_argn ("native-ufs-noverify", &nv, sizeof (nv)) && nv) return true; }
        gRootDiagnostic.publicationPhase = static_cast<unsigned> (UfsRootPhase::Identity);
  #if defined(NATIVE_VERIFIED_BLOCK) && NATIVE_VERIFIED_BLOCK
        for (unsigned i = 0; i < gPending; ++i) {
+@@ -2615,13 +2877,8 @@
+       gRootDiagnostic.stage = "root publisher thread";
+       gRootDiagnostic.publicationPhase = static_cast<unsigned> (UfsRootPhase::Schedule);
+       gRootDiagnostic.publicationWindow = 0xffffffff;
+-      thread_t thread = nullptr;
+       owner->retain ();
+-      if (kernel_thread_start (publishThread, nullptr, &thread) != KERN_SUCCESS) {
+-        owner->release ();
+-        return false;
+-      }
+-      thread_deallocate (thread);
++      publishThread (nullptr, 0);
+       return true;
+     }
+     void discard (unsigned index) { discardPendingWindow (index); }
 '''
 MARKER = 'nxRootRead'
 TARGET = 'drivers/ShengUfs/NativeUfs.cpp'
