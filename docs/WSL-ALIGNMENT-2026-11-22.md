@@ -41,7 +41,7 @@ mirror instead of assuming one home directory.
 - `scripts/build-and-test.sh` uses the resolved UniXNU tree, UEFI tree and
   `unixnu.local.toml`; its smoke step uses `$UEFI/Mu_Basecore`.
 - The kernel build uses 16 jobs, smoke uses 8, and the fixture QEMU gate uses
-  8 GB RAM and 8 vCPUs. These values can be overridden with `JOBS`,
+  16 GB RAM and 16 vCPUs. These values can be overridden independently with `JOBS`,
   `SMOKE_JOBS`, `QEMU_MEM`, and `QEMU_SMP`.
 - `scripts/qemu-nx741j.sh` uses the same UEFI resolver and the tree passed by
   the gate. Fixture ADT generation remains the default; `QEMU_ADT=real` uses

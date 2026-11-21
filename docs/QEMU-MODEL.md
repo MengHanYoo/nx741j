@@ -9,9 +9,21 @@
 sudo ./scripts/qemu-nx741j.sh ~/nx741j-build/UniXNU 60      # 第二个参数是超时秒数
 ```
 
-脚本在 `out/qemu/` 下组一个 ESP，然后启动 `qemu-system-aarch64 -M virt -cpu cortex-a72 -m 8G -smp 8`。
-`QEMU_MEM` 可以显式提高到 16G，用于 `QEMU_ADT=real` 或更大内存实验；完整门禁的 fixture 模式使用 8G，
-避免在 20 GB 的 WSL2 内同时占满构建缓存和虚拟机内存。
+脚本在 `out/qemu/` 下组一个 ESP，然后启动
+`qemu-system-aarch64 -M virt -cpu cortex-a72 -m 16G -smp 16`。fixture ADT 也用同一个
+`QEMU_SMP` 生成，保证客户机 CPU 数与设备树一致。
+
+默认构建资源为：内核 16 jobs、smoke 8 jobs、QEMU fixture 16 GiB / 16 vCPU。
+可按需单独覆盖：
+
+```sh
+JOBS=24 SMOKE_JOBS=12 QEMU_MEM=16G QEMU_SMP=16 \
+  ./scripts/build-and-test.sh ~/nx741j-build/UniXNU
+
+# real-ADT 诊断可显式使用 16G；QEMU_SMP 不设时仍默认 16
+QEMU_ADT=real QEMU_MEM=16G \
+  ./scripts/qemu-nx741j.sh ~/nx741j-build/UniXNU 40
+```
 
 | ESP 内容 | 来源 |
 |---|---|
@@ -26,8 +38,8 @@ sudo ./scripts/qemu-nx741j.sh ~/nx741j-build/UniXNU 60      # 第二个参数是
 
 | 参数 | 真机 | QEMU 模型 |
 |---|---|---|
-| CPU | 8（1+3+4 三簇） | `-smp 8`（同核数，拓扑不同） |
-| 内存 | DRAM 5 GiB @0x8C0000000 | `-m 8G`（足够 fixture；`QEMU_MEM=16G` 可覆盖） |
+| CPU | 8（1+3+4 三簇） | `-smp 16`（fixture 默认 16 vCPU，可由 `QEMU_SMP` 覆盖；拓扑不同） |
+| 内存 | DRAM 5 GiB @0x8C0000000 | `-m 16G`（可由 `QEMU_MEM` 覆盖） |
 | 交接窗口 | `owned_memory_size = 256 MiB` | 同（ADT 里的 `darwinboot-memory-size`） |
 | payload | `kernel.macho` 49.4 MB + ADT 13 KB + trustcache 1.5 KB | **原样**从真机 payload 取 |
 | DarwinBoot | 真机同一份 DEBUG 二进制 | 同 |
@@ -37,7 +49,7 @@ sudo ./scripts/qemu-nx741j.sh ~/nx741j-build/UniXNU 60      # 第二个参数是
 ## 真实 DTB 参数模式（2026-11-11）
 
 ```sh
-QEMU_ADT=real sudo ./scripts/qemu-nx741j.sh ~/nx741j-build/UniXNU 40
+QEMU_ADT=real QEMU_MEM=16G sudo ./scripts/qemu-nx741j.sh ~/nx741j-build/UniXNU 40
 ```
 
 `scripts/mk-qemu-adt.py` 用本机 `dts/nx741j-adt.dts`（5,332 节点）生成 ADT 喂给客户机，
@@ -46,7 +58,7 @@ QEMU_ADT=real sudo ./scripts/qemu-nx741j.sh ~/nx741j-build/UniXNU 40
 | 真实 DTB 参数 | 真机值 | QEMU 里的处理 |
 |---|---|---|
 | DRAM | `0x8C0000000 + 5 GiB`（21 段，最大连续 5 GiB） | **改写**为 `0x40000000 + 16 GiB`（virt 的固定 RAM 窗口） |
-| CPUs | 8 个（MPIDR `0/0x100/0x200/0x300/0x400/0x500/0x10000/0x10100`） | ADT 保留真值；机器 `-smp 8`（同核数，拓扑不同） |
+| CPUs | 8 个（MPIDR `0/0x100/0x200/0x300/0x400/0x500/0x10000/0x10100`） | ADT 保留真值；机器默认 `-smp 16`（`QEMU_SMP` 可覆盖，拓扑不同） |
 | GIC | `interrupt-controller@17000000`（两段 reg、redistributor-stride 0x40000） | ADT 保留；模型只有 virt GIC（`0x08000000`），读真地址会 external abort |
 | UFS | `ufshc@1d84000`（`ufs_mem`/`ice`/`mcq_sqd`/`mcq_vs` 四段） | ADT 保留；无模型 |
 | SMMU | `apps-smmu@15000000`，stream `0x60` | ADT 保留；无模型 |

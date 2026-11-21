@@ -3177,6 +3177,28 @@ index 7c49d9d67e399b71c0747189e8dee50c6179f05a..b2e71a8cf007a1edb7106bd0032eb7ce
  import hashlib
  from pathlib import Path
  import sys
+diff --git a/scripts/qemu-entry/make-dt.py b/scripts/qemu-entry/make-dt.py
+index 6e5e93d25845d2008ca9fe90bd005d1898859d97..218747fd58a93ffd3338f40f7c0c980d934b0408 100644
+--- a/scripts/qemu-entry/make-dt.py
++++ b/scripts/qemu-entry/make-dt.py
+@@ -1,5 +1,5 @@
+ #!/usr/bin/env python3
+-"""Generate a synthetic Apple-format DT for the single-CPU QEMU entry fixture.
++"""Generate a synthetic Apple-format DT for the QEMU entry fixture.
+ 
+ This is neither sheng board data nor an iPad device identity. The arm-io
+ range describes QEMU PL011 solely to pass early platform discovery.
+@@ -52,8 +52,8 @@ if args.qemu_vmm_present and not args.armvirt:
+     parser.error('--qemu-vmm-present requires the actual QEMU platform fixture')
+ if args.armcpu and not args.armvirt:
+     parser.error('--armcpu requires --armvirt')
+-if not 1 <= args.smp <= 8 or (args.smp > 1 and not args.armcpu):
+-    parser.error('--smp is 1..8 and needs --armcpu')
++if not 1 <= args.smp <= 16 or (args.smp > 1 and not args.armcpu):
++    parser.error('--smp is 1..16 and needs --armcpu')
+ if args.root_match_volume_uuid and (not args.virtio_mmio_fdt or args.ramdisk):
+     parser.error('Direct volume matching requires a real offline disk and conflicts with a RAM root')
+ if args.data_ramdisk and (not args.root_match_volume_uuid or args.ramdisk):
 diff --git a/scripts/unixnu/bootimg.py b/scripts/unixnu/bootimg.py
 index 8ac3274d090fdb46f7c20605a9ec61137df4b974..de568f8ab8110a665babe753f87ed782a5629887 100644
 --- a/scripts/unixnu/bootimg.py

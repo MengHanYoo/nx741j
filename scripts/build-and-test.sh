@@ -103,7 +103,7 @@ SERIAL=$REPO/out/qemu/serial.log
 INT=$REPO/out/qemu/int.log
 rm -f "$INT" "$SERIAL"
 qemu_rc=0
-QEMU_MEM=${QEMU_MEM:-8G} QEMU_SMP=${QEMU_SMP:-8} QEMU_INT=1 UNIXNU_UEFI="$UEFI" \
+QEMU_MEM=${QEMU_MEM:-16G} QEMU_SMP=${QEMU_SMP:-16} QEMU_INT=1 UNIXNU_UEFI="$UEFI" \
   "$REPO/scripts/qemu-nx741j.sh" "$TREE" 40 | tee -a "$LOG" || qemu_rc=$?
 if [ -s "$INT" ]; then
   python3 - "$INT" <<'PY' | tee -a "$LOG" || true

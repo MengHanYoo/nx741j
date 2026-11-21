@@ -6,12 +6,14 @@
 #
 # The ESP gets the DEBUG build of UniXNU.efi, the DarwinBoot driver as an
 # autoloaded kit, and the Payloads/ directory taken from payload.img.  The
-# machine is QEMU virt with 8 CPUs and 8 GiB so DarwinBoot can find its 256 MiB
-# contiguous window; override QEMU_MEM=16G for the real-ADT diagnostic mode.
+# machine is QEMU virt with 16 CPUs and 16 GiB so DarwinBoot can find its 256 MiB
+# contiguous window. QEMU_MEM and QEMU_SMP can be overridden independently.
 set -eu
 
 TREE=${1:?usage: qemu-nx741j.sh <build-tree> [seconds]}
 TIMEOUT=${2:-90}
+QEMU_MEM=${QEMU_MEM:-16G}
+QEMU_SMP=${QEMU_SMP:-16}
 REPO=$(cd "$(dirname "$0")/.." && pwd)
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 # shellcheck source=wsl-env.sh
@@ -91,7 +93,7 @@ if [ "${QEMU_ADT:-fixture}" = "real" ]; then
     --tree "$TREE" --out "$ESP/EFI/UniXNU/Payloads/kernel.macho.adt"
 else
   python3 "$TREE/out/nx741j/ios-16.7.16-20H392/nx741j/tree/scripts/qemu-entry/make-dt.py" \
-    --armvirt --armcpu --smp 8 --owned-memory-size 0x10000000 \
+    --armvirt --armcpu --smp "$QEMU_SMP" --owned-memory-size 0x10000000 \
     --trust-cache --nvram-proxy \
     --output "$ESP/EFI/UniXNU/Payloads/kernel.macho.adt" >/dev/null
 fi
@@ -107,7 +109,7 @@ if [ "${QEMU_INT:-0}" = "1" ]; then
   INT_ARGS=(-d int -D "$OUT/int.log")
 fi
 timeout --foreground --kill-after=5s "${TIMEOUT}s" qemu-system-aarch64 \
-  -M virt -cpu cortex-a72 -m "${QEMU_MEM:-8G}" -smp "${QEMU_SMP:-8}" \
+  -M virt -cpu cortex-a72 -m "$QEMU_MEM" -smp "$QEMU_SMP" \
   -drive if=pflash,format=raw,readonly=on,file="$FW" \
   -drive format=raw,file=fat:rw:"$ESP" \
   -display none -serial "file:$LOG" -monitor none -no-reboot \

@@ -18,8 +18,8 @@ UEFI=$(resolve_uefi_tree "${UNIXNU_UEFI:-}") || {
 ARTIFACTS=$(resolve_artifact_dir "${UNIXNU_ARTIFACTS:-}")
 TIMEOUT=${2:-25}
 JOBS=${JOBS:-16}
-export QEMU_MEM=${QEMU_MEM:-8G}
-export QEMU_SMP=${QEMU_SMP:-8}
+export QEMU_MEM=${QEMU_MEM:-16G}
+export QEMU_SMP=${QEMU_SMP:-16}
 LOGDIR=$REPO/out/qemu
 mkdir -p "$LOGDIR"
 start=$(date +%s)

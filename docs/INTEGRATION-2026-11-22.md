@@ -9,6 +9,7 @@
 |---|---|---|
 | 工作区和 WSL 移至 E 盘 | 完成 | C 盘旧树归档并逐文件 SHA-256 校验；WSL VHDX 位于 `E:\wsl\Ubuntu` |
 | WSL 构建环境 | 通过 | 24 vCPU、约 19.5 GiB RAM、工具链、dtc、clang、QEMU 均由 `check-wsl-env.sh` 识别 |
+| 构建资源默认值 | 完成 | 内核 16 jobs、smoke 8 jobs、QEMU fixture 16 GiB / 16 vCPU；四项均可独立覆盖 |
 | 4K 内核构建 | 通过 | `./unixnu kernel` 完成归档、链接和 prelink |
 | prelink 私有指针闭包 | 通过 | 保留完整 Apple IOStorageFamily，避免 86 个私有函数/数据绑定被拆断 |
 | APFS media content hint | 已生成候选 | 对 `instantiateMediaObject()` 的 ADRP/ADD 做 8 字节机器码固定校验，注入 `Apple_APFS` |
