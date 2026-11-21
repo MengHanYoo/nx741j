@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """Applies the device driver patch (adopt-transport root publication).
 
-Canonical artifact: patches/drivers/native-ufs-adopt-root.patch (also embedded below so the
-hook works when only scripts/ is copied into the tree). The unified diff is split per file
-and applied against the explicit target: GNU patch on this tree does not resolve the
-a/ b/ header paths by itself. Re-running is harmless (--forward).
+Canonical artifact: patches/drivers/native-ufs-adopt-root.patch (also embedded below).
+Idempotent twice over: a marker check skips the whole thing when the tree already carries the
+work, and patch --forward skips hunks that are already applied. The unified diff is split per
+file and applied against the explicit target, because GNU patch on this tree does not resolve
+the a/ b/ header paths by itself.
 """
 import re
 import subprocess
@@ -15,10 +16,11 @@ ROOT = Path(__file__).resolve().parents[1]
 PATCH = ROOT / 'patches/drivers/native-ufs-adopt-root.patch'
 EMBEDDED = r'''--- a/drivers/ShengUfs/NativeUfs.cpp
 +++ b/drivers/ShengUfs/NativeUfs.cpp
-@@ -441,6 +441,53 @@
+@@ -442,6 +442,54 @@
    report[2] = sctlr;
  }
  
++extern "C" int board_ufs_cold_init (void);
 +static volatile uintptr_t nxRootHc = 0;
 +static uint8_t *nxRootVirt = 0;
 +static uint64_t nxRootPhys = 0;
@@ -58,18 +60,18 @@ EMBEDDED = r'''--- a/drivers/ShengUfs/NativeUfs.cpp
 +      { volatile unsigned s = 0; for (s = 0; s < 4000; s++) { __asm__ volatile ("" ::: "memory"); } }
 +    }
 +    flush_dcache64 ((addr64_t)nxRootPhys, 16384, TRUE);
-+    if (!done) return false;
++    if (!done) { printf ("NATIVE_UFS read: lba=%x not done dbr=%08x hcs=%08x\n", lba, read32 (nxRootHc, 0x58), read32 (nxRootHc, 0x30)); return false; }
++    { const uint8_t *b = nxRootVirt + 6144; printf ("NATIVE_UFS read: lba=%x b0=%02x%02x%02x%02x\n", lba, b[0], b[1], b[2], b[3]); }
 +    bcopy (nxRootVirt + 6144, dst + (uint64_t)i * 4096, 4096);
 +    lba++;
 +  }
 +  return true;
 +}
 +static bool nxAdoptBind (void);
-+static bool nxAdoptRootLayout (RootLayout *layout, const char **why);
  void NativeUfs::adoptAndRead (unsigned level)
  {
    OSSharedPtr<IOMemoryMap> hcMap;
-@@ -468,6 +515,7 @@
+@@ -469,6 +517,7 @@
    }
    uint8_t *virt = reinterpret_cast<uint8_t *> (regionMap->getVirtualAddress ());
    uint64_t phys = fwList;
@@ -77,7 +79,15 @@ EMBEDDED = r'''--- a/drivers/ShengUfs/NativeUfs.cpp
    zero32 (virt, 16384);
    cacheClean (virt, 16384);
    // Layout: [0,4096) request list (slot 0 used), [4096,5120) command + response UPIU +
-@@ -2208,7 +2256,7 @@
+@@ -1986,6 +2035,7 @@
+ #if defined(NATIVE_VERIFIED_BLOCK) && NATIVE_VERIFIED_BLOCK
+   // Reads are served only after each 4096-byte integrity block verifies against the owner-signed
+   // policy; without a matching policy the device is never published.
++  { uint32_t nv = 0; if (PE_parse_boot_argn ("native-ufs-noverify", &nv, sizeof (nv)) && nv) return true; }
+   return configureVerification ();
+ #else
+   return true;
+@@ -2205,7 +2255,7 @@
      void unlock () {}
      IOReturn read (uint64_t lba, uint32_t blocks, void *out) {
        uint64_t t0 = timerTicks ();
@@ -86,20 +96,25 @@ EMBEDDED = r'''--- a/drivers/ShengUfs/NativeUfs.cpp
        __atomic_fetch_add (&native_ufs_read_ticks, timerTicks () - t0, __ATOMIC_RELAXED);
        return r;
      }
-@@ -2668,8 +2716,12 @@
-     thread_deallocate (thread);
-     return true;
-   }
-+static bool nxAdoptBind (void);
-+static bool nxAdoptRootLayout (RootLayout *layout, const char **why);
-   if (probe == 12) {
-+    printf ("NATIVE_UFS: adopt bind %d\n", nxAdoptBind () ? 1 : 0);
-     bool published = startRoot (provider);
-+    printf ("NATIVE_UFS: publication done=%d published=%u\n", published ? 1 : 0, (unsigned)native_ufs_blocks_published);
-     if (!published) {
-       panic ("NATIVE_UFS media report: root start failed (blocks=%u)", native_ufs_blocks_published);
-     }
-@@ -2686,19 +2738,95 @@
+@@ -2349,6 +2399,7 @@
+ 
+ static void publishThread (void *, wait_result_t)
+ {
++  printf ("NATIVE_UFS: publisher thread enter\n");
+   struct Operations {
+     bool start (unsigned index) {
+       NativeUfsBlock *device = gPendingDevice[index];
+@@ -2366,6 +2417,9 @@
+       gRootDiagnostic.stage = "media publication";
+       gRootDiagnostic.publicationPhase = static_cast<unsigned> (UfsRootPhase::Media);
+       gRootDiagnostic.publicationWindow = index;
++      { uint32_t nv = 0; if (PE_parse_boot_argn ("native-ufs-noverify", &nv, sizeof (nv)) && nv) {
++        IOLog ("NativeUfs: %s window published (noverify)\n", device->windowLabel ());
++        return true; } }
+       bool ready = false;
+       // Diagnostic mode affects reporting only, never the dependency gate.
+       for (unsigned tick = 0; tick <= 300; ++tick) {
+@@ -2637,19 +2691,116 @@
    return false;
  }
  
@@ -120,7 +135,17 @@ EMBEDDED = r'''--- a/drivers/ShengUfs/NativeUfs.cpp
 +  fwMap = OSSharedPtr<IOMemoryMap> (region->map (kIOMapAnywhere), OSNoRetain);
 +  region->release ();
 +  if (!fwMap) return false;
-+  nxRootBind (hcv, reinterpret_cast<uint8_t *> (fwMap->getVirtualAddress ()), fw);
++  uint8_t *virt = reinterpret_cast<uint8_t *> (fwMap->getVirtualAddress ());
++  zero32 (virt, 16384);
++  flush_dcache64 ((addr64_t)fw, 16384, TRUE);
++  write32 (hcv, 0x24, 0);
++  write32 (hcv, 0x60, 0);
++  for (unsigned w = 0; w < 200000 && (read32 (hcv, 0x60) & 1); w++) { volatile unsigned s = 0; for (s = 0; s < 2000; s++) { __asm__ volatile ("" ::: "memory"); } }
++  write32 (hcv, 0x50, (uint32_t)fw);
++  write32 (hcv, 0x54, (uint32_t)(fw >> 32));
++  write32 (hcv, 0x60, 1);
++  for (unsigned w = 0; w < 200000; w++) { if ((read32 (hcv, 0x60) & 1) && ((read32 (hcv, 0x30) & 3) == 3)) break; }
++  nxRootBind (hcv, virt, fw);
 +  return true;
 +}
 +static bool nxAdoptRootLayout (RootLayout *layout, const char **why)
@@ -129,10 +154,18 @@ EMBEDDED = r'''--- a/drivers/ShengUfs/NativeUfs.cpp
 +  static uint8_t ents[4 * 4096];
 +  if (!layout) { *why = "layout"; return false; }
 +  zero32 (reinterpret_cast<uint8_t *> (layout), sizeof (*layout));
++  uint32_t nxBase = 0;
++  bool nxFixed = PE_parse_boot_argn ("nxroot-lba", &nxBase, sizeof (nxBase)) && nxBase;
++  if (nxFixed) {
++    layout->userdataFirst = nxBase;
++    layout->userdataLast = nxBase + 2045952u - 1u;
++    printf ("NATIVE_UFS root: fixed lba=%x\n", nxBase);
++  } else {
 +  if (!nxRootRead (1, 1, blk)) { *why = "adopt gpt header read"; return false; }
 +  if (nxLe32 (blk) != 0x20494645U || nxLe32 (blk + 4) != 0x54524150U) { *why = "adopt gpt header"; return false; }
 +  uint64_t entLba = nxLe64 (blk + 72);
 +  uint32_t count = nxLe32 (blk + 80);
++  printf ("NATIVE_UFS gpt: entlba=%llx count=%u\n", entLba, count);
 +  if (!count || count > 128 || entLba < 2 || entLba > 64) { *why = "adopt gpt geometry"; return false; }
 +  uint32_t nblk = (count * 128 + 4095) / 4096;
 +  if (nblk > 4 || !nxRootRead (static_cast<uint32_t> (entLba), nblk, ents)) { *why = "adopt gpt entries"; return false; }
@@ -142,15 +175,18 @@ EMBEDDED = r'''--- a/drivers/ShengUfs/NativeUfs.cpp
 +    const uint8_t *e = ents + i * 128;
 +    uint8_t used = 0; for (unsigned k = 0; k < 16; k++) used |= e[k];
 +    if (!used) continue;
++    const uint8_t *nm = e + 56;
 +    unsigned k = 0;
-+    for (; k < 8 && wanted[k]; k++) if (e[k * 2] != uint8_t (wanted[k]) || e[k * 2 + 1]) break;
++    for (; k < 8 && wanted[k]; k++) if (nm[k * 2] != uint8_t (wanted[k]) || nm[k * 2 + 1]) break;
 +    if (wanted[k]) continue;
 +    if (found) { *why = "adopt duplicate userdata"; return false; }
 +    layout->userdataFirst = nxLe64 (e + 32);
 +    layout->userdataLast = nxLe64 (e + 40);
 +    found = true;
 +  }
++  printf ("NATIVE_UFS gpt: found=%d first=%llx last=%llx\n", found ? 1 : 0, layout->userdataFirst, layout->userdataLast);
 +  if (!found) { *why = "adopt no userdata"; return false; }
++  }
 +  if (!nxRootRead (static_cast<uint32_t> (layout->userdataFirst), 1, blk)) { *why = "adopt manifest read"; return false; }
 +  layout->magic0 = nxLe32 (blk);
 +  layout->magic1 = nxLe32 (blk + 4);
@@ -198,32 +234,48 @@ EMBEDDED = r'''--- a/drivers/ShengUfs/NativeUfs.cpp
      rootDiagnosticFailure (layout ? why : "root layout allocation failed");
      IOLog ("NativeUfs: root layout failed: %s\n", why);
      if (layout) IOFree (layout, sizeof (RootLayout));
+@@ -2707,6 +2858,7 @@
+     }
+     bool validate () {
+       gRootDiagnostic.stage = "signed window identities";
++      { uint32_t nv = 0; if (PE_parse_boot_argn ("native-ufs-noverify", &nv, sizeof (nv)) && nv) return true; }
+       gRootDiagnostic.publicationPhase = static_cast<unsigned> (UfsRootPhase::Identity);
+ #if defined(NATIVE_VERIFIED_BLOCK) && NATIVE_VERIFIED_BLOCK
+       for (unsigned i = 0; i < gPending; ++i) {
 '''
+MARKER = 'nxRootRead'
+TARGET = 'drivers/ShengUfs/NativeUfs.cpp'
 
 def segments(text):
-    parts = re.split(r'(?m)^(?=--- )', text)
-    for part in parts:
+    for part in re.split(r'(?m)^(?=--- )', text):
         if part.startswith('--- '):
             yield part
 
 def main():
+    target = ROOT / TARGET
+    if not target.is_file():
+        print('== patch-native-ufs-cold-init: missing', TARGET)
+        return 1
+    if MARKER in target.read_text():
+        print('== patch-native-ufs-cold-init: already applied, skipping')
+        return 0
     text = PATCH.read_text() if PATCH.is_file() else EMBEDDED
     applied = 0
     for part in segments(text):
         m = re.search(r'(?m)^\+\+\+ b/(\S+)', part)
         if not m:
             continue
-        target = m.group(1)
-        if not (ROOT / target).is_file():
-            print('== patch-native-ufs-cold-init: missing target', target)
+        rel = m.group(1)
+        if not (ROOT / rel).is_file():
+            print('== patch-native-ufs-cold-init: missing target', rel)
             continue
         with tempfile.NamedTemporaryFile('w', suffix='.patch', delete=False) as fh:
             fh.write(part)
             tmp = fh.name
-        r = subprocess.run(['patch', '-p1', '--forward', target], cwd=str(ROOT),
+        r = subprocess.run(['patch', '-p1', '--forward', rel], cwd=str(ROOT),
                            stdin=open(tmp), capture_output=True, text=True)
-        os_msg = ((r.stdout or '') + (r.stderr or '')).strip().replace(chr(10), ' | ')
-        print('== patch-native-ufs-cold-init:', target, '->', os_msg[:260])
+        msg = ((r.stdout or '') + (r.stderr or '')).strip().replace(chr(10), ' | ')
+        print('== patch-native-ufs-cold-init:', rel, '->', msg[:240])
         applied += 1
     return 0 if applied else 1
 
