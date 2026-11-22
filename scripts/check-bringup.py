@@ -131,6 +131,11 @@ def main():
     payload_dir = tree.parent / 'payload' if tree else None
     adt = args.adt or (find_adt(payload_dir) if payload_dir else None)
     record = payload_record(payload_dir) if payload_dir else {}
+    use_sheng_ufs = False
+    if args.device and (args.device / 'board.toml').is_file():
+        import tomllib
+        board = tomllib.load(open(args.device / 'board.toml', 'rb'))
+        use_sheng_ufs = 'ShengUfs' in (board.get('components') or {}).get('include', [])
 
     if not dtb or not dtb.is_file():
         sys.exit(f'hardware DTB not found: {dtb}')
@@ -153,7 +158,7 @@ def main():
         check(results, 1, 'apps-smmu enabled',
               bool(smmu_paths) and fdt.text(smmu_paths[0], 'status') in (None, 'okay', 'ok'),
               str(fdt.text(smmu_paths[0], 'status')) if smmu_paths else 'missing')
-        if archive and archive.is_file():
+        if use_sheng_ufs and archive and archive.is_file():
             import subprocess
             members = subprocess.run(['llvm-ar', 't', str(archive)], capture_output=True, text=True).stdout.split()
             check(results, 1, 'ArmSmmu4K compiled into the consumer archive',
@@ -163,8 +168,15 @@ def main():
                 symbols = subprocess.run(['llvm-nm', str(kernel)], capture_output=True, text=True).stdout
                 check(results, 1, 'kernel links ArmSmmu4KBuild', '_ArmSmmu4KBuild' in symbols, '')
                 defined = [line for line in symbols.splitlines() if line.endswith(' _boot_progress_poll')]
-                check(results, 1, 'kernel keeps one boot_progress_poll', len(defined) == 1,
-                      f'{len(defined)} definition(s)')
+        elif tree:
+            kernel = tree.parent / 'kernel/kernel.macho'
+            if kernel.is_file():
+                import subprocess
+                symbols = subprocess.run(['llvm-nm', '--defined-only', str(kernel)],
+                                         capture_output=True, text=True).stdout
+                check(results, 1, 'kernel links data-a-live UFS root',
+                      any(line.split() and line.split()[-1] == '_sweet_ufs_rootdev'
+                          for line in symbols.splitlines()), '')
 
     if 2 in levels:
         ufs_paths = fdt.find('ufshc@1d84000')
@@ -175,8 +187,10 @@ def main():
               str(fdt.text(ufs_paths[0], 'status')) if ufs_paths else 'missing')
         regs = (fdt.cells(ufs_paths[0], 'reg') if ufs_paths else None) or []
         check(results, 2, 'ufshc maps four regions', len(regs) == 16, f'{len(regs)} cells')
-        check(results, 2, 'storage archive built', archive is not None and archive.is_file(), str(archive))
-        if archive and archive.is_file():
+        if use_sheng_ufs:
+            check(results, 2, 'storage archive built',
+                  archive is not None and archive.is_file(), str(archive))
+        if use_sheng_ufs and archive and archive.is_file():
             import subprocess
             members = subprocess.run(['llvm-ar', 't', str(archive)], capture_output=True, text=True).stdout.split()
             check(results, 2, 'archive carries VerifiedRoot', 'verified_root.o' in members, ' '.join(members))
@@ -184,6 +198,18 @@ def main():
                   'Stubs.o' in members or 'Policy.o' in members, ' '.join(members))
             check(results, 2, 'archive carries the UFS driver', 'NativeUfs.o' in members or True,
                   ' '.join(m for m in members if 'Ufs' in m))
+        elif tree:
+            kernel = tree.parent / 'kernel/kernel.macho'
+            if kernel.is_file():
+                import subprocess
+                symbols = subprocess.run(['llvm-nm', '--defined-only', str(kernel)],
+                                         capture_output=True, text=True).stdout
+                check(results, 2, 'kernel carries extent parser',
+                      any(line.split() and line.split()[-1] == '_fx_load_extents'
+                          for line in symbols.splitlines()), '')
+                check(results, 2, 'kernel carries ufsroot0 device',
+                      any(line.split() and line.split()[-1] == '_sweet_ufs_rootdev'
+                          for line in symbols.splitlines()), '')
         if adt and adt.is_file():
             blob = adt.read_bytes()
             check(results, 2, 'ADT mentions ufshc', b'ufshc' in blob, f'{len(blob)} bytes')

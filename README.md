@@ -199,6 +199,7 @@ back the stock `efisp` (`sha256 4df18359...`) restores the vendor boot chain.
 
 - [docs/TASKS.md](docs/TASKS.md) — consolidated task and status log
 - [docs/INTEGRATION-2026-11-22.md](docs/INTEGRATION-2026-11-22.md) — reproducible framework patch and integration checkpoint
+- [docs/SWEET-ROOT-2026-11-22.md](docs/SWEET-ROOT-2026-11-22.md) — current data-a-live extent/HFSX root, built artifacts and device gate
 - [docs/STATUS-2026-11-22.md](docs/STATUS-2026-11-22.md) — current acceptance boundary and remaining work
 - [docs/DEVICE-TEST-2026-11-22.md](docs/DEVICE-TEST-2026-11-22.md) — real-device 9008 write and reset record
 - [docs/STATUS-2026-11-11.md](docs/STATUS-2026-11-11.md) — stage-by-stage status

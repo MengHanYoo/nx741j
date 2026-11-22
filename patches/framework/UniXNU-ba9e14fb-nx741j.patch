@@ -1,5 +1,16 @@
+diff --git a/.gitignore b/.gitignore
+index ba4c78c40f6b233d59d29941303bf448eae90c4d..1d36de7ad77ab07fa79995a66b2c9d08bc4b9d0f 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -53,3 +53,6 @@ unixnu.local.toml
+ /drivers/
+ /kits/
+ /.github/workflows.disabled/
++
++# EDK2 build output (package/build.sh) and QEMU smoke artifacts
++package/Build/
 diff --git a/components.toml b/components.toml
-index 505cf963843593df87855a9e44ccf0d85fe4b6e5..195ae523a2c1b0cfe3d1e4c2fa15b9dfd9cf1279 100644
+index 505cf963843593df87855a9e44ccf0d85fe4b6e5..983a9ea50d4351248f3fdd5726f8ccb095a8d5f7 100644
 --- a/components.toml
 +++ b/components.toml
 @@ -6,10 +6,10 @@ kind = "driver"
@@ -51,16 +62,23 @@ index 505cf963843593df87855a9e44ccf0d85fe4b6e5..195ae523a2c1b0cfe3d1e4c2fa15b9df
  path = "drivers/AdrenoMetal"
  hardware = ["Turnip Darwin backend", "kernel GPU user-client ABI"]
  os_abi = ["ipados-17.7.11-21H461"]
-@@ -126,7 +126,7 @@ kind = "driver"
+@@ -126,10 +126,13 @@ kind = "driver"
  function = "SM8550 UFS transport and sheng persistent storage"
  scope = "board"
  repository = "https://github.com/UniXNU/ShengUfs.git"
 -revision = "e2b32cc429e8cf1501161c1d8c517f8994ceb9b2"
-+revision = "99d8bcd3e43dd24fc3c8437c67b5d4cc71ab94d0"
++revision = "fd420df000f43213d9cd019725abff0849c98c72"
  path = "drivers/ShengUfs"
++# The implementation targets the SM8550 controller; an SM8850 board (nx741j) needs its
++# own clock/reset table, which is board_dependencies work, not an ABI difference: the
++# component compiles against ios-16.7.16-20H392, so that profile is listed here.
  hardware = ["SM8550 UFS controller"]
- os_abi = ["ipados-17.7.11-21H461"]
-@@ -148,7 +148,7 @@ kind = "driver"
+-os_abi = ["ipados-17.7.11-21H461"]
++os_abi = ["ipados-17.7.11-21H461", "ios-16.7.16-20H392"]
+ board_dependencies = ["sheng userdata layout", "SM8550 clocks and SMMU"]
+ verified_devices = ["sheng"]
+ dependencies = ["VirtioMmioBlock", "VerifiedRoot"]
+@@ -148,7 +151,7 @@ kind = "driver"
  function = "sheng touch input through IOHIDDevice"
  scope = "board"
  repository = "https://github.com/UniXNU/ShengHidInput.git"
@@ -69,7 +87,7 @@ index 505cf963843593df87855a9e44ccf0d85fe4b6e5..195ae523a2c1b0cfe3d1e4c2fa15b9df
  path = "drivers/ShengHidInput"
  hardware = ["sheng touch event source"]
  os_abi = ["ipados-17.7.11-21H461"]
-@@ -169,7 +169,7 @@ kind = "driver"
+@@ -169,7 +172,7 @@ kind = "driver"
  function = "NT36532 touch protocol and sheng sensor configuration"
  scope = "board"
  repository = "https://github.com/UniXNU/ShengNovatekTouch.git"
@@ -78,7 +96,7 @@ index 505cf963843593df87855a9e44ccf0d85fe4b6e5..195ae523a2c1b0cfe3d1e4c2fa15b9df
  path = "drivers/ShengNovatekTouch"
  hardware = ["Novatek NT36532/NT36532E"]
  os_abi = ["ipados-17.7.11-21H461"]
-@@ -211,10 +211,10 @@ kind = "driver"
+@@ -211,10 +214,10 @@ kind = "driver"
  function = "UEFI GOP framebuffer and MobileFramebuffer integration"
  scope = "display"
  repository = "https://github.com/UniXNU/GopFramebuffer.git"
@@ -91,7 +109,7 @@ index 505cf963843593df87855a9e44ccf0d85fe4b6e5..195ae523a2c1b0cfe3d1e4c2fa15b9df
  board_dependencies = ["framebuffer handoff", "display power hooks"]
  verified_devices = ["sheng"]
  dependencies = []
-@@ -236,7 +236,7 @@ repository = "https://github.com/UniXNU/SoftwareAES.git"
+@@ -236,7 +239,7 @@ repository = "https://github.com/UniXNU/SoftwareAES.git"
  revision = "4a45326da5c2cd6fe6813d79ee43db20805628af"
  path = "drivers/SoftwareAES"
  hardware = ["XNU AES routines"]
@@ -100,7 +118,7 @@ index 505cf963843593df87855a9e44ccf0d85fe4b6e5..195ae523a2c1b0cfe3d1e4c2fa15b9df
  board_dependencies = []
  verified_devices = []
  dependencies = []
-@@ -255,10 +255,10 @@ kind = "driver"
+@@ -255,10 +258,10 @@ kind = "driver"
  function = "AppleKeyStore state and selector handling"
  scope = "os"
  repository = "https://github.com/UniXNU/AppleKeyStoreState.git"
@@ -113,7 +131,7 @@ index 505cf963843593df87855a9e44ccf0d85fe4b6e5..195ae523a2c1b0cfe3d1e4c2fa15b9df
  board_dependencies = ["platform state callbacks"]
  verified_devices = []
  dependencies = []
-@@ -277,7 +277,7 @@ kind = "driver"
+@@ -277,7 +280,7 @@ kind = "driver"
  function = "RAM-backed block device and sparse seed storage"
  scope = "storage"
  repository = "https://github.com/UniXNU/RamBlock.git"
@@ -122,7 +140,7 @@ index 505cf963843593df87855a9e44ccf0d85fe4b6e5..195ae523a2c1b0cfe3d1e4c2fa15b9df
  path = "drivers/RamBlock"
  hardware = ["RAM block backing"]
  os_abi = ["ipados-17.7.11-21H461"]
-@@ -299,7 +299,7 @@ kind = "driver"
+@@ -299,10 +302,10 @@ kind = "driver"
  function = "VirtIO MMIO read-only block transport"
  scope = "protocol"
  repository = "https://github.com/UniXNU/VirtioMmioBlock.git"
@@ -130,8 +148,12 @@ index 505cf963843593df87855a9e44ccf0d85fe4b6e5..195ae523a2c1b0cfe3d1e4c2fa15b9df
 +revision = "4e1013eb8c45077b57f8d38d61b389fe899ea1c3"
  path = "drivers/VirtioMmioBlock"
  hardware = ["VirtIO 1.2 modern MMIO split queues"]
- os_abi = ["ipados-17.7.11-21H461"]
-@@ -343,7 +343,7 @@ kind = "kit"
+-os_abi = ["ipados-17.7.11-21H461"]
++os_abi = ["ipados-17.7.11-21H461", "ios-16.7.16-20H392"]
+ board_dependencies = []
+ verified_devices = []
+ dependencies = []
+@@ -343,7 +346,7 @@ kind = "kit"
  function = "XNU kernelcache prelink and ABI inspection"
  scope = "tool"
  repository = "https://github.com/UniXNU/XnuPrelink.git"
@@ -140,7 +162,7 @@ index 505cf963843593df87855a9e44ccf0d85fe4b6e5..195ae523a2c1b0cfe3d1e4c2fa15b9df
  path = "kits/XnuPrelink"
  hardware = []
  os_abi = []
-@@ -401,7 +401,7 @@ kind = "kit"
+@@ -401,7 +404,7 @@ kind = "kit"
  function = "ARM SMMU translation with 4 KiB pages"
  scope = "controller"
  repository = "https://github.com/UniXNU/ArmSmmu4K.git"
@@ -149,7 +171,7 @@ index 505cf963843593df87855a9e44ccf0d85fe4b6e5..195ae523a2c1b0cfe3d1e4c2fa15b9df
  path = "kits/ArmSmmu4K"
  hardware = ["ARM SMMU", "MMU-500"]
  os_abi = []
-@@ -439,7 +439,7 @@ kind = "kit"
+@@ -439,7 +442,7 @@ kind = "kit"
  function = "Authenticated block reads"
  scope = "storage"
  repository = "https://github.com/UniXNU/VerifiedRoot.git"
@@ -158,7 +180,7 @@ index 505cf963843593df87855a9e44ccf0d85fe4b6e5..195ae523a2c1b0cfe3d1e4c2fa15b9df
  path = "kits/VerifiedRoot"
  hardware = []
  os_abi = []
-@@ -458,7 +458,7 @@ kind = "kit"
+@@ -458,7 +461,7 @@ kind = "kit"
  function = "SM8550 GPU platform operations"
  scope = "soc"
  repository = "https://github.com/UniXNU/UniXNU-sm8550-common.git"
@@ -167,7 +189,7 @@ index 505cf963843593df87855a9e44ccf0d85fe4b6e5..195ae523a2c1b0cfe3d1e4c2fa15b9df
  path = "kits/Sm8550Platform"
  hardware = ["Qualcomm SM8550"]
  os_abi = []
-@@ -478,7 +478,7 @@ kind = "driver"
+@@ -478,7 +481,7 @@ kind = "driver"
  function = "ath12k Wi-Fi transport with MHI and QRTR"
  scope = "controller"
  repository = "https://github.com/UniXNU/Ath12kWifi.git"
@@ -176,7 +198,7 @@ index 505cf963843593df87855a9e44ccf0d85fe4b6e5..195ae523a2c1b0cfe3d1e4c2fa15b9df
  path = "drivers/Ath12kWifi"
  legacy_name = "NativeWifi"
  hardware = ["ath12k PCI devices", "qcc2072, qcn9274, and wcn7850 build inputs"]
-@@ -492,6 +492,46 @@ build_stage = "embedded"
+@@ -492,6 +495,46 @@ build_stage = "embedded"
  build = []
  outputs = []
  
@@ -223,7 +245,7 @@ index 505cf963843593df87855a9e44ccf0d85fe4b6e5..195ae523a2c1b0cfe3d1e4c2fa15b9df
  [[component]]
  id = "ShengPreflight"
  kind = "driver"
-@@ -510,3 +550,23 @@ runtime_identifiers = ["ShengPreflight"]
+@@ -510,3 +553,23 @@ runtime_identifiers = ["ShengPreflight"]
  build_stage = "firmware"
  build = []
  outputs = []
@@ -247,82 +269,1401 @@ index 505cf963843593df87855a9e44ccf0d85fe4b6e5..195ae523a2c1b0cfe3d1e4c2fa15b9df
 +build_stage = "kernel"
 +build = ["build-qcom-baseband.py"]
 +outputs = ["build/qcom-baseband/libQcomBaseband.a"]
-diff --git a/docs/concepts/prelink.md b/docs/concepts/prelink.md
-index 73ace9933ce9759c28afa4b73822593a4e2716db..2b8b1c6d7db7135e680bcc7c66242060209e239d 100644
---- a/docs/concepts/prelink.md
-+++ b/docs/concepts/prelink.md
-@@ -9,6 +9,7 @@ The prelinked kernel combines a kernel built from source with the original Apple
- | Native kernel | `out/<device>/<os_profile>/<config>/tree/build/xnu/ios-obj/DEVELOPMENT_ARM64_BCM2837/mach.development.bcm2837.unstripped.noctf` |
- | Original kernelcache | IPSW `KernelCache`, or `--kernelcache FILE` |
- | Component list | `[kernel.prelink] roots` |
-+| Excluded components | `[kernel.prelink] exclude`, or repeated `--exclude BUNDLE_ID` |
- | Slide | `[kernel.prelink] slide` |
- | Early security initializer | `[kernel.prelink] early_security_init` |
+diff --git a/devices.toml b/devices.toml
+index 7e3b753a7aa8849efa982875ac0129d27ed8cfd2..1abd2e6012e8fd7bdc1e612ea14a4444ee729046 100644
+--- a/devices.toml
++++ b/devices.toml
+@@ -5,7 +5,3 @@ name = "sheng"
+ repository = "UniXNU/UniXNU-sheng"
+ revision = "516a780473a2ac59c8b438e132bb60204dda9e22"
  
-@@ -20,7 +21,7 @@ The kernelcache is the LZFSE payload of the `KernelCache` IM4P. The arm64 slice
- 
- 1. Parse the native and original Mach-O images.
- 2. Read `__PRELINK_INFO` from the original kernelcache.
--3. Select the components named in `roots` plus the kernel interfaces they import.
-+3. Select the components named in `roots` plus the kernel interfaces they import, omitting `exclude`.
- 4. Copy the selected component segments into the native kernel's empty coalesced segments.
- 5. Rebind every pointer that references a selected component.
- 6. Apply the slide to every selected address.
-@@ -47,6 +48,8 @@ The prelink copies each component segment into the matching range. The ranges ke
- 
- The native kernel imports symbols from the original components. The prelink resolves each import to the component export and writes the slid address at the import site.
- 
-+When a selected component points into an excluded bundle, the target must have one unique matching export in the native kernel. The report records that binding as `kernel`; an unknown or ambiguous native export stops emission.
+-[[device]]
+-name = "nx741j"
+-repository = "UniXNU/UniXNU-nx741j"
+-revision = "7d9601ef81994f2444d5fc6a4bdc7443f940de77"
+diff --git a/docs/.vitepress/config.mts b/docs/.vitepress/config.mts
+index 1cd6a673170d2df812ff15396f490f679aa2bd4f..b224738779d1eeb1b444a32c2e10cefb47655ca9 100644
+--- a/docs/.vitepress/config.mts
++++ b/docs/.vitepress/config.mts
+@@ -141,6 +141,7 @@ export default withMermaid(defineConfig({
+               items: [
+                 { text: '设备列表', link: '/zh/devices/' },
+                 { text: '小米平板 6S Pro（sheng）', link: '/zh/devices/sheng' },
++                { text: '努比亚 Z80 Ultra（NX741J）', link: '/zh/devices/nx741j' },
+                 { text: 'sheng 日志抓取示例', link: '/zh/devices/sheng-unattended-test' },
+                 {
+                   text: '社区移植',
+@@ -282,6 +283,7 @@ export default withMermaid(defineConfig({
+           items: [
+             { text: 'Devices', link: '/devices/' },
+             { text: 'Xiaomi Pad 6S Pro (sheng)', link: '/devices/sheng' },
++            { text: 'Nubia Z80 Ultra (NX741J)', link: '/devices/nx741j' },
+             { text: 'sheng log capture example', link: '/devices/sheng-unattended-test' },
+             {
+               text: 'Community ports',
+diff --git a/docs/devices/index.md b/docs/devices/index.md
+index 02ab845e02d79b8aa8b1338f6aa710db37314d00..ac4a73e0704639ac4117b2cb513aad4009a3092a 100644
+--- a/docs/devices/index.md
++++ b/docs/devices/index.md
+@@ -38,6 +38,7 @@ Community ports are maintained by the people listed below. Each page distinguish
+ | [POCO X7 / Redmi Note 14 Pro 5G (malachite)](/devices/malachite) | MT6878 | UEFI works, UFS works, XNU rootfs loaded; USB, touch and the rest not implemented | ghidgdsr |
+ | [Brave Ark tablet (braveark)](/devices/braveark) | SM8635 | XNU BSD init on 8 CPUs; iPadOS root in progress | tattwamashi |
+ | [Xiaomi Pad 8 Pro (piano)](/devices/piano) | SM8750 | Kernel builds and prelinks in CI; not run on the tablet | code002-2 |
++| [Nubia Z80 Ultra (NX741J)](/devices/nx741j) | SM8850 | Kernel, firmware and EFI loader build; boots Mu-Silicium from efisp; XNU entry pending | MengHanYoo |
+ | [Xiaomi 13 Pro (nuwa)](/devices/nuwa) | SM8550 | Hardware XNU output through IODTNVRAM; reboot under investigation | wh1stl3 |
+ | [OnePlus 13T (oneplus13t)](/devices/oneplus13t) | SM8750 | Root and system UI on hardware; touch pending | IssacL04 |
+ | [OnePlus Pad 2 Pro (erhai)](/devices/erhai) | SM8750 | XNU entry bring-up; root and userland not configured | wally001012-cyber |
+diff --git a/docs/devices/nx741j.md b/docs/devices/nx741j.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..9d4271249e6aef705c1b689f07d5b39e80a6d468
+--- /dev/null
++++ b/docs/devices/nx741j.md
+@@ -0,0 +1,14 @@
++# Nubia Z80 Ultra (NX741J)
 +
- The plan records every binding:
- 
- ```json
-@@ -85,6 +88,7 @@ The prelink emits a sparse index. The kernel patch `native-4k-bootstrap-capacity
- | Field | Meaning |
- | --- | --- |
- | `components` | Original bundle identifiers included |
-+| `excluded_components` | Original bundle identifiers omitted from the closure |
- | `kernel_interfaces` | Components that export kernel interfaces |
- | `bindings` | Import sites and slid targets |
- | `instruction_inventory` | PC-relative encodings and inline data |
-diff --git a/docs/zh/concepts/prelink.md b/docs/zh/concepts/prelink.md
-index 41ae5e9a105e1884a79a1c14b35d6cf8ec1546f2..3d5cc5af9e4b5d6e93f413c9bb5eb9a883eca7c7 100644
---- a/docs/zh/concepts/prelink.md
-+++ b/docs/zh/concepts/prelink.md
-@@ -9,6 +9,7 @@
- | 原生内核 | `out/<device>/<os_profile>/<config>/tree/build/xnu/ios-obj/DEVELOPMENT_ARM64_BCM2837/mach.development.bcm2837.unstripped.noctf` |
- | 原始 kernelcache | IPSW `KernelCache`，或 `--kernelcache FILE` |
- | 组件列表 | `[kernel.prelink] roots` |
-+| 排除组件 | `[kernel.prelink] exclude`，或重复传入 `--exclude BUNDLE_ID` |
- | slide | `[kernel.prelink] slide` |
- | 早期安全初始化器 | `[kernel.prelink] early_security_init` |
- 
-@@ -20,7 +21,7 @@ kernelcache 是 `KernelCache` IM4P 的 LZFSE 负载。选出 arm64 切片，并
- 
- 1. 解析原生和原始 Mach-O。
- 2. 读取原始 kernelcache 的 `__PRELINK_INFO`。
--3. 选择 `roots` 中的组件及其导入的内核接口。
-+3. 选择 `roots` 中的组件及其导入的内核接口，同时跳过 `exclude`。
- 4. 把选中的组件段复制到原生内核的空合并段。
- 5. 重绑定引用选中组件的指针。
- 6. 对所有选中地址应用 slide。
-@@ -47,6 +48,8 @@ kernelcache 是 `KernelCache` IM4P 的 LZFSE 负载。选出 arm64 切片，并
- 
- 原生内核从原始组件导入符号。预链接把每个导入解析为组件导出，并在导入位置写入 slide 后的地址。
- 
-+选中的组件如果指向已排除的 bundle，该目标必须在原生内核中恰好对应一个导出。报告把这种绑定记为 `kernel`；找不到或存在歧义时停止生成。
++[Device repository](https://github.com/MengHanYoo/nx741j/tree/unixnu-nx741j),
++[porting steps](/porting/steps),
++[firmware](https://github.com/MengHanYoo/uefi-nx741j).
 +
- 计划记录每个绑定：
++The device repository owns board drivers, hardware configuration and the
++porting record. Use the [record guide](/porting/records) with the sections below.
++
++Target: Qualcomm SM8850 (Kaanapali / canoe), iOS 16.7.16 (20H392), XNU 8796.141.3,
++arm64, 4 KiB pages. The current boot path uses a self-built EFI loader in the
++`efisp` partition that reads the payload and the firmware volume from `rawdump`.
++
++<!--@include: ./records/nx741j.md-->
+diff --git a/docs/devices/records/nx741j.md b/docs/devices/records/nx741j.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..e41fe3d5f39773c483cb9ba942f5a3dd8914b01f
+--- /dev/null
++++ b/docs/devices/records/nx741j.md
+@@ -0,0 +1,645 @@
++Nubia Z80 Ultra (NX741J), Qualcomm SM8850 / Kaanapali (canoe), 8 cores (6+2), Adreno 840, UFS KLUGG8NHKB, panel bf375/rm692h5. Target is iOS 16.7.16 (20H392) with XNU 8796.141.3, arm64, 4 KiB pages.
++
++Source record: [porting.toml](https://github.com/MengHanYoo/nx741j/blob/d09054eda9fc114711af574436594a1aeafde30a/porting.toml), `d09054eda9fc114711af574436594a1aeafde30a`.
++
++This page is generated from the device record.
++
++| Area | Status |
++| --- | --- |
++| [Configuration](#configuration) | `implemented` |
++| [Firmware and boot](#firmware) | `implemented` |
++| [CPU and interrupts](#cpu) | `implemented` |
++| [Memory and DMA](#memory) | `implemented` |
++| [Storage and root](#storage) | `implemented` |
++| [Display](#display) | `implemented` |
++| [Input](#input) | `planned` |
++| [GPU](#gpu) | `planned` |
++| [Network](#network) | `planned` |
++| [Audio](#audio) | `planned` |
++| [Power](#power) | `planned` |
++| [Image assembly](#packaging) | `host-verified` |
++| [Diagnostics](#diagnostics) | `implemented` |
++| [security](#security) | `implemented` |
++
++## Configuration {#configuration}
++
++`implemented`
++
++Components: `ArmDTPlatform`.
++
++### Hardware and dependencies
++
++- SoC SM8850 (Kaanapali, codename canoe): 8 cores in a 6+2 layout, GICv3, 4 KiB pages
++- iOS 16.7.16 (20H392) is the only IPSW available for this device, so the target is fixed at xnu 8796.141.3
++- UniXNU profile pair: profiles/arch/arm64 with profiles/os/ios-16.7.16-20H392
++- Shared SoC support in UniXNU-sm8850-common (soc.toml, dtsi, configs, XNU series)
++
++### Configuration
++
++- board.toml: soc = "SM8850", soc_source = "sm8850", os_profile = "ios-16.7.16-20H392", kit = "nx741j"
++- board.toml [components]: ArmDTPlatform, ArmCpu, SoftwareAES, XnuPrelink, DarwinBoot, GopFramebuffer (the resolver adds no further dependencies for this set)
++- configs/nx741j_defconfig: CONFIG_XNU_SOURCE_CORECRYPTO14/PTHREAD, ARM_DT_PLATFORM, ARMCPU, CRYPTO_BOOTSTRAP=prelinked; native UFS and Adreno disabled
++- unixnu.lock pins xnu 1b191cb5, libpthread cf9e1c7e (486.100.11), sm8850 825a5304 and the Apple reference sources
++
++### Procedure
++
++- cd UniXNU &amp;&amp; ./unixnu defconfig nx741j_defconfig -D ../UniXNU-nx741j
++- ./unixnu fetch -D ../UniXNU-nx741j
++- ./unixnu status --json -D ../UniXNU-nx741j
++- ./unixnu tree -D ../UniXNU-nx741j
++
++### Development findings
++
++- The arch profile's [kernel].archives lists component:SoftwareAES, so the board has to select that component or the archive plan aborts with 'component SoftwareAES is not selected'.
++- A local sm8850 override in local.toml keeps the source unpinned and makes status report 'not reproducible'; the repository is mirrored into the host source cache and fetched through feeds.toml instead.
++- The libpthread reference must match the 8796 kernel generation: 519.120.4 calls proc_get_jit_entitled, which 8796's pthread_callbacks_s does not define.
++
++### Completion criteria
++
++- status --json resolves device, OS profile, configuration, module sources and output directory
++- unixnu.lock pins every source, including the SoC repository
++- status reports no 'not reproducible' source
++
++### Current limits
++
++- Only the ios-16.7.16-20H392 profile is qualified; no second OS profile is maintained
++- porting.toml follows the record format; board.toml keeps the schema 2 device configuration
++
++### Next action
++
++- Re-run status --json after every board.toml or feed edit and commit unixnu.lock with the change
++
++### Evidence
++
++- `source`: [Board, component, kernel, firmware, payload and boot image inputs](https://github.com/MengHanYoo/nx741j/blob/d09054eda9fc114711af574436594a1aeafde30a/board.toml)
++- `source`: [Resolved source commits including sm8850 825a5304 and libpthread cf9e1c7e](https://github.com/MengHanYoo/nx741j/blob/d09054eda9fc114711af574436594a1aeafde30a/unixnu.lock)
++- `source`: [Kernel CONFIG_XNU_* values consumed by the kernel build script](https://github.com/MengHanYoo/nx741j/blob/d09054eda9fc114711af574436594a1aeafde30a/configs/nx741j_defconfig)
++
++## Firmware and boot {#firmware}
++
++`implemented`
++
++Components: `DarwinBoot`.
++
++### Hardware and dependencies
++
++- Stock backup ZTEToolBoxParBak_2026.10.24: XBL/ABL, tz, aop, modem, uefi_a and device build strings
++- Firmware volume window 0xFF300000 / 0x400000 and DXE heap 0xB00F0000 / 0x131A0000
++- Board device tree carried inside the FV as FdtBlob (ABL rejects a tree appended to the boot kernel)
++- Vendor UEFI tree uefi-nx741j with Mu-Silicium DXE chain and the board drivers
++
++### Configuration
++
++- board.toml [firmware]: dsc = Platforms/ZTE/nx741jPkg/nx741j.dsc, fd = Build/nx741jPkg/{target}_CLANGPDB/FV/SILICIUM_UEFI.fd
++- DSC [Components] lists UniXNUPkg/Application/UniXNU, UniXNUPkg/Driver/UniXNUDxe and UniXNUPkg/Driver/UniXNURamDiskDxe
++- FDF [FV.FvMain] now packs UniXNURamDiskDxe directly after UniXNUDxe (Depex TRUE, produces BlockIo and DevicePath)
++- APRIORI.inc and DXE.inc already provide DiskIoDxe and FatPkg EnhancedFat for the payload filesystem
++
++### Procedure
++
++- ./unixnu build firmware -D ../UniXNU-nx741j   (UEFI tree from unixnu.local.toml [build] uefi)
++- flash the resulting FD through a boot image or the EDL path
++- inspect the FV with the firmware build log and the FFS directory under Build/nx741jPkg
++
++### Development findings
++
++- UniXNURamDiskDxe was listed in the DSC but missing from the FDF, so the payload volume never got a block device; the FDF entry was added and the firmware rebuilds with it.
++- AdvancedLogDxe is packed: the DSC maps AssertLib, AdvancedLoggerAccessLib, AdvancedLoggerHdwPortLib and QrEncoderLib plus DebugLib=BaseDebugLibAdvancedLogger, and the FDF carries the driver, so Tools -&gt; Advanced Logger pages the firmware log as QR frames.
++- The SEC phase keeps BaseDebugLibSerialPort because SiliciumPkg/Sec/Sec.c calls BaseDebugLibSerialPortConstructor() directly; PEI and DXE use the Advanced Logger, which mirrors to the same SerialPortLib so the panel still shows the log.
++- The layer 1 boot image that reached the panel carried firmware volume 2f8bc430; the later build db122c8a did not come up, so the FD version is a variable that has to be bisected. The current build is 7d820bcb.
++
++### Completion criteria
++
++- SILICIUM_UEFI.fd builds and contains UniXNU, DarwinBoot, the ramdisk block driver and the log exporter
++- firmware reaches the UniXNU menu, the payload volume is visible as a block device, and Tools -&gt; Advanced Logger exports the log as QR frames
++
++### Current limits
++
++- Layer 2 stops at RpmhDxe FAR=0x58 and a TzDxeLA assertion: SMEM contents, the DTB extension and tzapps are missing ABL environment inputs
++- SMEM reads back as zeros, so the DXE chain cannot be validated past the RPMh stage
++
++### Next action
++
++- Rebuild the FD with UniXNURamDiskDxe, flash the layer 1 image and capture the menu log; then bisect the FD build between 2f8bc430 and db122c8a
++
++### Evidence
++
++- `source`: [Firmware files and their stock backup sources](https://github.com/MengHanYoo/nx741j/blob/d09054eda9fc114711af574436594a1aeafde30a/proprietary-files.txt)
++- `source`: [SmemStubDxe and KernelStubDxe responsibilities in the DXE chain](https://github.com/MengHanYoo/nx741j/blob/d09054eda9fc114711af574436594a1aeafde30a/docs/FIRMWARE-DRIVERS.md)
++- `source`: [Section 18 DXE bring-up notes and memory map](https://github.com/MengHanYoo/nx741j/blob/d09054eda9fc114711af574436594a1aeafde30a/docs/PORTING-RECORD.md)
++
++## CPU and interrupts {#cpu}
++
++`implemented`
++
++Components: `ArmCpu`.
++
++### Hardware and dependencies
++
++- 8 cores in two clusters: cluster0 cpu@0..500 (6 cores), cluster1 cpu@10000,10100 (2 cores)
++- MIDR 0x51 / 0x002 (Qualcomm Oryon) on all cores, read from the running device
++- Max frequencies 3.63 GHz (policy0) and 4.61 GHz (policy6) from cpufreq
++- GICv3 distributor and redistributors, ARM generic timer
++
++### Configuration
++
++- dts/board.dts carries the cpu nodes, cpu-map and the mpidr values from the stock DT
++- capacity-dmips-mhz 1792/1894 and dynamic-power-coefficient 238/588 from the stock DT
++- configs/nx741j_defconfig enables CONFIG_XNU_ARMCPU
++
++### Procedure
++
++- compile the board DTS through ./unixnu build payload (ADT generation)
++- build the kernel with ./unixnu build kernel and check the arch timer patch in the series
++
++### Development findings
++
++- The stock DT has no CPU frequency table and no MIDR; both had to be read from the running Android system.
++- L2 cache is per-core on cluster0 and shared through phandle 0x0e on cluster1.
++
++### Completion criteria
++
++- Every enabled CPU reaches its entry checkpoint and local timer interrupts fire on each CPU
++- IPI delivery works between the two clusters
++
++### Current limits
++
++- No on-device checkpoint has been reached yet; the kernel has only been built and linked
++
++### Next action
++
++- Boot the kernel and record the per-CPU entry checkpoints in the diagnostics log
++
++### Evidence
++
++- `source`: [CPU topology, mpidr and capacity values for both clusters](https://github.com/MengHanYoo/nx741j/blob/d09054eda9fc114711af574436594a1aeafde30a/dts/board.dts)
++- `source`: [hardware.cpu section with MIDR, frequencies and cache layout](https://github.com/MengHanYoo/nx741j/blob/d09054eda9fc114711af574436594a1aeafde30a/board.toml)
++
++## Memory and DMA {#memory}
++
++`implemented`
++
++### Hardware and dependencies
++
++- DRAM base 0x80000000, SMEM 0x81D00000 / 0x200000 initialized by XBL (xbl_config_a)
++- DXE heap 0xB00F0000 / 0x131A0000 and the FD window 0xFF300000 / 0x400000
++- 51 reserved regions from the live device tree (splash, oem_vm_region, llcc_lpi_region, lcp_dare_region, ...)
++- Splash region 0xFC800000 / 0x2B00000 used by the panel framebuffer
++
++### Configuration
++
++- board.toml [hardware.memory] and [hardware.reserved] list the regions and their owners
++- dts/board.dts carries the reserved-memory nodes consumed by the ADT generator
++
++### Procedure
++
++- read the live FDT on the device and reconcile every reserved-memory node
++- build the payload so the ADT carries the memory map, then inspect payload.json
++
++### Development findings
++
++- SMEM is set up by XBL before ABL runs, so a firmware path that runs before XBL initialization reads zeros; this is the open layer 2 input.
++- The FD is mapped at 0xFF300000 and the framebuffer region at 0xFC800000; both must not overlap the DXE heap.
++
++### Completion criteria
++
++- All handoff regions are accounted for and the kernel memory map matches the reserved set
++- DMA engines use their allocated ranges with the documented cache policy
++
++### Current limits
++
++- SMEM contents and the DTB extension are still missing, which blocks the RPMh driver in layer 2
++
++### Next action
++
++- Recover the SMEM image from a stock boot or construct it, then re-test the DXE chain
++
++### Evidence
++
++- `source`: [Reserved region inventory and the layer 2 memory map notes](https://github.com/MengHanYoo/nx741j/blob/d09054eda9fc114711af574436594a1aeafde30a/docs/PORTING-RECORD.md)
++- `source`: [hardware.memory and hardware.reserved entries](https://github.com/MengHanYoo/nx741j/blob/d09054eda9fc114711af574436594a1aeafde30a/board.toml)
++
++## Storage and root {#storage}
++
++`implemented`
++
++### Hardware and dependencies
++
++- UFS model KLUGG8NHKB-F0H1, vendor Samsung, revision 0500, boot LUN 4
++- GPT entries: boot_a 119078, uefi_a 6, efisp 748894, vbmeta_a 143706, vendor_boot_a 302310
++- boot_a is 96 MiB (100663296 bytes)
++- Payload volume 64 MiB and the efisp / userdata fallbacks
++
++### Configuration
++
++- board.toml [hardware.storage] records the UFS identity and the partition LBAs
++- board.toml [payload] size_mib = 64 and [partition_strategy] primary = efisp, fallback = userdata FAT
++
++### Procedure
++
++- read the GPT from the running device and confirm each LBA
++- write and read back a boot image through the Android root path (dd to /dev/block/by-name/boot_a) and compare SHA-256
++
++### Development findings
++
++- The 9008 firehose of the current XBL rejects the generic programmer with 'Tool doesn't come from ZTE', so the working write path is Android root dd; the official 9008 rescue package carries its own programmer for full recovery.
++- boot_a accepts a 1.37 MB boot image (335 x 4096) and reads back bit-identical.
++
++### Completion criteria
++
++- SCSI capacity, GPT and known blocks read correctly
++- The configured volume mounts and launchd starts; writes survive reboot
++
++### Current limits
++
++- No XNU UFS driver yet: ShengUfs targets SM8550 and needs an SM8850 clock table plus ArmSmmu4K
++
++### Next action
++
++- Port the UFS driver to the SM8850 clock and reset set once layer 2 produces a menu
++
++### Evidence
++
++- `source`: [hardware.storage LBAs, UFS model and payload size](https://github.com/MengHanYoo/nx741j/blob/d09054eda9fc114711af574436594a1aeafde30a/board.toml)
++- `source`: [GPT inventory and partition strategy](https://github.com/MengHanYoo/nx741j/blob/d09054eda9fc114711af574436594a1aeafde30a/docs/PORTING-RECORD.md)
++
++## Display {#display}
++
++`implemented`
++
++Components: `GopFramebuffer`.
++
++### Hardware and dependencies
++
++- Panel bf375 / rm692h5 6.8 inch, native 1440x3200, DSI command mode with dual 1216x2688 modes (120/60 fps)
++- UEFI GOP must be 1216x2688; the framebuffer region is 0xFC800000 / 0x2B00000
++- ZTE private dimming commands (zte,mdss-dsi-dim-on-commands)
++
++### Configuration
++
++- board.toml [hardware.display] pins panel name, resolution and GOP geometry
++- board.toml [components] selects GopFramebuffer so the kernel consumes the GOP the firmware publishes
++
++### Procedure
++
++- confirm the GOP mode in the firmware menu (1216x2688)
++- build the kernel and check that GopFramebuffer is linked from the selected component
++
++### Development findings
++
++- The 10-26 CI line carried a panel geometry fix (1216x2688); that geometry must not regress to 1220x2656.
++- UEFI side output is confirmed; the XNU side has not been started.
++
++### Completion criteria
++
++- The panel shows the menu at 1216x2688 and the kernel keeps the same geometry
++
++### Current limits
++
++- XNU display and brightness are not started
++
++### Next action
++
++- Bring up GopFramebuffer after the kernel boots and record the first paint
++
++### Evidence
++
++- `source`: [Panel, GOP geometry and framebuffer region](https://github.com/MengHanYoo/nx741j/blob/d09054eda9fc114711af574436594a1aeafde30a/board.toml)
++
++## Input {#input}
++
++`planned`
++
++### Hardware and dependencies
++
++- Synaptics TCM touch on SPI, reset GPIO &lt;0x33 0x42 0x00&gt;, input device synaptics_tcm_touch
++- Goodix fingerprint as a separate input device
++- Buttons through ButtonsDxe in the firmware tree
++
++### Configuration
++
++- board.toml [hardware.touch] records the bus, GPIO and device name
++- component_plan defers ShengHidInput and QcomGeniSpi until a TCM protocol layer exists
++
++### Procedure
++
++- add a Synaptics TCM protocol driver on top of QcomGeniSpi and register it with ShengHidInput
++- verify pointer events in the menu and in the kernel
++
++### Development findings
++
++- ShengNovatekTouch implements Novatek NT36532, not the Synaptics TCM protocol this panel uses.
++
++### Completion criteria
++
++- Touch coordinates map to the 1216x2688 menu and to the kernel input device
++
++### Current limits
++
++- No touch protocol driver exists for this panel yet
++
++### Next action
++
++- Write the TCM protocol layer and wire it into ShengHidInput
++
++### Evidence
++
++Collect evidence using the next action.
++
++## GPU {#gpu}
++
++`planned`
++
++### Hardware and dependencies
++
++- Adreno 840, firmware gen80200 (aqe.fw, sqe.fw, gmu.bin, zap.mbn), GMEM 18 MiB
++- Chip id 0x44050a01 expected by the driver
++
++### Configuration
++
++- board.toml [hardware.gpu] records the model and firmware; native Adreno is disabled in the defconfig
++- component_plan defers Adreno740, AdrenoPM4, AdrenoFirmware and AdrenoMetal until the 840 port exists
++
++### Procedure
++
++- port the Adreno 740 interfaces to the 840 generation and keep the Metal front end on metal2vulkan plus Turnip
++
++### Development findings
++
++- The kernel side was verified on the earlier CI lineage, but only with wallpaper black and 13-30 fps; that is not a device-qualified state.
++
++### Completion criteria
++
++- GPU firmware loads, submissions complete and fences retire, then Metal presents a frame
++
++### Current limits
++
++- No Adreno 840 port; the deferred components target A740
++
++### Next action
++
++- Start from the Adreno740 interface and add the gen80200 firmware and GMEM layout
++
++### Evidence
++
++Collect evidence using the next action.
++
++## Network {#network}
++
++`planned`
++
++### Hardware and dependencies
++
++- WCN7850 over PCIe (17cb:110e), PCIe SM registers at 0x1D07000
++- No WLAN or BT driver exists in the firmware tree
++
++### Configuration
++
++- board.toml [hardware.wireless] records the chip and the PCIe identity
++- component_plan defers Ath12kWifi and QcaBluetooth until the PCIe host and platform operations exist
++
++### Procedure
++
++- add the PCIe host node and platform operations, then bring up Ath12kWifi and QcaBluetooth
++
++### Development findings
++
++- ath12k supports wcn7850, so the driver choice is correct; the missing part is the PCIe host on this board.
++
++### Completion criteria
++
++- Firmware download succeeds, the interface associates and packets move
++
++### Current limits
++
++- Blocked behind the platform and PCIe host work; does not block the boot chain
++
++### Next action
++
++- Add the PCIe host node and platform clocks after layer 2 produces a menu
++
++### Evidence
++
++Collect evidence using the next action.
++
++## Audio {#audio}
++
++`planned`
++
++### Hardware and dependencies
++
++- SM8850 ADSP with firmware version from the stock backup
++- Onboard codec and the DSP audio routes used by Android
++
++### Configuration
++
++- No audio component is selected; the DSP, codec and routing still have to be chosen
++
++### Procedure
++
++- select an audio component, add the DSP firmware and the codec routes, then verify playback and capture
++
++### Development findings
++
++- Audio depends on the DSP and power framework, which both come after the RPMh and platform work.
++
++### Completion criteria
++
++- Playback and capture work through the selected codec and DSP routes
++
++### Current limits
++
++- Not started; blocked by the same platform and power inputs as the rest of the SoC bring-up
++
++### Next action
++
++- Read the ADSP firmware version from the stock image and pick the component
++
++### Evidence
++
++Collect evidence using the next action.
++
++## Power {#power}
++
++`planned`
++
++### Hardware and dependencies
++
++- RPMh, SPMI, PMIC, clock and interconnect controllers under SM8850
++- PMIC rails and the regulator set from the stock device tree
++
++### Configuration
++
++- board.toml [hardware.firmware] records the firmware versions; the power framework is not selected yet
++- component_plan defers Sm8550Platform until it is rewritten for SM8850 (soc repository kits/Sm8850Platform)
++
++### Procedure
++
++- complete RpmhDxe in the firmware export, then port the platform operations to SM8850
++
++### Development findings
++
++- Layer 2 currently fails at RpmhDxe (FAR=0x58) because the RPMh register set needs the SMEM contents that XBL normally provides.
++
++### Completion criteria
++
++- Regulators, clocks and power domains come up and the SoC leaves the boot state
++
++### Current limits
++
++- Blocked at RpmhDxe in layer 2; no SM8850 platform operations exist
++
++### Next action
++
++- Provide the SMEM contents and finish the RPMh driver, then start the SM8850 platform port
++
++### Evidence
++
++Collect evidence using the next action.
++
++## Image assembly {#packaging}
++
++`host-verified`
++
++Components: `XnuPrelink`.
++
++### Hardware and dependencies
++
++- Self-built XNU kernel (8796.141.3) and the original kernelcache matching the profile pin (2ec297ba)
++- Trust cache bundle from the IPSW, chip id 207 and a non-zero unique chip id
++- Boot image inputs: FD, compiled board DTB, payload volume 64 MiB, kernel args -v serial=3
++- xnu 1b191cb5 with the 63-patch series, including the two XnuPrelink kit patches
++
++### Configuration
++
++- board.toml [kernel.prelink]: kernel = build/xnu/ios-obj/DEVELOPMENT_ARM64_BCM2837/mach.development.bcm2837, roots AppleARMPlatform + apfs, early_security_init empty
++- board.toml [payload]: volume NX741J, 64 MiB, loader firmware, kernel_args ["-v", "serial=3"], two accepted trust cache hashes
++- board.toml [bootimg.image]: base 0x80000000, kernel_offset 0x8000, tags_offset 0x1e00000, pagesize 4096, header_version 4 (TOML integers)
++- scripts/package.sh runs deps, preflight, patches, build, pack and verify and writes package.manifest.json
++
++### Procedure
++
++- ./unixnu build kernel -D ../UniXNU-nx741j
++- ./unixnu build payload -D ../UniXNU-nx741j
++- ./unixnu bootimg -D ../UniXNU-nx741j --ramdisk &lt;payload.img&gt;
++- ./scripts/package.sh --no-deps
++
++### Development findings
++
++- unixnu build kernel exits 0 from a freshly cloned tree with all 63 patches applied: 856 compile records, eight archive builders, link and prelink.
++- kernel.macho is 51,691,520 bytes and the prelink report lists 11 components with 23,833 bindings, but abi_qualified and runtime_qualified are both false, so it is an experimental candidate.
++- The bootimg values must be TOML integers; quoted hex strings fail in verify with a TypeError, and local.toml ramdisk="none" silently drops the payload.
++- The 1.37 MB boot image written to boot_a reads back bit-identical, but the firmware volume it carries (db122c8a) did not reach the menu, while the earlier 2f8bc430 image did.
++
++### Completion criteria
++
++- package.sh produces kernel.macho, payload.img, boot.img and package.manifest.json with matching hashes
++- The image boots the firmware menu on the device
++
++### Current limits
++
++- early_security_init is empty, so AMFI does not run its early initializer
++- runtime_qualified is false; the prelink has not been validated on hardware
++- mockfs is disabled because this snapshot cannot produce the compile records its fixture builder reads
++
++### Next action
++
++- Rebuild the boot image with the known-good firmware volume and bisect the FD regression
++
++### Evidence
++
++- `host`: [Build exits 0 from a fresh clone with 63 patches, 856 compile records and a 51,691,520-byte kernel.macho](https://github.com/MengHanYoo/nx741j/blob/d09054eda9fc114711af574436594a1aeafde30a/docs/HANDOFF-2026-11-07.md)
++  Command: `EXTRA_MAKE_ARGS=-O ./unixnu build kernel -D ../UniXNU-nx741j`. Revision: `32b9855fb815cf2f33f845578a622ab0b6704b72`.
++- `host`: [Steps preflight, patches, build, pack and verify pass and package.manifest.json is written](https://github.com/MengHanYoo/nx741j/blob/d09054eda9fc114711af574436594a1aeafde30a/scripts/package.sh)
++  Command: `./scripts/package.sh --no-deps`. Revision: `32b9855fb815cf2f33f845578a622ab0b6704b72`.
++- `source`: [Prelink, payload and boot image inputs](https://github.com/MengHanYoo/nx741j/blob/d09054eda9fc114711af574436594a1aeafde30a/board.toml)
++
++## Diagnostics {#diagnostics}
++
++`implemented`
++
++### Hardware and dependencies
++
++- Firmware output goes to the panel through FrameBufferSerialPortLib because the Android kernel disables the serial console (console=ttynull, geni_serial.con_enabled=0)
++- Build logs under out/nx741j/ios-16.7.16-20H392/nx741j/logs and the XNU compile records
++- Stock boot backups and the Android root dd path as the recovery route
++
++### Configuration
++
++- kernel_args -v serial=3 in the payload; firmware menu holds the log pages
++- AdvancedLogDxe packed with the Advanced Logger buffer (256 pages), PcdUniXNUDeviceModel = NX741J for the export filename, and payload [payload] tools = true so the Tools menu exists
++
++### Procedure
++
++- build with EXTRA_MAKE_ARGS=-O so parallel make output stays grouped per target
++- on failure grep the log for ': error:' with the target name, then reproduce single-threaded
++- recover the device by flashing the stock boot image through Android root dd and comparing SHA-256
++
++### Development findings
++
++- Without -O the parallel log interleaves and hides error lines; that is what made the bsd failure look silent.
++- Old objects and work trees survive pin changes: .cache/libpthread-work and build/xnu/ios-obj must be removed when a source pin changes.
++- The 9008 path needs a ZTE-signed programmer for program commands; the official rescue package carries it, and power commands work with the generic one.
++
++### Completion criteria
++
++- Every failed stage leaves a log with the failing target and a reproducible command
++- Recovery from a bad boot image restores a booting device
++
++### Current limits
++
++- The QR exporter has not been exercised on hardware yet; the first capture still has to be scanned with OneSend
++
++### Next action
++
++- Flash the rebuilt image, open Tools -&gt; Advanced Logger and scan the frames with OneSend before the kernel handoff
++
++### Evidence
++
++- `source`: [Eight failure classes with root causes and the recovery procedure](https://github.com/MengHanYoo/nx741j/blob/d09054eda9fc114711af574436594a1aeafde30a/docs/HANDOFF-2026-11-07.md)
++
++## security {#security}
++
++`implemented`
++
++Components: `SoftwareAES`.
++
++### Hardware and dependencies
++
++- Static trust cache 087-86593-047.dmg.trustcache with SHA-256 9cc478fe accepted by the payload
++- Chip id 207 and a non-zero unique chip id for the ADT platform identity
++- AMFI runs in platform code policy through /chosen/amfi-only-platform-code
++
++### Configuration
++
++- board.toml [payload] trust_cache_sha256 lists the two accepted hashes; the local input points at the extracted trust cache
++- board.toml [payload.adt] chip_id 207 and unique_chip_id required
++- SoftwareAES selected so the arch archive list resolves and the AES bindings come from source
++
++### Procedure
++
++- compare payload.json trust_cache_sha256 with the board list after every build
++- keep a non-zero unique chip id in the local build inputs for payload packaging
++
++### Development findings
++
++- The trust cache and the ADT identity are already enforced by the payload build; a mismatch fails the build rather than the device.
++- early_security_init stays empty because the original AMFI initializer address in this kernelcache has not been identified, so the early initializer does not run.
++
++### Completion criteria
++
++- Trust cache and ADT identity match the device and the kernel reaches the early security stage
++
++### Current limits
++
++- AMFI early initialization is not configured yet
++- The unique chip id in the local inputs is a placeholder used to exercise the packaging path
++
++### Next action
++
++- Find the AppleMobileFileIntegrity initializer address in kernelcache 2ec297ba and set early_security_init
++
++### Evidence
++
++- `source`: [Trust cache hashes, chip id and unique chip id inputs](https://github.com/MengHanYoo/nx741j/blob/d09054eda9fc114711af574436594a1aeafde30a/board.toml)
++- `source`: [Prelink security notes and the early initializer gap](https://github.com/MengHanYoo/nx741j/blob/d09054eda9fc114711af574436594a1aeafde30a/docs/HANDOFF-2026-11-07.md)
+diff --git a/docs/zh/devices/index.md b/docs/zh/devices/index.md
+index b3ee2779120e092f2a61d01cc982a7fa50589e49..a0605c801fc0971d206c9ae1be531058ec4482c1 100644
+--- a/docs/zh/devices/index.md
++++ b/docs/zh/devices/index.md
+@@ -135,3 +135,4 @@
+ [sheng 页面](/zh/devices/sheng)记录小米平板 6S Pro 移植。它是一个设备条目。[Novatek 触控驱动](/zh/drivers/sheng-novatek-touch)把 sheng 的触控驱动作为内置 XNU 驱动的完整示例。
  
- ```json
-@@ -85,6 +88,7 @@ kernelcache_sha256 = "..."
- | 字段 | 含义 |
- | --- | --- |
- | `components` | 包含的原始 bundle identifier |
-+| `excluded_components` | 从依赖闭包中排除的原始 bundle identifier |
- | `kernel_interfaces` | 导出内核接口的组件 |
- | `bindings` | 导入位置和 slide 后的目标 |
- | `instruction_inventory` | PC 相对编码和内联数据 |
+ 官方设备页由设备仓库的 `porting.toml` 生成，更新流程见[适配记录](/zh/porting/records)。
++| [努比亚 Z80 Ultra（NX741J）](/zh/devices/nx741j) | SM8850 | 内核、固件与 EFI loader 已构建；从 efisp 启动 Mu-Silicium；XNU 入口待完成 | MengHanYoo |
+diff --git a/docs/zh/devices/nx741j.md b/docs/zh/devices/nx741j.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..b86256fd26c42fb333a0556f29b317c07a1922b1
+--- /dev/null
++++ b/docs/zh/devices/nx741j.md
+@@ -0,0 +1,14 @@
++# 努比亚 Z80 Ultra（NX741J）
++
++[设备仓库](https://github.com/MengHanYoo/nx741j/tree/unixnu-nx741j)、
++[移植步骤](/zh/porting/steps)、
++[固件](https://github.com/MengHanYoo/uefi-nx741j)。
++
++设备仓库维护板级驱动、硬件配置和适配记录。结合
++[记录指南](/zh/porting/records)阅读下方对应部分。
++
++目标：高通 SM8850（Kaanapali / canoe）、iOS 16.7.16（20H392）、XNU 8796.141.3、
++arm64、4 KiB 页。当前引导路径是写入 `efisp` 分区的自研 EFI loader：它从 `rawdump`
++读取 payload 与固件卷，再跳入 Mu-Silicium。
++
++<!--@include: ./records/nx741j.md-->
+diff --git a/docs/zh/devices/records/nx741j.md b/docs/zh/devices/records/nx741j.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..879c79c4eac106fb5b96bee090f0254395ca847c
+--- /dev/null
++++ b/docs/zh/devices/records/nx741j.md
+@@ -0,0 +1,645 @@
++Nubia Z80 Ultra (NX741J), Qualcomm SM8850 / Kaanapali (canoe), 8 cores (6+2), Adreno 840, UFS KLUGG8NHKB, panel bf375/rm692h5. Target is iOS 16.7.16 (20H392) with XNU 8796.141.3, arm64, 4 KiB pages.
++
++源记录: [porting.toml](https://github.com/MengHanYoo/nx741j/blob/d09054eda9fc114711af574436594a1aeafde30a/porting.toml), `d09054eda9fc114711af574436594a1aeafde30a`.
++
++本页按设备记录自动生成。记录正文使用英语。
++
++| 部分 | 状态 |
++| --- | --- |
++| [配置](#configuration) | `implemented` |
++| [固件与启动](#firmware) | `implemented` |
++| [CPU 与中断](#cpu) | `implemented` |
++| [内存与 DMA](#memory) | `implemented` |
++| [存储与根卷](#storage) | `implemented` |
++| [显示](#display) | `implemented` |
++| [输入](#input) | `planned` |
++| [GPU](#gpu) | `planned` |
++| [网络](#network) | `planned` |
++| [音频](#audio) | `planned` |
++| [电源](#power) | `planned` |
++| [镜像组装](#packaging) | `host-verified` |
++| [诊断](#diagnostics) | `implemented` |
++| [security](#security) | `implemented` |
++
++## 配置 {#configuration}
++
++`implemented`
++
++组件: `ArmDTPlatform`.
++
++### 硬件与依赖
++
++- SoC SM8850 (Kaanapali, codename canoe): 8 cores in a 6+2 layout, GICv3, 4 KiB pages
++- iOS 16.7.16 (20H392) is the only IPSW available for this device, so the target is fixed at xnu 8796.141.3
++- UniXNU profile pair: profiles/arch/arm64 with profiles/os/ios-16.7.16-20H392
++- Shared SoC support in UniXNU-sm8850-common (soc.toml, dtsi, configs, XNU series)
++
++### 配置
++
++- board.toml: soc = "SM8850", soc_source = "sm8850", os_profile = "ios-16.7.16-20H392", kit = "nx741j"
++- board.toml [components]: ArmDTPlatform, ArmCpu, SoftwareAES, XnuPrelink, DarwinBoot, GopFramebuffer (the resolver adds no further dependencies for this set)
++- configs/nx741j_defconfig: CONFIG_XNU_SOURCE_CORECRYPTO14/PTHREAD, ARM_DT_PLATFORM, ARMCPU, CRYPTO_BOOTSTRAP=prelinked; native UFS and Adreno disabled
++- unixnu.lock pins xnu 1b191cb5, libpthread cf9e1c7e (486.100.11), sm8850 825a5304 and the Apple reference sources
++
++### 操作步骤
++
++- cd UniXNU &amp;&amp; ./unixnu defconfig nx741j_defconfig -D ../UniXNU-nx741j
++- ./unixnu fetch -D ../UniXNU-nx741j
++- ./unixnu status --json -D ../UniXNU-nx741j
++- ./unixnu tree -D ../UniXNU-nx741j
++
++### 开发经验
++
++- The arch profile's [kernel].archives lists component:SoftwareAES, so the board has to select that component or the archive plan aborts with 'component SoftwareAES is not selected'.
++- A local sm8850 override in local.toml keeps the source unpinned and makes status report 'not reproducible'; the repository is mirrored into the host source cache and fetched through feeds.toml instead.
++- The libpthread reference must match the 8796 kernel generation: 519.120.4 calls proc_get_jit_entitled, which 8796's pthread_callbacks_s does not define.
++
++### 完成条件
++
++- status --json resolves device, OS profile, configuration, module sources and output directory
++- unixnu.lock pins every source, including the SoC repository
++- status reports no 'not reproducible' source
++
++### 当前范围
++
++- Only the ios-16.7.16-20H392 profile is qualified; no second OS profile is maintained
++- porting.toml follows the record format; board.toml keeps the schema 2 device configuration
++
++### 下一步
++
++- Re-run status --json after every board.toml or feed edit and commit unixnu.lock with the change
++
++### 证据
++
++- `source`: [Board, component, kernel, firmware, payload and boot image inputs](https://github.com/MengHanYoo/nx741j/blob/d09054eda9fc114711af574436594a1aeafde30a/board.toml)
++- `source`: [Resolved source commits including sm8850 825a5304 and libpthread cf9e1c7e](https://github.com/MengHanYoo/nx741j/blob/d09054eda9fc114711af574436594a1aeafde30a/unixnu.lock)
++- `source`: [Kernel CONFIG_XNU_* values consumed by the kernel build script](https://github.com/MengHanYoo/nx741j/blob/d09054eda9fc114711af574436594a1aeafde30a/configs/nx741j_defconfig)
++
++## 固件与启动 {#firmware}
++
++`implemented`
++
++组件: `DarwinBoot`.
++
++### 硬件与依赖
++
++- Stock backup ZTEToolBoxParBak_2026.10.24: XBL/ABL, tz, aop, modem, uefi_a and device build strings
++- Firmware volume window 0xFF300000 / 0x400000 and DXE heap 0xB00F0000 / 0x131A0000
++- Board device tree carried inside the FV as FdtBlob (ABL rejects a tree appended to the boot kernel)
++- Vendor UEFI tree uefi-nx741j with Mu-Silicium DXE chain and the board drivers
++
++### 配置
++
++- board.toml [firmware]: dsc = Platforms/ZTE/nx741jPkg/nx741j.dsc, fd = Build/nx741jPkg/{target}_CLANGPDB/FV/SILICIUM_UEFI.fd
++- DSC [Components] lists UniXNUPkg/Application/UniXNU, UniXNUPkg/Driver/UniXNUDxe and UniXNUPkg/Driver/UniXNURamDiskDxe
++- FDF [FV.FvMain] now packs UniXNURamDiskDxe directly after UniXNUDxe (Depex TRUE, produces BlockIo and DevicePath)
++- APRIORI.inc and DXE.inc already provide DiskIoDxe and FatPkg EnhancedFat for the payload filesystem
++
++### 操作步骤
++
++- ./unixnu build firmware -D ../UniXNU-nx741j   (UEFI tree from unixnu.local.toml [build] uefi)
++- flash the resulting FD through a boot image or the EDL path
++- inspect the FV with the firmware build log and the FFS directory under Build/nx741jPkg
++
++### 开发经验
++
++- UniXNURamDiskDxe was listed in the DSC but missing from the FDF, so the payload volume never got a block device; the FDF entry was added and the firmware rebuilds with it.
++- AdvancedLogDxe is packed: the DSC maps AssertLib, AdvancedLoggerAccessLib, AdvancedLoggerHdwPortLib and QrEncoderLib plus DebugLib=BaseDebugLibAdvancedLogger, and the FDF carries the driver, so Tools -&gt; Advanced Logger pages the firmware log as QR frames.
++- The SEC phase keeps BaseDebugLibSerialPort because SiliciumPkg/Sec/Sec.c calls BaseDebugLibSerialPortConstructor() directly; PEI and DXE use the Advanced Logger, which mirrors to the same SerialPortLib so the panel still shows the log.
++- The layer 1 boot image that reached the panel carried firmware volume 2f8bc430; the later build db122c8a did not come up, so the FD version is a variable that has to be bisected. The current build is 7d820bcb.
++
++### 完成条件
++
++- SILICIUM_UEFI.fd builds and contains UniXNU, DarwinBoot, the ramdisk block driver and the log exporter
++- firmware reaches the UniXNU menu, the payload volume is visible as a block device, and Tools -&gt; Advanced Logger exports the log as QR frames
++
++### 当前范围
++
++- Layer 2 stops at RpmhDxe FAR=0x58 and a TzDxeLA assertion: SMEM contents, the DTB extension and tzapps are missing ABL environment inputs
++- SMEM reads back as zeros, so the DXE chain cannot be validated past the RPMh stage
++
++### 下一步
++
++- Rebuild the FD with UniXNURamDiskDxe, flash the layer 1 image and capture the menu log; then bisect the FD build between 2f8bc430 and db122c8a
++
++### 证据
++
++- `source`: [Firmware files and their stock backup sources](https://github.com/MengHanYoo/nx741j/blob/d09054eda9fc114711af574436594a1aeafde30a/proprietary-files.txt)
++- `source`: [SmemStubDxe and KernelStubDxe responsibilities in the DXE chain](https://github.com/MengHanYoo/nx741j/blob/d09054eda9fc114711af574436594a1aeafde30a/docs/FIRMWARE-DRIVERS.md)
++- `source`: [Section 18 DXE bring-up notes and memory map](https://github.com/MengHanYoo/nx741j/blob/d09054eda9fc114711af574436594a1aeafde30a/docs/PORTING-RECORD.md)
++
++## CPU 与中断 {#cpu}
++
++`implemented`
++
++组件: `ArmCpu`.
++
++### 硬件与依赖
++
++- 8 cores in two clusters: cluster0 cpu@0..500 (6 cores), cluster1 cpu@10000,10100 (2 cores)
++- MIDR 0x51 / 0x002 (Qualcomm Oryon) on all cores, read from the running device
++- Max frequencies 3.63 GHz (policy0) and 4.61 GHz (policy6) from cpufreq
++- GICv3 distributor and redistributors, ARM generic timer
++
++### 配置
++
++- dts/board.dts carries the cpu nodes, cpu-map and the mpidr values from the stock DT
++- capacity-dmips-mhz 1792/1894 and dynamic-power-coefficient 238/588 from the stock DT
++- configs/nx741j_defconfig enables CONFIG_XNU_ARMCPU
++
++### 操作步骤
++
++- compile the board DTS through ./unixnu build payload (ADT generation)
++- build the kernel with ./unixnu build kernel and check the arch timer patch in the series
++
++### 开发经验
++
++- The stock DT has no CPU frequency table and no MIDR; both had to be read from the running Android system.
++- L2 cache is per-core on cluster0 and shared through phandle 0x0e on cluster1.
++
++### 完成条件
++
++- Every enabled CPU reaches its entry checkpoint and local timer interrupts fire on each CPU
++- IPI delivery works between the two clusters
++
++### 当前范围
++
++- No on-device checkpoint has been reached yet; the kernel has only been built and linked
++
++### 下一步
++
++- Boot the kernel and record the per-CPU entry checkpoints in the diagnostics log
++
++### 证据
++
++- `source`: [CPU topology, mpidr and capacity values for both clusters](https://github.com/MengHanYoo/nx741j/blob/d09054eda9fc114711af574436594a1aeafde30a/dts/board.dts)
++- `source`: [hardware.cpu section with MIDR, frequencies and cache layout](https://github.com/MengHanYoo/nx741j/blob/d09054eda9fc114711af574436594a1aeafde30a/board.toml)
++
++## 内存与 DMA {#memory}
++
++`implemented`
++
++### 硬件与依赖
++
++- DRAM base 0x80000000, SMEM 0x81D00000 / 0x200000 initialized by XBL (xbl_config_a)
++- DXE heap 0xB00F0000 / 0x131A0000 and the FD window 0xFF300000 / 0x400000
++- 51 reserved regions from the live device tree (splash, oem_vm_region, llcc_lpi_region, lcp_dare_region, ...)
++- Splash region 0xFC800000 / 0x2B00000 used by the panel framebuffer
++
++### 配置
++
++- board.toml [hardware.memory] and [hardware.reserved] list the regions and their owners
++- dts/board.dts carries the reserved-memory nodes consumed by the ADT generator
++
++### 操作步骤
++
++- read the live FDT on the device and reconcile every reserved-memory node
++- build the payload so the ADT carries the memory map, then inspect payload.json
++
++### 开发经验
++
++- SMEM is set up by XBL before ABL runs, so a firmware path that runs before XBL initialization reads zeros; this is the open layer 2 input.
++- The FD is mapped at 0xFF300000 and the framebuffer region at 0xFC800000; both must not overlap the DXE heap.
++
++### 完成条件
++
++- All handoff regions are accounted for and the kernel memory map matches the reserved set
++- DMA engines use their allocated ranges with the documented cache policy
++
++### 当前范围
++
++- SMEM contents and the DTB extension are still missing, which blocks the RPMh driver in layer 2
++
++### 下一步
++
++- Recover the SMEM image from a stock boot or construct it, then re-test the DXE chain
++
++### 证据
++
++- `source`: [Reserved region inventory and the layer 2 memory map notes](https://github.com/MengHanYoo/nx741j/blob/d09054eda9fc114711af574436594a1aeafde30a/docs/PORTING-RECORD.md)
++- `source`: [hardware.memory and hardware.reserved entries](https://github.com/MengHanYoo/nx741j/blob/d09054eda9fc114711af574436594a1aeafde30a/board.toml)
++
++## 存储与根卷 {#storage}
++
++`implemented`
++
++### 硬件与依赖
++
++- UFS model KLUGG8NHKB-F0H1, vendor Samsung, revision 0500, boot LUN 4
++- GPT entries: boot_a 119078, uefi_a 6, efisp 748894, vbmeta_a 143706, vendor_boot_a 302310
++- boot_a is 96 MiB (100663296 bytes)
++- Payload volume 64 MiB and the efisp / userdata fallbacks
++
++### 配置
++
++- board.toml [hardware.storage] records the UFS identity and the partition LBAs
++- board.toml [payload] size_mib = 64 and [partition_strategy] primary = efisp, fallback = userdata FAT
++
++### 操作步骤
++
++- read the GPT from the running device and confirm each LBA
++- write and read back a boot image through the Android root path (dd to /dev/block/by-name/boot_a) and compare SHA-256
++
++### 开发经验
++
++- The 9008 firehose of the current XBL rejects the generic programmer with 'Tool doesn't come from ZTE', so the working write path is Android root dd; the official 9008 rescue package carries its own programmer for full recovery.
++- boot_a accepts a 1.37 MB boot image (335 x 4096) and reads back bit-identical.
++
++### 完成条件
++
++- SCSI capacity, GPT and known blocks read correctly
++- The configured volume mounts and launchd starts; writes survive reboot
++
++### 当前范围
++
++- No XNU UFS driver yet: ShengUfs targets SM8550 and needs an SM8850 clock table plus ArmSmmu4K
++
++### 下一步
++
++- Port the UFS driver to the SM8850 clock and reset set once layer 2 produces a menu
++
++### 证据
++
++- `source`: [hardware.storage LBAs, UFS model and payload size](https://github.com/MengHanYoo/nx741j/blob/d09054eda9fc114711af574436594a1aeafde30a/board.toml)
++- `source`: [GPT inventory and partition strategy](https://github.com/MengHanYoo/nx741j/blob/d09054eda9fc114711af574436594a1aeafde30a/docs/PORTING-RECORD.md)
++
++## 显示 {#display}
++
++`implemented`
++
++组件: `GopFramebuffer`.
++
++### 硬件与依赖
++
++- Panel bf375 / rm692h5 6.8 inch, native 1440x3200, DSI command mode with dual 1216x2688 modes (120/60 fps)
++- UEFI GOP must be 1216x2688; the framebuffer region is 0xFC800000 / 0x2B00000
++- ZTE private dimming commands (zte,mdss-dsi-dim-on-commands)
++
++### 配置
++
++- board.toml [hardware.display] pins panel name, resolution and GOP geometry
++- board.toml [components] selects GopFramebuffer so the kernel consumes the GOP the firmware publishes
++
++### 操作步骤
++
++- confirm the GOP mode in the firmware menu (1216x2688)
++- build the kernel and check that GopFramebuffer is linked from the selected component
++
++### 开发经验
++
++- The 10-26 CI line carried a panel geometry fix (1216x2688); that geometry must not regress to 1220x2656.
++- UEFI side output is confirmed; the XNU side has not been started.
++
++### 完成条件
++
++- The panel shows the menu at 1216x2688 and the kernel keeps the same geometry
++
++### 当前范围
++
++- XNU display and brightness are not started
++
++### 下一步
++
++- Bring up GopFramebuffer after the kernel boots and record the first paint
++
++### 证据
++
++- `source`: [Panel, GOP geometry and framebuffer region](https://github.com/MengHanYoo/nx741j/blob/d09054eda9fc114711af574436594a1aeafde30a/board.toml)
++
++## 输入 {#input}
++
++`planned`
++
++### 硬件与依赖
++
++- Synaptics TCM touch on SPI, reset GPIO &lt;0x33 0x42 0x00&gt;, input device synaptics_tcm_touch
++- Goodix fingerprint as a separate input device
++- Buttons through ButtonsDxe in the firmware tree
++
++### 配置
++
++- board.toml [hardware.touch] records the bus, GPIO and device name
++- component_plan defers ShengHidInput and QcomGeniSpi until a TCM protocol layer exists
++
++### 操作步骤
++
++- add a Synaptics TCM protocol driver on top of QcomGeniSpi and register it with ShengHidInput
++- verify pointer events in the menu and in the kernel
++
++### 开发经验
++
++- ShengNovatekTouch implements Novatek NT36532, not the Synaptics TCM protocol this panel uses.
++
++### 完成条件
++
++- Touch coordinates map to the 1216x2688 menu and to the kernel input device
++
++### 当前范围
++
++- No touch protocol driver exists for this panel yet
++
++### 下一步
++
++- Write the TCM protocol layer and wire it into ShengHidInput
++
++### 证据
++
++按下一步操作收集证据。
++
++## GPU {#gpu}
++
++`planned`
++
++### 硬件与依赖
++
++- Adreno 840, firmware gen80200 (aqe.fw, sqe.fw, gmu.bin, zap.mbn), GMEM 18 MiB
++- Chip id 0x44050a01 expected by the driver
++
++### 配置
++
++- board.toml [hardware.gpu] records the model and firmware; native Adreno is disabled in the defconfig
++- component_plan defers Adreno740, AdrenoPM4, AdrenoFirmware and AdrenoMetal until the 840 port exists
++
++### 操作步骤
++
++- port the Adreno 740 interfaces to the 840 generation and keep the Metal front end on metal2vulkan plus Turnip
++
++### 开发经验
++
++- The kernel side was verified on the earlier CI lineage, but only with wallpaper black and 13-30 fps; that is not a device-qualified state.
++
++### 完成条件
++
++- GPU firmware loads, submissions complete and fences retire, then Metal presents a frame
++
++### 当前范围
++
++- No Adreno 840 port; the deferred components target A740
++
++### 下一步
++
++- Start from the Adreno740 interface and add the gen80200 firmware and GMEM layout
++
++### 证据
++
++按下一步操作收集证据。
++
++## 网络 {#network}
++
++`planned`
++
++### 硬件与依赖
++
++- WCN7850 over PCIe (17cb:110e), PCIe SM registers at 0x1D07000
++- No WLAN or BT driver exists in the firmware tree
++
++### 配置
++
++- board.toml [hardware.wireless] records the chip and the PCIe identity
++- component_plan defers Ath12kWifi and QcaBluetooth until the PCIe host and platform operations exist
++
++### 操作步骤
++
++- add the PCIe host node and platform operations, then bring up Ath12kWifi and QcaBluetooth
++
++### 开发经验
++
++- ath12k supports wcn7850, so the driver choice is correct; the missing part is the PCIe host on this board.
++
++### 完成条件
++
++- Firmware download succeeds, the interface associates and packets move
++
++### 当前范围
++
++- Blocked behind the platform and PCIe host work; does not block the boot chain
++
++### 下一步
++
++- Add the PCIe host node and platform clocks after layer 2 produces a menu
++
++### 证据
++
++按下一步操作收集证据。
++
++## 音频 {#audio}
++
++`planned`
++
++### 硬件与依赖
++
++- SM8850 ADSP with firmware version from the stock backup
++- Onboard codec and the DSP audio routes used by Android
++
++### 配置
++
++- No audio component is selected; the DSP, codec and routing still have to be chosen
++
++### 操作步骤
++
++- select an audio component, add the DSP firmware and the codec routes, then verify playback and capture
++
++### 开发经验
++
++- Audio depends on the DSP and power framework, which both come after the RPMh and platform work.
++
++### 完成条件
++
++- Playback and capture work through the selected codec and DSP routes
++
++### 当前范围
++
++- Not started; blocked by the same platform and power inputs as the rest of the SoC bring-up
++
++### 下一步
++
++- Read the ADSP firmware version from the stock image and pick the component
++
++### 证据
++
++按下一步操作收集证据。
++
++## 电源 {#power}
++
++`planned`
++
++### 硬件与依赖
++
++- RPMh, SPMI, PMIC, clock and interconnect controllers under SM8850
++- PMIC rails and the regulator set from the stock device tree
++
++### 配置
++
++- board.toml [hardware.firmware] records the firmware versions; the power framework is not selected yet
++- component_plan defers Sm8550Platform until it is rewritten for SM8850 (soc repository kits/Sm8850Platform)
++
++### 操作步骤
++
++- complete RpmhDxe in the firmware export, then port the platform operations to SM8850
++
++### 开发经验
++
++- Layer 2 currently fails at RpmhDxe (FAR=0x58) because the RPMh register set needs the SMEM contents that XBL normally provides.
++
++### 完成条件
++
++- Regulators, clocks and power domains come up and the SoC leaves the boot state
++
++### 当前范围
++
++- Blocked at RpmhDxe in layer 2; no SM8850 platform operations exist
++
++### 下一步
++
++- Provide the SMEM contents and finish the RPMh driver, then start the SM8850 platform port
++
++### 证据
++
++按下一步操作收集证据。
++
++## 镜像组装 {#packaging}
++
++`host-verified`
++
++组件: `XnuPrelink`.
++
++### 硬件与依赖
++
++- Self-built XNU kernel (8796.141.3) and the original kernelcache matching the profile pin (2ec297ba)
++- Trust cache bundle from the IPSW, chip id 207 and a non-zero unique chip id
++- Boot image inputs: FD, compiled board DTB, payload volume 64 MiB, kernel args -v serial=3
++- xnu 1b191cb5 with the 63-patch series, including the two XnuPrelink kit patches
++
++### 配置
++
++- board.toml [kernel.prelink]: kernel = build/xnu/ios-obj/DEVELOPMENT_ARM64_BCM2837/mach.development.bcm2837, roots AppleARMPlatform + apfs, early_security_init empty
++- board.toml [payload]: volume NX741J, 64 MiB, loader firmware, kernel_args ["-v", "serial=3"], two accepted trust cache hashes
++- board.toml [bootimg.image]: base 0x80000000, kernel_offset 0x8000, tags_offset 0x1e00000, pagesize 4096, header_version 4 (TOML integers)
++- scripts/package.sh runs deps, preflight, patches, build, pack and verify and writes package.manifest.json
++
++### 操作步骤
++
++- ./unixnu build kernel -D ../UniXNU-nx741j
++- ./unixnu build payload -D ../UniXNU-nx741j
++- ./unixnu bootimg -D ../UniXNU-nx741j --ramdisk &lt;payload.img&gt;
++- ./scripts/package.sh --no-deps
++
++### 开发经验
++
++- unixnu build kernel exits 0 from a freshly cloned tree with all 63 patches applied: 856 compile records, eight archive builders, link and prelink.
++- kernel.macho is 51,691,520 bytes and the prelink report lists 11 components with 23,833 bindings, but abi_qualified and runtime_qualified are both false, so it is an experimental candidate.
++- The bootimg values must be TOML integers; quoted hex strings fail in verify with a TypeError, and local.toml ramdisk="none" silently drops the payload.
++- The 1.37 MB boot image written to boot_a reads back bit-identical, but the firmware volume it carries (db122c8a) did not reach the menu, while the earlier 2f8bc430 image did.
++
++### 完成条件
++
++- package.sh produces kernel.macho, payload.img, boot.img and package.manifest.json with matching hashes
++- The image boots the firmware menu on the device
++
++### 当前范围
++
++- early_security_init is empty, so AMFI does not run its early initializer
++- runtime_qualified is false; the prelink has not been validated on hardware
++- mockfs is disabled because this snapshot cannot produce the compile records its fixture builder reads
++
++### 下一步
++
++- Rebuild the boot image with the known-good firmware volume and bisect the FD regression
++
++### 证据
++
++- `host`: [Build exits 0 from a fresh clone with 63 patches, 856 compile records and a 51,691,520-byte kernel.macho](https://github.com/MengHanYoo/nx741j/blob/d09054eda9fc114711af574436594a1aeafde30a/docs/HANDOFF-2026-11-07.md)
++  Command: `EXTRA_MAKE_ARGS=-O ./unixnu build kernel -D ../UniXNU-nx741j`. Revision: `32b9855fb815cf2f33f845578a622ab0b6704b72`.
++- `host`: [Steps preflight, patches, build, pack and verify pass and package.manifest.json is written](https://github.com/MengHanYoo/nx741j/blob/d09054eda9fc114711af574436594a1aeafde30a/scripts/package.sh)
++  Command: `./scripts/package.sh --no-deps`. Revision: `32b9855fb815cf2f33f845578a622ab0b6704b72`.
++- `source`: [Prelink, payload and boot image inputs](https://github.com/MengHanYoo/nx741j/blob/d09054eda9fc114711af574436594a1aeafde30a/board.toml)
++
++## 诊断 {#diagnostics}
++
++`implemented`
++
++### 硬件与依赖
++
++- Firmware output goes to the panel through FrameBufferSerialPortLib because the Android kernel disables the serial console (console=ttynull, geni_serial.con_enabled=0)
++- Build logs under out/nx741j/ios-16.7.16-20H392/nx741j/logs and the XNU compile records
++- Stock boot backups and the Android root dd path as the recovery route
++
++### 配置
++
++- kernel_args -v serial=3 in the payload; firmware menu holds the log pages
++- AdvancedLogDxe packed with the Advanced Logger buffer (256 pages), PcdUniXNUDeviceModel = NX741J for the export filename, and payload [payload] tools = true so the Tools menu exists
++
++### 操作步骤
++
++- build with EXTRA_MAKE_ARGS=-O so parallel make output stays grouped per target
++- on failure grep the log for ': error:' with the target name, then reproduce single-threaded
++- recover the device by flashing the stock boot image through Android root dd and comparing SHA-256
++
++### 开发经验
++
++- Without -O the parallel log interleaves and hides error lines; that is what made the bsd failure look silent.
++- Old objects and work trees survive pin changes: .cache/libpthread-work and build/xnu/ios-obj must be removed when a source pin changes.
++- The 9008 path needs a ZTE-signed programmer for program commands; the official rescue package carries it, and power commands work with the generic one.
++
++### 完成条件
++
++- Every failed stage leaves a log with the failing target and a reproducible command
++- Recovery from a bad boot image restores a booting device
++
++### 当前范围
++
++- The QR exporter has not been exercised on hardware yet; the first capture still has to be scanned with OneSend
++
++### 下一步
++
++- Flash the rebuilt image, open Tools -&gt; Advanced Logger and scan the frames with OneSend before the kernel handoff
++
++### 证据
++
++- `source`: [Eight failure classes with root causes and the recovery procedure](https://github.com/MengHanYoo/nx741j/blob/d09054eda9fc114711af574436594a1aeafde30a/docs/HANDOFF-2026-11-07.md)
++
++## security {#security}
++
++`implemented`
++
++组件: `SoftwareAES`.
++
++### 硬件与依赖
++
++- Static trust cache 087-86593-047.dmg.trustcache with SHA-256 9cc478fe accepted by the payload
++- Chip id 207 and a non-zero unique chip id for the ADT platform identity
++- AMFI runs in platform code policy through /chosen/amfi-only-platform-code
++
++### 配置
++
++- board.toml [payload] trust_cache_sha256 lists the two accepted hashes; the local input points at the extracted trust cache
++- board.toml [payload.adt] chip_id 207 and unique_chip_id required
++- SoftwareAES selected so the arch archive list resolves and the AES bindings come from source
++
++### 操作步骤
++
++- compare payload.json trust_cache_sha256 with the board list after every build
++- keep a non-zero unique chip id in the local build inputs for payload packaging
++
++### 开发经验
++
++- The trust cache and the ADT identity are already enforced by the payload build; a mismatch fails the build rather than the device.
++- early_security_init stays empty because the original AMFI initializer address in this kernelcache has not been identified, so the early initializer does not run.
++
++### 完成条件
++
++- Trust cache and ADT identity match the device and the kernel reaches the early security stage
++
++### 当前范围
++
++- AMFI early initialization is not configured yet
++- The unique chip id in the local inputs is a placeholder used to exercise the packaging path
++
++### 下一步
++
++- Find the AppleMobileFileIntegrity initializer address in kernelcache 2ec297ba and set early_security_init
++
++### 证据
++
++- `source`: [Trust cache hashes, chip id and unique chip id inputs](https://github.com/MengHanYoo/nx741j/blob/d09054eda9fc114711af574436594a1aeafde30a/board.toml)
++- `source`: [Prelink security notes and the early initializer gap](https://github.com/MengHanYoo/nx741j/blob/d09054eda9fc114711af574436594a1aeafde30a/docs/HANDOFF-2026-11-07.md)
 diff --git a/feeds.toml b/feeds.toml
 index 259bb88a27ff52415c36217958f4fd197b370330..951262d00da7ac68b6a80cf49e4627d9a94133b5 100644
 --- a/feeds.toml
@@ -351,62 +1692,6 @@ index 252be3c0c940f5030565b4dab9ca12d7583d6b29..55f8cf979e8e974701dd48ba121f3a39
    --expect 'UNIXNU: menu: timeout, booting default 0' \
    --expect 'UNIXNU: action: exit' \
    --reject 'ASSERT'
-diff --git a/package/UniXNUPkg/Driver/UniXNUDxe/UniXNUDxe.c b/package/UniXNUPkg/Driver/UniXNUDxe/UniXNUDxe.c
-index 213602a3b44172d5eb8d7b774025793b8fcf29e9..665f4d75ec288bdeefc414ded12a379c4c354508 100644
---- a/package/UniXNUPkg/Driver/UniXNUDxe/UniXNUDxe.c
-+++ b/package/UniXNUPkg/Driver/UniXNUDxe/UniXNUDxe.c
-@@ -163,7 +163,6 @@ UniXNUDxeEntry (
-   }
- 
-   Option = BuildLoadOption (Path, &OptionSize);
--  FreePool (Path);
-   if (Option == NULL) {
-     return EFI_OUT_OF_RESOURCES;
-   }
-@@ -201,10 +200,27 @@ UniXNUDxeEntry (
- 
-     Status = gRT->SetVariable (Name, &gEfiGlobalVariableGuid, OPTION_ATTRIBUTES, OptionSize, Option);
-     if (EFI_ERROR (Status)) {
--      DEBUG ((DEBUG_ERROR, "UniXNUDxe: cannot write %s: %r\n", Name, Status));
-+      EFI_HANDLE  AppImage;
-+      EFI_STATUS  LoadStatus;
-+
-+      DEBUG ((DEBUG_ERROR, "UniXNUDxe: cannot write %s: %r, starting directly\n", Name, Status));
-+      AppImage   = NULL;
-+      LoadStatus = gBS->LoadImage (TRUE, ImageHandle, Path, NULL, 0, &AppImage);
-+      DEBUG ((DEBUG_ERROR, "UniXNUDxe: direct LoadImage %r\n", LoadStatus));
-       FreePool (Option);
-+      FreePool (Path);
-+      if (!EFI_ERROR (LoadStatus)) {
-+        return gBS->StartImage (AppImage, NULL, NULL);
-+      }
-       return Status;
-     }
-+
-+    DEBUG ((
-+      DEBUG_ERROR,
-+      "UniXNUDxe: %S registered, option %u bytes, data unixnu:firmware\n",
-+      Name,
-+      (UINT32)OptionSize
-+      ));
-   }
- 
-   FreePool (Option);
-@@ -214,6 +230,7 @@ UniXNUDxeEntry (
-   //
-   NewOrder = AllocatePool (OrderSize + sizeof (UINT16));
-   if (NewOrder == NULL) {
-+    FreePool (Path);
-     return EFI_OUT_OF_RESOURCES;
-   }
- 
-@@ -233,5 +250,6 @@ UniXNUDxeEntry (
-     FreePool (Order);
-   }
- 
-+  FreePool (Path);
-   return Status;
- }
 diff --git a/package/UniXNUPkg/Driver/UniXNURamDiskDxe/UniXNURamDiskDxe.c b/package/UniXNUPkg/Driver/UniXNURamDiskDxe/UniXNURamDiskDxe.c
 index 7d4def5e9b41f6b9ac5accdbd8bbe5b4067fe604..cd2a9e00250969f670d206f2341be6705bfd098e 100644
 --- a/package/UniXNUPkg/Driver/UniXNURamDiskDxe/UniXNURamDiskDxe.c
@@ -438,162 +1723,28 @@ index 7d4def5e9b41f6b9ac5accdbd8bbe5b4067fe604..cd2a9e00250969f670d206f2341be670
    mRamBase                = (UINT8 *)(UINTN)Start;
    mMedia.MediaId          = 1;
    mMedia.RemovableMedia   = FALSE;
-diff --git a/package/UniXNUPkg/Library/UniXNULib/Boot.c b/package/UniXNUPkg/Library/UniXNULib/Boot.c
-index 4b1e7375a12442feec572c513dcd9e72a8902b2b..852c7d6b15ef3bdad751f3844e763244b0a3c1dc 100644
---- a/package/UniXNUPkg/Library/UniXNULib/Boot.c
-+++ b/package/UniXNUPkg/Library/UniXNULib/Boot.c
-@@ -6,6 +6,8 @@
- **/
- 
- #include "Internal.h"
-+#include <Protocol/BlockIo.h>
-+extern VOID UniXNUProgress (UINT32 Step, UINT64 Status);
- 
- #include <Guid/Fdt.h>
- #include <Protocol/UniXNULoader.h>
-@@ -55,6 +57,8 @@ RunXnu (
-   UNIXNU_LOADER_KEXT             *Kexts;
-   UINTN                         KextCount;
- 
-+  UniXNUProgress (35, 0);
-+  Print (L"UNIXNU: RunXnu entered, entry '%s'\r\n", Entry->Title);
-   Status = gBS->LocateProtocol (&gUniXNULoaderProtocolGuid, NULL, (VOID **)&Loader);
-   if (EFI_ERROR (Status)) {
-     UniXNULog ("xnu: no loader protocol installed; UniXNU does not provide one");
-@@ -83,14 +87,18 @@ RunXnu (
-   Request.Volume         = Entry->Volume;
-   Request.KernelPath     = Entry->Path;
-   Request.BootArgs       = Entry->Args;
--  Request.DeviceTree     = Fdt;
--  Request.DeviceTreeSize = FdtSize;
-+  Request.DeviceTree     = (Entry->Type == UniXNUEntryXnu) ? NULL : Fdt;
-+  Request.DeviceTreeSize = (Entry->Type == UniXNUEntryXnu) ? 0 : FdtSize;
-   Request.Ramdisk        = Ramdisk;
-   Request.RamdiskSize    = RamdiskSize;
-   Request.Kexts          = Kexts;
-   Request.KextCount      = KextCount;
-   UniXNULog ("xnu: handing off %u staged kext(s) to loader", (UINT32)KextCount);
-+  UniXNUProgress (37, 0);
-+  Print (L"UNIXNU: calling Loader->Boot (kernel %s, ramdisk %lu)\r\n", Request.KernelPath, (UINT64)Request.RamdiskSize);
-   Status = Loader->Boot (Loader, &Request);
-+  Print (L"UNIXNU: Loader->Boot returned %r\r\n", Status);
-+  UniXNUProgress (38, (UINT64)Status);
-   UniXNUFreeKexts (Kexts, KextCount);
-   return Status;
- }
-@@ -115,6 +123,8 @@ UniXNUBootEntry (
-   CHAR16                     *ExitData;
-   VOID                       *FirmwareFdt;
- 
-+  UniXNUProgress (32, 0);
-+  Print (L"UNIXNU: BootEntry '%s' type %u\r\n", Entry->Title, (UINT32)Entry->Type);
-   UniXNULog ("boot: entry '%a' (%s)", (Entry->Id != NULL) ? Entry->Id : "?", Entry->Title);
- 
-   if (Entry->KextConfigError) {
-@@ -138,6 +148,7 @@ UniXNUBootEntry (
-     FirmwareFdt = NULL;
-   }
- 
-+  UniXNUProgress (34, 0);
-   Status = UniXNUPrepareDeviceTree (Config, Entry, &Fdt, &FdtSize);
-   if (EFI_ERROR (Status)) {
-     return Status;
-@@ -162,6 +173,7 @@ UniXNUBootEntry (
-   }
- 
-   if (Entry->Type == UniXNUEntryXnu) {
-+    UniXNUProgress (39, 0);
-     Status = RunXnu (Config, Entry, Fdt, FdtSize, Initrd, InitrdSize);
-     goto Done;
-   }
 diff --git a/package/UniXNUPkg/Library/UniXNULib/Main.c b/package/UniXNUPkg/Library/UniXNULib/Main.c
-index 482f4d6d15e8932efb4ec11910fa32b52179fe31..f9408d509cff27cabd1c2bdfea20d18bd467f4fa 100644
+index 482f4d6d15e8932efb4ec11910fa32b52179fe31..c54a57ae8912b042baadcf499b0933b8fe88904f 100644
 --- a/package/UniXNUPkg/Library/UniXNULib/Main.c
 +++ b/package/UniXNUPkg/Library/UniXNULib/Main.c
-@@ -6,6 +6,49 @@
- **/
- 
- #include "Internal.h"
-+#include <Protocol/BlockIo.h>
-+extern VOID UniXNUProgress (UINT32 Step, UINT64 Status);
-+
-+// ---- boot progress record (rawdump + 79 MiB) -------------------------------
-+#define BP_OFFSET  (4743976ULL * 4096ULL + 79ULL * 1024 * 1024)
-+typedef struct { UINT32 Magic; UINT32 Step; UINT64 Status; UINT64 A; UINT64 B; UINT64 C; } BP_RECORD;
-+STATIC BP_RECORD mBp;
-+
-+VOID
-+UniXNUProgress (
-+  IN UINT32  Step,
-+  IN UINT64  Status
-+  )
-+{
-+  EFI_STATUS  S;
-+  UINTN       Count = 0, Index;
-+  EFI_HANDLE  *Handles = NULL;
-+  EFI_BLOCK_IO_PROTOCOL *Bio = NULL, *Best = NULL;
-+
-+  mBp.Magic = 0x32444244;
-+  mBp.Step = Step;
-+  mBp.Status = Status;
-+  if (EFI_ERROR (gBS->LocateHandleBuffer (ByProtocol, &gEfiBlockIoProtocolGuid, NULL, &Count, &Handles))) {
-+    return;
-+  }
-+  for (Index = 0; Index < Count; Index++) {
-+    Bio = NULL;
-+    if (EFI_ERROR (gBS->HandleProtocol (Handles[Index], &gEfiBlockIoProtocolGuid, (VOID **)&Bio)) || Bio == NULL || Bio->Media == NULL) {
-+      continue;
-+    }
-+    if (Best == NULL || Bio->Media->LastBlock > Best->Media->LastBlock) {
-+      Best = Bio;
-+    }
-+  }
-+  FreePool (Handles);
-+  if (Best == NULL || Best->Media->BlockSize == 0) {
-+    return;
-+  }
-+  S = Best->WriteBlocks (Best, Best->Media->MediaId, BP_OFFSET / Best->Media->BlockSize, 4096, &mBp);
-+  (VOID)S;
-+}
-+// ---------------------------------------------------------------------------
-+
- 
- #include <Protocol/SerialIo.h>
- 
-@@ -117,8 +160,10 @@ UniXNURun (
+@@ -76,11 +76,13 @@ UniXNURun (
      );
  
-   Countdown = TRUE;
-+  UniXNUProgress (30, 0);
-   for ( ; ;) {
-     Index  = UniXNUMenuRun (&Ui, &Config, Countdown);
-+    UniXNUProgress (31, (UINT64)Index);
-     Entry  = &Config.Entries[Index];
-     BootCopy = *Entry;
-     if (Entry->Confirm != NULL) {
-diff --git a/package/storage-bringup/Stubs.c b/package/storage-bringup/Stubs.c
-new file mode 100644
-index 0000000000000000000000000000000000000000..50b2f713a4b6244f0c1f6afb8389bcacb3823c85
---- /dev/null
-+++ b/package/storage-bringup/Stubs.c
-@@ -0,0 +1,17 @@
-+// SPDX-License-Identifier: BSD-2-Clause-Patent
-+// Bring-up anchors for the source-built UFS adapter.
-+//
-+// The real verification code comes from kits/VerifiedRoot (verified_root.c +
-+// adapters/xnu_crypto.c). These definitions only anchor the owner key and the policy
-+// table: no policy bundle is compiled in yet, verified_root_policy_count stays 0 and
-+// verification fails closed. The optional board diagnostic is a no-op until its
-+// component is built in.
-+#include <stdint.h>
-+
-+#define VR_KEY_BYTES 395u
-+
-+void boot_progress_poll(void) {}
-+
-+uint8_t verified_root_key[VR_KEY_BYTES];
-+uint64_t verified_root_policy_count;
-+void *verified_root_policies[16];
+   //
+-  // Started straight from BDS, storage may not be connected yet.
++  // Storage may not be connected yet, whichever way UniXNU was entered. Started
++  // from BDS it is because nothing has connected the controllers; started as a
++  // DXE driver it is because the ramdisk BlockIo is dispatched before
++  // UniXNURamDiskDxe installs it, so without this the initrd volume never gets a
++  // SimpleFileSystem and payload discovery reports that no payload exists.
+   //
+-  if (Host == UniXNUHostFirmware) {
+-    UniXNUConnectAll ();
+-  }
++  UniXNUConnectAll ();
+ 
+   UniXNUConfigLoad (ImageHandle, &Config);
+   UniXNULog (
 diff --git a/patches/libpthread/explicit-kernel-address.patch b/patches/libpthread/explicit-kernel-address.patch
 index bde4cb6e8cefc6fa6de29212d8700fb4b555d551..b5a9e8063e6d731e39c07ab85446619cee9b3be1 100644
 --- a/patches/libpthread/explicit-kernel-address.patch
@@ -2959,22 +4110,8 @@ index 0000000000000000000000000000000000000000..5832df55b3cffc0262204c792ea69f0e
 +        target_tests(args.os_root.resolve(), args.output.resolve(), args.os_image.resolve() if args.os_image else None)
 +    print('PASS: Mach-O guards and production hooks under ASan/UBSan' +
 +          ('; signed arm64e adapter, native executable copies and global user-app scope' if args.os_root else ''))
-diff --git a/scripts/audit-storage-interface.py b/scripts/audit-storage-interface.py
-index a79fd8bcf3c9a0f0e361980142c144a81e31478f..74dd5646214fbdb285929a51e8e215f8b2875c90 100644
---- a/scripts/audit-storage-interface.py
-+++ b/scripts/audit-storage-interface.py
-@@ -47,7 +47,8 @@ while index < len(arguments):
- command += ['-I', str(out / 'include'), '-I', str(ROOT / '.cache/xnu-work/osfmk'),
-             '-Wall', '-Wextra', '-Werror', '-Wno-unused-parameter', '-Wno-deprecated-declarations',
-             '-Wno-c99-designator', '-Wno-reorder-init-list', '-Wno-unnecessary-virtual-specifier',
--            '-Wno-deprecated-enum-enum-conversion']
-+            '-Wno-deprecated-enum-enum-conversion',
-+            '-Wno-error=missing-designated-field-initializers', '-Wno-macro-redefined']
- (out / 'compile-command.json').write_text(json.dumps(command, indent=2) + '\n')
- r = subprocess.run(command, cwd=record['directory'], capture_output=True, text=True)
- (out / 'compile.log').write_text(r.stdout + r.stderr)
 diff --git a/scripts/build-arm-driver.py b/scripts/build-arm-driver.py
-index 4dcaa91609308f0544ce22ca1b12ea40440325ae..ec638ef6b61a160fdd1daa8cf02e9c732a7209db 100644
+index 4dcaa91609308f0544ce22ca1b12ea40440325ae..dcf33d74a45ac8f8b02a8d8902634862d25fafee 100644
 --- a/scripts/build-arm-driver.py
 +++ b/scripts/build-arm-driver.py
 @@ -37,6 +37,13 @@ record = json.loads(recipe.read_text().strip().rstrip(','))
@@ -2991,14 +4128,6 @@ index 4dcaa91609308f0544ce22ca1b12ea40440325ae..ec638ef6b61a160fdd1daa8cf02e9c73
  outputs = metadata.get('outputs', [])
  archive_output = next((path for path in outputs if path.endswith('.a')), None)
  aux_dirs = {'NativeLegacyDisplay':'native-legacy-display', 'NativeGOPPresenter':'native-gop-presenter',
-@@ -78,6 +85,7 @@ while index < len(arguments):
-     index += 1
- command.extend(['-Wall', '-Wextra', '-Werror', '-Wno-unused-parameter',
-                 '-Wno-c99-designator', '-Wno-reorder-init-list', '-Wno-deprecated-enum-enum-conversion',
-+                '-Wno-missing-designated-field-initializers',
-                 '-Wno-unnecessary-virtual-specifier', '-I', str(ROOT / '.cache/xnu-work/osfmk')])
- if component in ('NativeVirtioBlock', 'NativeRamBlock', 'NativeUfs'):
-     command += ['-I', str(ROOT / 'build/storage-abi/include')]
 diff --git a/scripts/build-libpthread-kernel.py b/scripts/build-libpthread-kernel.py
 index c6ac86063abfaa78558a5a275d1335b7aab98416..2ae421f7924ae47ed545a47e8d265b7a01850932 100644
 --- a/scripts/build-libpthread-kernel.py
@@ -3029,139 +4158,6 @@ index 0000000000000000000000000000000000000000..c5f90787f4b1a6f122b1cd82aa7f3d50
 +if not builder.is_file():
 +    raise SystemExit(f"Sheng PMGR builder missing: {builder}")
 +runpy.run_path(str(builder), run_name="__main__")
-diff --git a/scripts/build-storage-bringup.py b/scripts/build-storage-bringup.py
-new file mode 100644
-index 0000000000000000000000000000000000000000..a7f7e6b2323c18b96f2d8a40de73df9d2affae5b
---- /dev/null
-+++ b/scripts/build-storage-bringup.py
-@@ -0,0 +1,57 @@
-+#!/usr/bin/env python3
-+"""Build and fold the storage ABI support into build/sheng-ufs/libShengUfs.a.
-+
-+The archive ends up containing:
-+  * IOBlockStorageDevice-reference.o  (official ABI audit reference object)
-+  * verified_root.o / xnu_crypto.o    (real VerifiedRoot implementation)
-+  * Stubs.o                           (owner-key/policy anchors + board diagnostic hook)
-+
-+No kernel build-script patch is required: ShengUfs is already force-loaded by the
-+native-UFS branch, so appending the members to its archive makes them part of the link.
-+"""
-+import json
-+import subprocess
-+from pathlib import Path
-+
-+ROOT = Path(__file__).resolve().parents[1]
-+OUT = ROOT / 'build/storage-bringup'
-+OUT.mkdir(parents=True, exist_ok=True)
-+
-+reference = ROOT / 'build/storage-abi/IOBlockStorageDevice-reference.o'
-+if not reference.is_file():
-+    raise SystemExit('Missing build/storage-abi/IOBlockStorageDevice-reference.o; run scripts/audit-storage-interface.py')
-+
-+record = json.loads((ROOT / 'build/xnu/ios-obj/DEVELOPMENT_ARM64_BCM2837/osfmk/DEVELOPMENT/startup.o.json').read_text().strip().rstrip(','))
-+
-+def compile_c(source: Path, obj: Path, extra=()):
-+    command, args, i = [], record['arguments'], 0
-+    while i < len(args):
-+        a = args[i]
-+        if a == record['file']:
-+            command.append(str(source))
-+        elif a in ('-o', '-MF', '-MT', '-MJ'):
-+            if a == '-o':
-+                command += ['-o', str(obj)]
-+            i += 1
-+        elif a == '-Xclang' and args[i + 1].startswith('-W'):
-+            i += 1
-+        elif not a.startswith(('-W', '-DXNU_BOOT_PROGRESS=')):
-+            command.append(a)
-+        i += 1
-+    command += ['-mgeneral-regs-only', '-Wall', '-Wextra', '-Werror',
-+                '-I', str(ROOT / '.cache/xnu-work/osfmk'),
-+                '-I', str(ROOT / 'kits/VerifiedRoot/include')]
-+    command += list(extra)
-+    subprocess.run(command, cwd=record['directory'], check=True, timeout=120)
-+
-+compile_c(ROOT / 'kits/VerifiedRoot/src/verified_root.c', OUT / 'verified_root.o')
-+compile_c(ROOT / 'kits/VerifiedRoot/adapters/xnu_crypto.c', OUT / 'xnu_crypto.o')
-+compile_c(ROOT / 'package/storage-bringup/Stubs.c', OUT / 'Stubs.o')
-+
-+archive = ROOT / 'build/sheng-ufs/libShengUfs.a'
-+if not archive.is_file():
-+    raise SystemExit('Missing build/sheng-ufs/libShengUfs.a; build the ShengUfs component first')
-+subprocess.run(['llvm-ar', 'r', str(archive), str(reference),
-+                str(OUT / 'verified_root.o'), str(OUT / 'xnu_crypto.o'), str(OUT / 'Stubs.o')],
-+               check=True, timeout=120)
-+print(f'== storage-bringup: folded into {archive}')
-diff --git a/scripts/build-xnu-4k-baseline.sh b/scripts/build-xnu-4k-baseline.sh
-index 7c49d9d67e399b71c0747189e8dee50c6179f05a..b2e71a8cf007a1edb7106bd0032eb7cefe4e7284 100644
---- a/scripts/build-xnu-4k-baseline.sh
-+++ b/scripts/build-xnu-4k-baseline.sh
-@@ -551,6 +551,11 @@ if [ "$NATIVE_PAN" != 0 ] && [ "$NATIVE_PAN" != 1 ]; then
-   echo 'XNU_NATIVE_PAN must be 0 or 1' >&2
-   exit 1
- fi
-+OWN_STORAGE=${UNIXNU_OWN_STORAGE:-${XNU_OWN_STORAGE:-0}}
-+if [ "$OWN_STORAGE" != 0 ] && [ "$OWN_STORAGE" != 1 ]; then
-+  echo 'XNU_OWN_STORAGE must be 0 or 1' >&2
-+  exit 1
-+fi
- EXTRA_CFLAGS="$EXTRA_CFLAGS -DXNU_NATIVE_PAN=$NATIVE_PAN"
- if [ "$NATIVE_PAN" = 1 ]; then
-   EXTRA_MAKE_ARGS+=("copyio.o_CFLAGS_ADD=-march=armv8.1-a")
-@@ -746,12 +751,21 @@ PY_BINDINGS
-     KERNEL_EXTRA_ARCHIVES="$KERNEL_EXTRA_ARCHIVES -Wl,-force_load,$PMGR_ARCHIVE"
-     KERNEL_ARCHIVE_DEPENDENCIES="$KERNEL_ARCHIVE_DEPENDENCIES $PMGR_ARCHIVE"
-   fi
-+  if [ "$OWN_STORAGE" = 1 ]; then
-+    STORAGE_ARCHIVE=$ROOT/build/iostorage/libIOStorageFamily.a
-+    test -f "$STORAGE_ARCHIVE"
-+    KERNEL_EXTRA_ARCHIVES="$KERNEL_EXTRA_ARCHIVES -Wl,-force_load,$STORAGE_ARCHIVE"
-+    KERNEL_ARCHIVE_DEPENDENCIES="$KERNEL_ARCHIVE_DEPENDENCIES $STORAGE_ARCHIVE"
-+  fi
-   # Optional extra link inputs (e.g. a stub for an unselected offline probe hook).
-   if [ "$BOOT_PROGRESS" = 1 ]; then
-     KERNEL_EXTRA_ARCHIVES="$KERNEL_EXTRA_ARCHIVES -Wl,-force_load,$ROOT/build/boot-progress/libBootProgress.a"
-     KERNEL_ARCHIVE_DEPENDENCIES="$KERNEL_ARCHIVE_DEPENDENCIES $ROOT/build/boot-progress/libBootProgress.a"
-   fi
-   KERNEL_EXTRA_ARCHIVES="$KERNEL_EXTRA_ARCHIVES ${XNU_EXTRA_LD_ARCHIVES:-}"
-+  if [ "${UNIXNU_OWN_STORAGE_DEBUG:-0}" = 1 ]; then
-+    printf 'OWN-STORAGE-DEBUG LD_KERNEL_ARCHIVES=%s\n' "$KERNEL_EXTRA_ARCHIVES"
-+  fi
-   EXTRA_MAKE_ARGS+=("LD_KERNEL_ARCHIVES=$KERNEL_EXTRA_ARCHIVES")
-   EXTRA_MAKE_ARGS+=("XNU_EXTERNAL_KERNEL_ARCHIVES=$KERNEL_ARCHIVE_DEPENDENCIES")
- fi
-@@ -766,7 +780,8 @@ python3 - "${XNU_NATIVE_AES:-0}" "${XNU_NATIVE_AES_ARCHIVE:-$ROOT/build/software
-   "$NATIVE_VIRTIO_CONSOLE" "$ROOT/build/virtio-mmio-console/libVirtioMmioConsole.a" \
-   "$NATIVE_OFFLINE_GPU" "$ROOT/build/native-offline-gpu/libNativeOfflineGPU.late.a" \
-   "$SHENG_PMGR" "$ROOT/build/sheng-platform-power/libShengPlatformPower.a" \
--  "${XNU_NATIVE_ADRENO:-0}" "$ROOT/build/adreno740/libAdreno740.a" <<'PY'
-+  "${XNU_NATIVE_ADRENO:-0}" "$ROOT/build/adreno740/libAdreno740.a" \
-+  "$OWN_STORAGE" "$ROOT/build/iostorage/libIOStorageFamily.a" <<'PY'
- import hashlib
- from pathlib import Path
- import sys
-diff --git a/scripts/qemu-entry/make-dt.py b/scripts/qemu-entry/make-dt.py
-index 6e5e93d25845d2008ca9fe90bd005d1898859d97..218747fd58a93ffd3338f40f7c0c980d934b0408 100644
---- a/scripts/qemu-entry/make-dt.py
-+++ b/scripts/qemu-entry/make-dt.py
-@@ -1,5 +1,5 @@
- #!/usr/bin/env python3
--"""Generate a synthetic Apple-format DT for the single-CPU QEMU entry fixture.
-+"""Generate a synthetic Apple-format DT for the QEMU entry fixture.
- 
- This is neither sheng board data nor an iPad device identity. The arm-io
- range describes QEMU PL011 solely to pass early platform discovery.
-@@ -52,8 +52,8 @@ if args.qemu_vmm_present and not args.armvirt:
-     parser.error('--qemu-vmm-present requires the actual QEMU platform fixture')
- if args.armcpu and not args.armvirt:
-     parser.error('--armcpu requires --armvirt')
--if not 1 <= args.smp <= 8 or (args.smp > 1 and not args.armcpu):
--    parser.error('--smp is 1..8 and needs --armcpu')
-+if not 1 <= args.smp <= 16 or (args.smp > 1 and not args.armcpu):
-+    parser.error('--smp is 1..16 and needs --armcpu')
- if args.root_match_volume_uuid and (not args.virtio_mmio_fdt or args.ramdisk):
-     parser.error('Direct volume matching requires a real offline disk and conflicts with a RAM root')
- if args.data_ramdisk and (not args.root_match_volume_uuid or args.ramdisk):
 diff --git a/scripts/unixnu/bootimg.py b/scripts/unixnu/bootimg.py
 index 8ac3274d090fdb46f7c20605a9ec61137df4b974..de568f8ab8110a665babe753f87ed782a5629887 100644
 --- a/scripts/unixnu/bootimg.py
@@ -3424,22 +4420,19 @@ index 0d96c639d552b9bae69a108f078aee361c98e859..296c11774becb17600b2db9475fd325c
  
      def option_text(self, flag, env=None):
 diff --git a/scripts/unixnu/devicetree.py b/scripts/unixnu/devicetree.py
-index cdf0f908c2a0c733a818f8863acdca1f657304c6..132e0aeb46eabe775203bd206ed58c66933a8abf 100644
+index cdf0f908c2a0c733a818f8863acdca1f657304c6..27c00e574e1fb8b9b92f20f8d4e1f8c1993b5916 100644
 --- a/scripts/unixnu/devicetree.py
 +++ b/scripts/unixnu/devicetree.py
-@@ -202,8 +202,9 @@ def arm_io_window(hardware):
-     return base, top - base
+@@ -203,7 +203,7 @@ def arm_io_window(hardware):
  
  
--STRINGS = {'compatible', 'device_type', 'reg-names', 'interrupt-names', 'clock-names', 'method'}
+ STRINGS = {'compatible', 'device_type', 'reg-names', 'interrupt-names', 'clock-names', 'method'}
 -U32 = {'phandle', 'linux,phandle', '#interrupt-cells', '#iommu-cells', '#clock-cells', 'clock-frequency', 'timebase-frequency'}
-+STRINGS = {'name', 'compatible', 'device_type', 'reg-names', 'interrupt-names', 'clock-names', 'method'}
-+U32 = {'phandle', 'linux,phandle', '#interrupt-cells', '#iommu-cells', '#clock-cells', 'clock-frequency', 'timebase-frequency',
-+       'transport-encoding', 'transport-speed', 'canvas-width', 'canvas-height'}
++U32 = {'phandle', 'linux,phandle', '#interrupt-cells', '#iommu-cells', '#clock-cells', 'clock-frequency', 'timebase-frequency', 'transport-encoding', 'transport-speed'}
  U64 = {'redistributor-stride'}
  FLAGS = {'interrupt-controller', 'dma-coherent'}
  REFERENCES = {'interrupt-parent': None, 'iommus': '#iommu-cells', 'clocks': '#clock-cells'}
-@@ -256,10 +257,13 @@ def hardware_properties(entry, handles, base=0):
+@@ -256,10 +256,13 @@ def hardware_properties(entry, handles, base=0):
      return properties
  
  
@@ -3454,7 +4447,7 @@ index cdf0f908c2a0c733a818f8863acdca1f657304c6..132e0aeb46eabe775203bd206ed58c66
              raise Error(f'Unknown ADT property type: {kind}')
          for key, value in properties.items():
              if kind == 'string':
-@@ -274,7 +278,17 @@ def typed_properties(table):
+@@ -274,7 +277,17 @@ def typed_properties(table):
      return result
  
  
@@ -3473,7 +4466,7 @@ index cdf0f908c2a0c733a818f8863acdca1f657304c6..132e0aeb46eabe775203bd206ed58c66
      root = read_fdt(Path(dtb).read_bytes())
      entries = list(root.walk())
      handles = {}
-@@ -292,7 +306,8 @@ def generate(dtb, config, *, unique_chip_id=None, data=False, trust=False, addon
+@@ -292,7 +305,8 @@ def generate(dtb, config, *, unique_chip_id=None, data=False, trust=False, addon
      dram_base, dram_size = registers(memory[0])[0]
      if payload.get('dram_size') is not None and int(str(payload['dram_size']), 0) != dram_size:
          raise Error('payload.dram_size differs from the hardware DTS')
@@ -3483,7 +4476,16 @@ index cdf0f908c2a0c733a818f8863acdca1f657304c6..132e0aeb46eabe775203bd206ed58c66
                ('dram-size', struct.pack('<Q', dram_size)), *empty_nvram_proxy()]
      if unique_chip_id:
          seed = int(str(unique_chip_id), 16)
-@@ -322,6 +337,7 @@ def generate(dtb, config, *, unique_chip_id=None, data=False, trust=False, addon
+@@ -304,6 +318,8 @@ def generate(dtb, config, *, unique_chip_id=None, data=False, trust=False, addon
+         raise Error('Pass --unique-chip-id HEX for this board')
+     if options.get('owned_memory_size'):
+         size = int(str(options['owned_memory_size']), 0)
++        # NX741J: the low DRAM band between the RSRV carve-outs and PIL_Reserved is
++        # only 132 MiB, so allow a 128 MiB window instead of the upstream 256 MiB floor.
+         if not 0x10000000 <= size <= 0x200000000 or size % 0x200000:
+             raise Error('Owned memory must be 256 MiB to 8 GiB in 2 MiB steps')
+         chosen.append(('darwinboot-memory-size', struct.pack('<Q', size)))
+@@ -322,6 +338,7 @@ def generate(dtb, config, *, unique_chip_id=None, data=False, trust=False, addon
      mappings = [('PackedRAMDisk' if options.get('packed_data_ramdisk') else 'RAMDisk', bytes(16))] if data else []
      mappings += [('TrustCache', bytes(16))] if trust else []
      mappings += [('GpuAddon', bytes(16))] if addon else []
@@ -3491,7 +4493,7 @@ index cdf0f908c2a0c733a818f8863acdca1f657304c6..132e0aeb46eabe775203bd206ed58c66
      children = [node('chosen', chosen, [node('memory-map', mappings), node('manifest-properties')])]
      cpus = next((entry for entry in root.children if entry.name == 'cpus'), None)
      if cpus is None:
-@@ -333,10 +349,17 @@ def generate(dtb, config, *, unique_chip_id=None, data=False, trust=False, addon
+@@ -333,10 +350,17 @@ def generate(dtb, config, *, unique_chip_id=None, data=False, trust=False, addon
          values = registers(entry)
          if len(values) != 1 or values[0][0] > 0xffffffff:
              raise Error(f'{entry.name}: CPU affinity must fit a u32')
@@ -3513,7 +4515,7 @@ index cdf0f908c2a0c733a818f8863acdca1f657304c6..132e0aeb46eabe775203bd206ed58c66
      if not cpu_nodes:
          raise Error('Hardware DTS requires an enabled boot CPU')
      children.append(node('cpus', children=cpu_nodes))
-@@ -355,9 +378,13 @@ def generate(dtb, config, *, unique_chip_id=None, data=False, trust=False, addon
+@@ -355,9 +379,13 @@ def generate(dtb, config, *, unique_chip_id=None, data=False, trust=False, addon
                           [node(name, hardware_properties(entry, handles, base)) for name, entry in zip(names, hardware)]))
      for name in ('defaults', 'options', 'product', 'buttons'):
          if name in platform or name in ('defaults', 'options', 'product'):
@@ -3554,59 +4556,33 @@ index 76e6716e52a21ed1b1859e95820174030ada424d..a20e9fe14f29788655a45afff12c1ceb
  
  
  def _clone_dir(ctx, entry, revision=None):
-diff --git a/scripts/unixnu/kernel.py b/scripts/unixnu/kernel.py
-index 19558bd756fccfa08574b60f8a28b6e451736d2d..fd2d617ad036396f13b6e44d2ffa0de55d64cd61 100644
---- a/scripts/unixnu/kernel.py
-+++ b/scripts/unixnu/kernel.py
-@@ -1,4 +1,5 @@
- """XNU kernel: build from the patched Apple source, then prelink against the original kernelcache."""
-+import json
- import os
- import platform
- import shlex
-@@ -216,8 +217,34 @@ def prelink(ctx):
-                f'--slide={spec["slide"]}', '--output', output]
-     for root in spec.get('roots', []):
-         command += ['--root', root]
-+    for identifier in spec.get('exclude', []):
-+        command += ['--exclude', identifier]
-     if spec.get('early_security_init'):
-         command += ['--early-security-init', spec['early_security_init']]
-+    text_literals = spec.get('text_literals', [])
-+    if not isinstance(text_literals, list):
-+        raise Error('[kernel.prelink] text_literals must be an array of tables')
-+    if text_literals:
-+        patches = []
-+        allowed = {'bundle', 'section', 'offset', 'expect', 'literal'}
-+        for index, patch in enumerate(text_literals, 1):
-+            if not isinstance(patch, dict):
-+                raise Error(f'[kernel.prelink] text_literals entry {index} is not a table')
-+            unknown = sorted(set(patch) - allowed)
-+            if unknown:
-+                raise Error(
-+                    f'[kernel.prelink] text_literals entry {index} has unknown fields: '
-+                    + ', '.join(unknown)
-+                )
-+            if any(key not in patch for key in ('bundle', 'offset', 'expect', 'literal')):
-+                raise Error(f'[kernel.prelink] text_literals entry {index} is incomplete')
-+            if not isinstance(patch['offset'], (int, str)):
-+                raise Error(f'[kernel.prelink] text_literals entry {index} offset must be an integer or hex string')
-+            patches.append(patch)
-+        patch_file = ctx.work / 'kernel/prelink-text-literals.json'
-+        patch_file.parent.mkdir(parents=True, exist_ok=True)
-+        patch_file.write_text(json.dumps(patches, indent=2) + '\n')
-+        command += ['--text-literal-file', str(patch_file)]
-     command += spec.get('extra_args', [])
-     run(command, cwd=ctx.tree, log_file=ctx.logs / 'prelink.log')
-     log(f'kernel: {output} sha256 {sha256_file(output)}')
 diff --git a/scripts/unixnu/payload.py b/scripts/unixnu/payload.py
-index 1bb9ad039b2e30f171595eb38ffcc23496ee3799..e39d2e671f85fc6ca60e8ea75f1ebdbf41cdc761 100644
+index 1bb9ad039b2e30f171595eb38ffcc23496ee3799..8838fb19e05db12106c27ae459ca8750f705cf8f 100644
 --- a/scripts/unixnu/payload.py
 +++ b/scripts/unixnu/payload.py
-@@ -26,6 +26,21 @@ def paths(ctx):
+@@ -26,6 +26,40 @@ def paths(ctx):
      return out, out / 'payload.img', out / 'payload.json'
  
  
++def postprocess_adt(ctx, adt_path, options):
++    """Run a board-owned ADT policy pass after the live-FDT hardware export."""
++    script = options.get('postprocess')
++    if not script:
++        return
++    executable = ctx.tree / 'scripts' / script
++    if not executable.is_file():
++        raise Error(f'ADT postprocessor not found: {executable}')
++    arguments = options.get('postprocess_args', [])
++    if not isinstance(arguments, list) or not all(isinstance(item, str) for item in arguments):
++        raise Error('[payload.adt] postprocess_args must be an array of strings')
++    temporary = adt_path.with_name(adt_path.name + '.postprocess')
++    temporary.unlink(missing_ok=True)
++    command = ['python3', str(executable), '--input', str(adt_path), '--output', str(temporary), *arguments]
++    run(command, cwd=ctx.tree, env=dict(os.environ, UNIXNU_UEFI=str(ctx.uefi or '')),
++        log_file=ctx.logs / 'payload-adt-postprocess.log')
++    temporary.replace(adt_path)
++
++
 +def check_data_input(ctx, data):
 +    """An owner-Data kernel needs a seed even when it resumes a persistent overlay."""
 +    if data:
@@ -3625,7 +4601,62 @@ index 1bb9ad039b2e30f171595eb38ffcc23496ee3799..e39d2e671f85fc6ca60e8ea75f1ebdbf
  def check_args(arguments):
      for value in arguments:
          if not re.fullmatch(r'[A-Za-z0-9_.\-]+(=[A-Za-z0-9_.,/\-]+)?', value):
-@@ -178,9 +193,33 @@ def build(ctx, kernel=None):
+@@ -81,6 +115,42 @@ def skip_setup_seed(ctx, base, tool_path, tool_args=()):
+     return seed
+ 
+ 
++def render_block_slices(spec):
++    """[[block_slice]] blocks from board.toml [[payload.block_slice]] entries.
++
++    reference/boot-configuration lists [boot], [ui], [[driver]], [[dt_patch]],
++    [[block_slice]], [acpi], kit, [[entry]], [entry.chosen], [[entry.kext]] and
++    [[entry.variable]]. This generator writes [boot], [ui], [kits], [[driver]]
++    (non-firmware loader), [[entry]] and now [[block_slice]]; the rest have no
++    board.toml key because the Darwin path does not need them (the ADT sidecar
++    carries the device tree, kexts are prelinked and ACPI is not consumed on
++    arm64 XNU). Stage 6 publishes the userdata windows through this table.
++    """
++    slices = spec.get('block_slice') or []
++    if not isinstance(slices, list):
++        raise Error('board.toml [[payload.block_slice]] must be an array of tables')
++    text = ''
++    for index, entry in enumerate(slices):
++        if not isinstance(entry, dict):
++            raise Error(f'payload.block_slice[{index}] is not a table')
++        for required in ('partition', 'name'):
++            if not entry.get(required):
++                raise Error(f'payload.block_slice[{index}] needs {required}')
++        lines = [f'partition = {json.dumps(entry["partition"])}', f'name = {json.dumps(entry["name"])}']
++        for key in ('offset', 'length'):
++            value = entry.get(key, 0)
++            if not isinstance(value, int) or isinstance(value, bool) or value < 0:
++                raise Error(f'payload.block_slice[{index}].{key} must be a non-negative integer')
++            lines.append(f'{key} = {value}')
++        for key in ('writable', 'enabled'):
++            value = entry.get(key, key == 'enabled')
++            if not isinstance(value, bool):
++                raise Error(f'payload.block_slice[{index}].{key} must be true or false')
++            lines.append(f'{key} = {str(value).lower()}')
++        text += '[[block_slice]]\n' + '\n'.join(lines) + '\n'
++    return text
++
++
+ def build(ctx, kernel=None):
+     log('payload')
+     spec = ctx.board.get('payload')
+@@ -150,8 +220,10 @@ def build(ctx, kernel=None):
+     if ctx.schema_version == 2:
+         from .devicetree import compile_hardware, generate
+         dtb = compile_hardware(ctx)
+-        (payloads / 'kernel.macho.adt').write_bytes(generate(
++        adt_path = payloads / 'kernel.macho.adt'
++        adt_path.write_bytes(generate(
+             dtb, ctx.board, unique_chip_id=seed, data=bool(data), trust=bool(trust), addon=bool(addon)))
++        postprocess_adt(ctx, adt_path, adt)
+     else:
+         command = ['python3', ctx.tree / adt['tool'], '--output', payloads / 'kernel.macho.adt', '--dram-size', str(spec['dram_size'])]
+         for key, flag in (('owned_memory_size', '--owned-memory-size'), ('root_match_volume_uuid', '--root-match-volume-uuid'),
+@@ -178,9 +250,34 @@ def build(ctx, kernel=None):
          run(command, cwd=ctx.tree, env=dict(os.environ, UNIXNU_UEFI=str(ctx.uefi or '')), log_file=ctx.logs / 'payload-adt.log')
      initrd = 'initrd = "Payloads/scratch-data.img"\n' if data else ''
      loader = '' if spec.get('loader', 'firmware') == 'firmware' else '[[driver]]\npath = "Payloads/DarwinBoot.efi"\n'
@@ -3654,23 +4685,15 @@ index 1bb9ad039b2e30f171595eb38ffcc23496ee3799..e39d2e671f85fc6ca60e8ea75f1ebdbf
 +    kit_lines = [f'autoload = {str(kits.get("autoload", False)).lower()}']
 +    if kits.get('directory'):
 +        kit_lines.append(f'directory = {json.dumps(kits["directory"])}')
++    slices = render_block_slices(spec)
 +    entry_dtb = f'dtb = {json.dumps(spec["dtb"])}\n' if spec.get('dtb') else ''
 +    config = ('version = 1\n[boot]\n' + '\n'.join(boot_lines) + '\n[ui]\n' + '\n'.join(ui_lines) +
-+              '\n[kits]\n' + '\n'.join(kit_lines) + '\n' + loader +
++              '\n[kits]\n' + '\n'.join(kit_lines) + '\n' + slices + loader +
 +              f'[[entry]]\nid = "xnu"\ntitle = {json.dumps(spec.get("title", "UniXNU"))}\ntype = "xnu"\n'
 +              f'path = "Payloads/kernel.macho"\n{entry_dtb}{initrd}args = "{line}"\n')
      install = spec.get('install')
      if install:
          if not data:
-@@ -191,7 +230,7 @@ def build(ctx, kernel=None):
-         # The second boot menu entry: the same kernel and seed behind a confirmation whose choices add a boot argument (for example the Data reset).
-         config += (f'[[entry]]\nid = "install"\ntitle = {json.dumps(install.get("title", "Install and boot"))}\n'
-                    f'confirm = {json.dumps(install["confirm"])}\nconfirm_titles = {json.dumps(titles)}\nconfirm_args = {json.dumps(extra)}\n'
--                   f'type = "xnu"\npath = "Payloads/kernel.macho"\n{initrd}args = "{line}"\n')
-+                   f'type = "xnu"\npath = "Payloads/kernel.macho"\n{entry_dtb}{initrd}args = "{line}"\n')
-     # A loaded configuration replaces the built-in menu (UniXNULib Config.c) and with it that menu's Restart and Power off.
-     config += ('[[entry]]\nid = "reset"\ntitle = "Restart"\ntype = "action"\naction = "reset"\n'
-                '[[entry]]\nid = "shutdown"\ntitle = "Power off"\ntype = "action"\naction = "shutdown"\n')
 diff --git a/scripts/unixnu/pipeline.py b/scripts/unixnu/pipeline.py
 new file mode 100644
 index 0000000000000000000000000000000000000000..fbeac31e1d6e9efb5b192de7d38032ee087363f3

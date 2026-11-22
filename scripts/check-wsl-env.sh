@@ -25,12 +25,34 @@ echo "wsl_vhdx=$(test -f /mnt/e/wsl/Ubuntu/ext4.vhdx && echo present || echo mis
 TOOLCHAIN=${UNIXNU_TOOLCHAIN:-/opt/unixnu-linux}
 echo "toolchain_root=$TOOLCHAIN"
 echo "toolchain_clang=$(test -x "$TOOLCHAIN/llvm/bin/clang" && echo present || echo missing)"
-for tool in python3 dtc qemu-system-aarch64 clang llvm-ar apfsutil; do
+for tool in python3 dtc qemu-system-aarch64 clang llvm-ar apfsutil apfs-fuse \
+	mkfs.hfsplus fsck.hfsplus mcopy mdir sha256sum; do
   if command -v "$tool" >/dev/null 2>&1; then
     printf '%s=%s\n' "$tool" "$(command -v "$tool")"
   else
     printf '%s=missing\n' "$tool"
   fi
+done
+
+HFS_KO=${HFSPLUS_KO:-/opt/work/wslk-6.18.58.1/fs/hfsplus/hfsplus.ko}
+if grep -qw hfsplus /proc/filesystems; then
+	echo 'hfsplus=loaded'
+elif test -f "$HFS_KO"; then
+	echo "hfsplus=module:$HFS_KO"
+else
+	echo 'hfsplus=missing'
+fi
+
+LIVE_DTB=/mnt/e/default-workspace/z80u-collect/stock/dt/live_fdt.dtb
+D22AP_ADT=/mnt/e/default-workspace/z80u-collect/repos/nx741j/tools/d22ap_raw.adt
+EXTENTS=/mnt/e/default-workspace/z80u-collect/_tmp/nx741j-iosroot-extents-20261122.json
+ROOT_IMAGE=/mnt/e/default-workspace/z80u-collect/iosroot-artifacts/iosroot-NX741J-20H392-20261122.img
+for input in "$LIVE_DTB" "$D22AP_ADT" "$EXTENTS" "$ROOT_IMAGE"; do
+	if test -f "$input"; then
+		printf 'present=%s\n' "$input"
+	else
+		printf 'NOTE missing=%s\n' "$input"
+	fi
 done
 
 test -f "$TREE/unixnu" || { echo 'FAIL  unixnu entry point missing' >&2; exit 1; }

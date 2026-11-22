@@ -1,6 +1,8 @@
 # Device-only overrides. Shared ARM64/OS values come from the config fragments
 # (arch:configs/common.config, os:configs/ios.config); the SoC fragment is comment-only.
-CONFIG_XNU_NATIVE_UFS=y
+# The data-a-live path owns UFS through bsd/dev/sweet_ufs.c. Disable the
+# ShengUfs/NativeUfs personality so it cannot claim the controller first.
+# CONFIG_XNU_NATIVE_UFS is not set
 # CONFIG_XNU_NATIVE_ADRENO is not set
 
 # The native UFS root path is gated by an owner-backed ApplePMGR nub.  The

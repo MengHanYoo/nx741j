@@ -14,7 +14,7 @@ kit = "nx741j"
 # 先只用预链接提供者，等安全栈接好再决定归属。
 # 原注释：arch profile 的 [kernel].archives 里写了 component:SoftwareAES，
 # 且 common.config 打开 CONFIG_XNU_NATIVE_AES，必须选中才能在归档阶段解析到它。
-include = ["ArmDTPlatform", "ArmCpu", "XnuPrelink", "DarwinBoot", "GopFramebuffer", "ShengUfs", "VirtioMmioBlock", "VerifiedRoot", "ArmSmmu4K"]
+include = ["ArmDTPlatform", "ArmCpu", "XnuPrelink", "DarwinBoot", "GopFramebuffer"]
 
 [kernel]
 defconfig = "nx741j_defconfig"
@@ -25,12 +25,7 @@ archives = [
   "component:ArmDTPlatform",
   "component:ArmCpu",
   "component:GopFramebuffer",
-  "patch-native-ufs-cold-init.py",
-  "patch-native-ufs-adopt-fix.py",
-  "patch-native-ufs-root-anchor.py",
-  "component:ShengUfs",
-  "component:VirtioMmioBlock",
-  "build-storage-bringup.py",
+  "install-sweet-ufs.py",
   "build-sheng-platform-power.py",
   "build-mockfs-fixture.py",
   "build-libpthread-kernel.py",
@@ -128,7 +123,7 @@ dram_size = "0x140000000"
 # 和 VerifiedRoot 后发布 OS/SystemOS 两个 IOMedia。sheng-pmgr=2 是 AMFI
 # 在原生 UFS 根路径上需要的 owner PMGR nub；没有该参数时 payload 构建器会拒绝。
 # 只读诊断可覆盖为：--kernel-arg native-ufs-root=0 --kernel-arg native-ufs-probe=12
-kernel_args = ["keepsyms=1", "kextlog=0x1", "sweetfb_hz=60", "sweetfb_noconsole=1", "native-source-storage=1", "native-ufs-root=1", "sheng-pmgr=2", "native-ufs-diagnostics=0", "native-ufs-dma-offset=0", "native-ufs-cold-init=1", "native-ufs-keepqueue=2"]
+kernel_args = ["keepsyms=1", "kextlog=0x1", "sweetfb_hz=60", "sweetfb_noconsole=1", "native-ufs-root=0", "sheng-pmgr=2", "rd=ufsroot0", "ufsroot=userdata", "ufsrw=1", "rootrw=1"]
 # 文档：panic 屏与入口探针不能同时启用；这里用探针二分 IOKit 初始化。
 panic_screen = true
 # panic 屏和 stage-4 复位代码洞放不下（0xa1f vs 剩余 0x970），二分阶段先关掉；
@@ -158,12 +153,14 @@ console = "auto"
 [payload.adt]
 chip_id = "207"
 unique_chip_id = "required"
+# After the live NX741J FDT has produced the hardware nodes, add the D22AP
+# identity/product and the pinned-file extent root from data-a-live.
+# The two external artifacts are supplied as UNIXNU_D22AP_ADT and
+# UNIXNU_ROOT_EXTENTS at payload build time.
+postprocess = "postprocess-ios-adt.py"
 # 平台输入：SM8850 的 PSCI 走 SMC（dts sm8850.dtsi 的 /psci method = "smc"）。
 psci_method = "smc"
 owned_memory_size = "0x10000000"
-# Read from the OS APFS volume superblock in userdata-root.img:
-# Volume 0, Role=System, Name=SydneyUpdate20H392.D22D221OS.
-root_match_volume_uuid = "DADD93F8-DBBF-4B17-A1DF-0F11E64172F7"
 # 实机 DTB 的 /cpus 有 8 个节点，reg 依次为 (0,0) (0,0x100) (0,0x200) (0,0x300)
 # (0,0x400) (0,0x500) (0,0x10000) (0,0x10100)。格式 2 的 ADT 生成器直接读 DT 的
 # /cpus，不用这个键；它只在格式 1 的 --cpu-regs 路径生效，这里按实机值补全以免误导。

@@ -1,5 +1,11 @@
 # 官方路线对齐审计 — 2026-11-22
 
+> **执行结果：** 本文选定的 Data A Live 路线已经落地。原始 IPSW 生成的 16 GiB
+> HFSX、39 段固定 extent、D22AP ADT、`sweet_ufs`/`ufsroot0`、内核、payload、
+> boot image 和 QEMU 门禁均已完成。`iosroot-GOLDEN.img` 未参与构建或写入。
+> 真机 raw 导入仍等待 USB/ADB 恢复，最新结果见
+> [SWEET-ROOT-2026-11-22.md](SWEET-ROOT-2026-11-22.md)。
+
 本文件记录一次纠偏：停止“改一处、刷一次、看一条日志”的试错方式，改为严格对照
 固定版本源码和官方文档。主线 `unixnu-nx741j` 保持在上一次已推送的稳定提交；
 临时 transport 探针保存在本地分支 `wip/ufs-transport-audit`，不进入主线。
