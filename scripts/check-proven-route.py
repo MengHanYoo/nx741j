@@ -38,6 +38,7 @@ def main():
     parser.add_argument("--boot", required=True, type=pathlib.Path)
     parser.add_argument("--root", required=True, type=pathlib.Path)
     parser.add_argument("--extents", required=True, type=pathlib.Path)
+    parser.add_argument("--fw-extents", type=pathlib.Path)
     parser.add_argument("--adt-tools", required=True, type=pathlib.Path)
     parser.add_argument("--json-out", type=pathlib.Path)
     args = parser.parse_args()
@@ -110,6 +111,10 @@ def main():
         "launchd_unsecure_cache=1",
         "wdt=-1",
         "sweetfb_fill=1",
+        "pandora_scanout=0",
+        "pandora_touch_gpio117=0",
+        "pandora_gpu=14",
+        "pandora_gpu_metal=1",
     }
     words = set(cmdline.split())
     missing = required_args - words
@@ -143,14 +148,40 @@ def main():
         fail("ADT root block count")
     if extent_json["size"] != 16 * 1024**3:
         fail("root is not 16 GiB")
-    for stale in (
-        "pandora-log-extents",
-        "pandora-log-blocks",
-        "pandora-fw-extents",
-        "pandora-fw-blocks",
-    ):
+    for stale in ("pandora-log-extents", "pandora-log-blocks"):
         if chosen.prop(stale) is not None:
             fail(f"stale physical mapping in ADT: {stale}")
+    fw_table = chosen.prop("pandora-fw-extents")
+    fw_blocks = chosen.prop("pandora-fw-blocks")
+    if args.fw_extents:
+        fw_json = json.loads(args.fw_extents.read_text())
+        expected_fw = b"".join(
+            struct.pack(
+                "<3Q",
+                logical // PAGE,
+                physical // PAGE,
+                length // PAGE,
+            )
+            for logical, physical, length, _flags in fw_json["extents"]
+        )
+        if fw_table != expected_fw:
+            fail("ADT firmware extent table does not match staged HFS file")
+        if fw_blocks is None or struct.unpack("<Q", fw_blocks)[0] != fw_json["size"] // PAGE:
+            fail("ADT firmware block count")
+        fw_triples = [
+            struct.unpack_from("<3Q", fw_table, i * 24)
+            for i in range(len(fw_table) // 24)
+        ]
+        if max((x[1] + x[2]) * PAGE for x in fw_triples) >= 1 << 36:
+            fail("firmware extent exceeds the 36-bit DMA window")
+        fw_report = {
+            "extents": len(fw_triples),
+            "blocks": struct.unpack("<Q", fw_blocks)[0],
+        }
+    else:
+        if fw_table is not None or fw_blocks is not None:
+            fail("unexpected ADT firmware extent mapping")
+        fw_report = None
     triples = [
         struct.unpack_from("<3Q", root_table, i * 24)
         for i in range(len(root_table) // 24)
@@ -208,6 +239,7 @@ def main():
         "root_blocks": struct.unpack("<Q", root_blocks)[0],
         "trustcache_modules": modules,
         "trustcache_entries": module_entries,
+        "firmware_extents": fw_report,
         "trustcache_phys": tc_pa,
         "phys_base": phys_base,
         "mem_size": mem_size,

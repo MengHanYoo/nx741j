@@ -21,14 +21,14 @@ USERDATA_FIRST=${USERDATA_FIRST:-4875048}
 USERDATA_LAST=${USERDATA_LAST:-248838138}
 
 TRUSTCACHE="$IPSW_FIRMWARE/087-86698-044.dmg.trustcache"
-TRUSTCACHE+="+/opt/work/gpu/metal-out/plat2/plugin7.trst"
-TRUSTCACHE+="+/opt/work/gpu/metal-out/plat2/plugin8.trst"
+TRUSTCACHE+="+/opt/work/gpu/metal-out/plat/plugin.trst"
 TRUSTCACHE+=" $IPSW_FIRMWARE/087-86593-047.dmg.trustcache"
 TRUSTCACHE+="+$IPSW_FIRMWARE/087-86715-047.dmg.trustcache"
 
 EXTRA="ufsrw=1 rootrw=1 unentitled_ios_sim_launch=1 ignition_level=1"
 EXTRA+=" wdt_test=no_user_checkin launchd_unsecure_cache=1 wdt=-1"
 EXTRA+=" sweetfb_hz=30 sweetfb_fill=1 pandora_scanout=0"
+EXTRA+=" pandora_touch_gpio117=0 pandora_gpu=14 pandora_gpu_metal=1"
 EXTRA+=" sweetsample=MobileGestaltHel,containermanage,cfprefsd,lsd,SpringBoard"
 
 [[ $EUID -eq 0 ]] || { echo "run as root in WSL" >&2; exit 1; }
@@ -66,21 +66,37 @@ mount -t hfsplus -o loop,ro,force "$ROOT" "$MOUNT"
 needs_patch=0
 [[ -e $MOUNT/private/var/containers/Shared/SystemGroup/systemgroup.com.apple.mobilegestaltcache ]] ||
 	needs_patch=1
+[[ -e $MOUNT/System/Library/Extensions/NativeAdrenoMetal.bundle/NativeAdrenoMetal ]] ||
+	needs_patch=1
+[[ -e $MOUNT/private/var/fuxi/iosfw.img ]] || needs_patch=1
 umount "$MOUNT"
 
 if [[ $needs_patch == 1 ]]; then
 	echo "== apply NX741J userland bring-up"
 	mount -t hfsplus -o loop,rw,force "$ROOT" "$MOUNT"
 	python3 "$REPO/scripts/apply-nx741j-root-bringup.py" "$MOUNT"
+	python3 "$REPO/scripts/stage-proven-gpu.py" "$MOUNT"
 	sync
 	umount "$MOUNT"
 	fsck.hfsplus -f -y "$ROOT"
 fi
 check_known_hfs_state
 
+echo "== resolve staged firmware extents"
+FW_RANGES=$OUT/iosfw-ranges.json
+FW_EXTENTS=$OUT/iosfw-extents.json
+IOSFW_INODE=$(fls -f hfs -r -p "$ROOT" | awk '/private\/var\/fuxi\/iosfw.img$/ {print $2; exit}' | tr -d ':')
+[[ -n $IOSFW_INODE ]] || { echo "cannot find staged iofw inode" >&2; exit 1; }
+python3 "$REPO/scripts/hfs-inode-ranges.py" \
+	--snapshot "$ROOT" --extents "$EXTENTS" \
+	--userdata-first-lba "$USERDATA_FIRST" \
+	--inode "$IOSFW_INODE" --out "$FW_RANGES"
+python3 "$REPO/scripts/hfs-file-to-pinfw.py" \
+	--ranges "$FW_RANGES" --out "$FW_EXTENTS"
+
 echo "== build SWEETXNU payload"
 env KERNEL="$KERNEL" TRUSTCACHE="$TRUSTCACHE" \
-	ADTFLAGS="--root-extents $EXTENTS" CPUS=8 RD=ufsroot0 DEBUG=0xc \
+	ADTFLAGS="--root-extents $EXTENTS --fw-extents $FW_EXTENTS" CPUS=8 RD=ufsroot0 DEBUG=0xc \
 	NAME=proven-route D22AP_ADT="$D22AP_ADT" \
 	bash "$LEGACY/wsl/make_phone_payload_nx741j.sh" /opt/work/run1 "$EXTRA"
 
@@ -95,6 +111,7 @@ python3 "$REPO/scripts/check-proven-route.py" \
 	--boot "$OUT/loader-boot.img" \
 	--root "$ROOT" \
 	--extents "$EXTENTS" \
+	--fw-extents "$FW_EXTENTS" \
 	--adt-tools "$LEGACY/tools" \
 	--json-out "$OUT/boot-check.json"
 

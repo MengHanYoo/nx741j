@@ -14,11 +14,15 @@ param(
     [string]$Boot = 'E:\default-workspace\z80u-collect\repos\nx741j\shim\loader\out-proven-route\loader-boot.img',
     [string]$Efisp = 'E:\default-workspace\z80u-collect\archive\nx741j-stage2-2026-11-08\loader\efisp-stock-rollback.img',
     [string]$DeltaDir = 'E:\default-workspace\z80u-collect\repos\UniXNU-nx741j\out\proven-route\root-delta',
+    [string]$ExpectedBootSha256 = '2523e380b0500bb3e65d012a0626876d4db20b5cc38278ee01c70c05c947cef0',
+    [string]$ExpectedRootSha256 = 'dd7dee484eee2faf03484f5c9726682ed562fe7163dd3a362d167454df280ac4',
+    [int]$ExpectedRanges = 9,
     [int]$BootStartSector = 119078,
     [int]$EfispStartSector = 748894,
     [int]$TimeoutSec = 300,
     [switch]$NoReboot,
     [switch]$PreflightOnly,
+    [switch]$AuditOnly,
     [switch]$SkipSahara,
     [switch]$SkipConfigure
 )
@@ -270,18 +274,18 @@ foreach ($tool in 'fh_loader.exe', 'QSaharaServer.exe', 'qcedlcmdhelper.exe') {
     if (-not (Test-Path (Join-Path $ToolDir $tool))) { Fail ('missing tool ' + $tool) }
 }
 
-$bootSha = Assert-Input $Boot '2523e380b0500bb3e65d012a0626876d4db20b5cc38278ee01c70c05c947cef0' 0
+$bootSha = Assert-Input $Boot $ExpectedBootSha256 0
 if ((Get-Item $Boot).Length -gt $BootPartitionBytes) { Fail 'boot image exceeds boot_a' }
 $efispSha = Assert-Input $Efisp '4df183594a63af28c681e48b1d9fdb0305ee055ea8fde92118a1e0af7a5f6f17' $EfispBytes
 $manifestPath = Join-Path $DeltaDir 'manifest.json'
 if (-not (Test-Path $manifestPath)) { Fail 'missing root delta manifest' }
 $manifest = Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json
 if ($manifest.schema -ne 1) { Fail 'root delta schema' }
-if ($manifest.target_sha256 -ne 'dd7dee484eee2faf03484f5c9726682ed562fe7163dd3a362d167454df280ac4') {
+if ($manifest.target_sha256 -ne $ExpectedRootSha256) {
     Fail 'unexpected patched root sha256'
 }
-if ($manifest.range_count -ne 9 -or @($manifest.ranges).Count -ne 9) {
-    Fail 'expected exactly 9 root delta ranges'
+if ($manifest.range_count -ne $ExpectedRanges -or @($manifest.ranges).Count -ne $ExpectedRanges) {
+    Fail ("expected exactly {0} root delta ranges" -f $ExpectedRanges)
 }
 foreach ($range in $manifest.ranges) {
     $path = Join-Path $DeltaDir $range.file
@@ -350,12 +354,23 @@ if ($gpt.first_lba -ne $manifest.userdata_first_lba -or
 }
 
 $preflight = @()
+$mismatches = @()
 foreach ($range in $manifest.ranges) {
     $tag = 'root-preflight-' + [IO.Path]::GetFileNameWithoutExtension($range.file)
     $path = Read-Region $com 0 'userdata' $range.userdata_start_lba $range.blocks $tag
     $sha = Get-Sha256 $path
     if ($sha -ne $range.base_sha256) {
-        Fail ("{0}: live base sha256 {1} != {2}" -f $range.file, $sha, $range.base_sha256)
+        $mismatches += [pscustomobject]@{
+            file = $range.file
+            logical_start = $range.logical_start
+            start_sector = $range.userdata_start_lba
+            blocks = $range.blocks
+            expected_sha256 = $range.base_sha256
+            live_sha256 = $sha
+            live_path = $path
+        }
+        Log ("PREFLIGHT {0}: MISMATCH {1} != {2}" -f $range.file, $sha, $range.base_sha256)
+        continue
     }
     $preflight += [pscustomobject]@{
         file = $range.file
@@ -364,6 +379,24 @@ foreach ($range in $manifest.ranges) {
         base_sha256 = $sha
     }
     Log ("PREFLIGHT {0}: base block matches" -f $range.file)
+}
+
+if ($AuditOnly) {
+    $audit = [ordered]@{
+        timestamp = $Stamp
+        com = $com
+        userdata = $gpt
+        matched = $preflight
+        mismatches = $mismatches
+        status = $(if ($mismatches.Count) { 'mismatch' } else { 'match' })
+    }
+    $audit | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $ReportPath -Encoding UTF8
+    Log ("AUDIT complete: matched={0} mismatches={1}; report {2}" -f
+        $preflight.Count, $mismatches.Count, $ReportPath)
+    exit 0
+}
+if ($mismatches.Count) {
+    Fail ("preflight mismatches: " + (($mismatches | ForEach-Object { $_.file }) -join ', '))
 }
 
 $preflightReport = [ordered]@{

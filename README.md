@@ -232,7 +232,8 @@ The current device route does not use APFS VerifiedRoot or the adopted NativeUfs
 the pinned 16 GiB HFSX root through the data-a-live-style `ufsroot0` path. The patched root adds the
 MobileGestalt container and launchd/SpringBoard bring-up preferences missing from the plain IPSW
 root. The integrated image passed the static gate and the shim-loader QEMU gate; 9008 install and
-readback are complete. Direct launchd/lockscreen capture remains open while step 7 is frozen.
+readback are complete. Live HFSX logs prove launchd, SpringBoard, backboardd and lsd started; a
+visible lock-screen capture remains open while step 7 is frozen.
 
 The default payload is now the normal root path:
 

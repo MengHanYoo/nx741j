@@ -32,14 +32,16 @@ route.
 | Input | Result |
 |---|---|
 | Base root | original iPhone X 20H392 IPSW build, SHA-256 `7fd949bb026ef84d22bf316f28c41234358e41c65e4f393e1a3d1ffe1731b6ea` |
-| Patched root | `iosroot-NX741J-20H392-proven-20261122.img`, SHA-256 `dd7dee484eee2faf03484f5c9726682ed562fe7163dd3a362d167454df280ac4` |
+| First patched root | `iosroot-NX741J-20H392-proven-20261122.img`, SHA-256 `dd7dee484eee2faf03484f5c9726682ed562fe7163dd3a362d167454df280ac4` |
+| GPU delta target snapshot | SHA-256 `dc0a1d9fb4c7eefe1c8a36d7e1a2684a86d7d8f402340a08e98f2a88436e51b1` |
 | Pinned extent table | 39 extents, 4,194,304 blocks, DMA below 36 bits |
 | Live GPT | LUN0 `userdata` first `4,875,048`, last `248,838,138`, 4 KiB LBAs |
 | Proven kernel | `/opt/work/plk/k39-amfi.macho`, SHA-256 `f28d3db2316269a9c6e4d2fa75e00ed598bf0aa419e97a87141e7e11407c86ba` |
-| Payload | SHA-256 `6c0332d186a66f3efbcfe96f9d751248c114533a1ba451d459fe74cc65ea6dde` |
-| ADT | SHA-256 `bfa844a8a2dfc806009a8de70083ae1872dd18a4916e9e49cecd5c3112e3ab63` |
-| Loader Image | SHA-256 `459fe5ccfa83a08540b326f7198e8e28fa820b52698def50a509fe76fece3c97` |
-| `boot_a` image | SHA-256 `2523e380b0500bb3e65d012a0626876d4db20b5cc38278ee01c70c05c947cef0` |
+| Payload | SHA-256 `e701e8a04b2db0786813f5b5daf734b0790dede279e932f5c76baee30542629e` |
+| ADT | SHA-256 `84265ac82d7eb56b68c77915f1ccfa619cc454ccad9cfc950e7f4a0d3d3eb477` |
+| Loader Image | SHA-256 `fa149280590bfefc0e0764bc66f62f2c878a2ad34adc20fb35fe186bb148a17f` |
+| `boot_a` image | SHA-256 `1417864756da79f212856ef20debe855ced8cca6beec431d243d343f10624398` |
+| Metal plugin | SHA-256 `04ddea9f0415db9a2fae067521482aa14a938931c1a576cfcb797f7e48a56edf` |
 | Stock efisp | SHA-256 `4df183594a63af28c681e48b1d9fdb0305ee055ea8fde92118a1e0af7a5f6f17` |
 
 The patched root was derived from the original IPSW root; `iosroot-GOLDEN.img`
@@ -101,6 +103,7 @@ debug=0xc serial=3 cpus=8 keepsyms=1 -enable_kprintf_spam -noprogress
 rd=ufsroot0 ufsrw=1 rootrw=1 unentitled_ios_sim_launch=1 ignition_level=1
 wdt_test=no_user_checkin launchd_unsecure_cache=1 wdt=-1
 sweetfb_hz=30 sweetfb_fill=1 pandora_scanout=0
+pandora_touch_gpio117=0 pandora_gpu=14 pandora_gpu_metal=1
 sweetsample=MobileGestaltHel,containermanage,cfprefsd,lsd,SpringBoard
 ```
 
@@ -155,13 +158,48 @@ out/proven-route/device-write-20261123-000200/write-report.json
 All nine root ranges, stock efisp and `boot_a` matched on readback. The live
 GPT remained `4,875,048..248,838,138`.
 
-After reset, Windows produced no `9008`, `QUSB_BULK`, Android or ADB device
-for at least 45 seconds. This removes the previous persistent
+### First postboot log analysis
+
+The first reset produced a real HFSX mount, launchd and userspace. Evidence
+read back from the live pinned root:
+
+| Item | Evidence |
+|---|---|
+| HFSX mounted read-write | `Last Mounted By: Mac OS X, Journaled`; write count advanced |
+| Metadata allocated | files `184,164 -> 185,376`; folders `137,206 -> 139,113` |
+| launchd | `launchd.log`, `launchd_cache_loader.log`, `logd.0.log` created |
+| SpringBoard | `Successfully spawned SpringBoard[26] because system support` |
+| backboardd | `Successfully spawned backboardd[56] because speculative` |
+| lsd | `Successfully spawned lsd[...] because ipc (mach)` |
+| DataMigration | `com.apple.datamigrator` spawned and exited `exit(0)` |
+
+This disproves an early kernel, root-device or launchd failure. The last
+boot-owned frame remained the Apple logo because the root built from the plain
+IPSW lacked the proven `NativeAdrenoMetal.bundle`, had no GPU firmware file and
+the payload omitted the successful GPU boot arguments.
+
+### GPU-proven repair
+
+The repair uses the exact plugin binary from the prior successful lockscreen
+(`metal-out/plat`, SHA-256 `04ddea9f...`) and its matching
+`plat/plugin.trst`. A 2 MiB `PANDFW01` file is written as
+`/private/var/fuxi/iosfw.img`; its HFS allocation is mapped through
+`/chosen/pandora-fw-extents`, so no Android file or unallocated F2FS block is
+used.
+
+The second write contained 5,594 changed blocks in 41 ranges (22,913,024 B).
+Host preflight read all 41 ranges from the live device and matched every base
+hash before writing. Every root range, stock efisp and the new `boot_a`
+matched on readback; GPT remained unchanged.
+
+After the first reset, Windows produced no `9008`, `QUSB_BULK`, Android or ADB
+device for at least 45 seconds. After the GPU repair reset there was still no
+`9008`, `QUSB_BULK`, Android or ADB device after 105 seconds. This removes the previous persistent
 `QUSB_BULK_CID:046A_SN:098F0FC3` failure signature and is consistent with the
 known iOS state where USB remains unavailable because step 7 is frozen.
-Direct launchd/lockscreen evidence still has to be captured by the next
-available userspace or display-side log channel; absence of QUSB is not
-treated as proof of launchd in this report.
+Direct launchd/SpringBoard evidence is now captured from the live HFSX log;
+the remaining observability item is a visible lock-screen capture after the
+GPU repair, because step-7 USB remains frozen.
 
 ## Progress
 
@@ -174,9 +212,9 @@ treated as proof of launchd in this report.
 | 5 hardware description / ADT | complete |
 | 6 drivers | storage, display, touch, HID and CPU paths are in the proven kernel; persistent Data, sustained performance and final thermal policy remain |
 | 7 USB/Wi-Fi/audio/baseband/camera/back display | frozen by owner |
-| 8 records, startup and recovery | install/QEMU/readback records complete; direct launchd capture remains the one observability gap |
+| 8 records, startup and recovery | install/QEMU/readback and launchd/SpringBoard records complete; visible lock-screen capture remains an observability item |
 
-Current overall engineering coverage is approximately **90%** for booting the
+Current overall engineering coverage is approximately **92%** for booting the
 existing iOS 16.7.16 root. The step-7 subsystem work is intentionally excluded
 from that number. The former 80% figure described the unfinished
 Mu/NativeUfs/APFS route and no longer applies.
