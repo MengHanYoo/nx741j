@@ -25,6 +25,15 @@ display, touch and Metal work on this unit. The current `boot_a` contains the
 loader and its SWEETXNU payload directly. The stock efisp is restored when
 removing a custom P7 image, but efisp is not the source of the `boot_a` payload.
 
+For development runs, data-a-live uses the RAM-only form of this entry:
+
+```text
+fastboot boot loader-boot.img
+```
+
+No `flash`, `flashall`, `erase`, or partition write is part of this operation.
+Power cycling restores the installed Android boot path.
+
 ### B. efisp -> rawdump -> Mu UEFI (diagnostic route)
 
 ```text
