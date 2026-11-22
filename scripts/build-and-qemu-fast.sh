@@ -20,6 +20,9 @@ TIMEOUT=${2:-25}
 JOBS=${JOBS:-16}
 export QEMU_MEM=${QEMU_MEM:-16G}
 export QEMU_SMP=${QEMU_SMP:-16}
+export QEMU_SOCKETS=${QEMU_SOCKETS:-1}
+export QEMU_CORES=${QEMU_CORES:-8}
+export QEMU_THREADS=${QEMU_THREADS:-2}
 LOGDIR=$REPO/out/qemu
 mkdir -p "$LOGDIR"
 start=$(date +%s)

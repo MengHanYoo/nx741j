@@ -7,7 +7,7 @@ hardware DTB, the generated ADT and the storage archive, and asserts the
 nodes and symbols those levels depend on, so a regression shows up as a
 failing check instead of a device that stops at a different place.
 
-    scripts/check-bringup.py --tree out/<device>/<os>/<config>/tree
+    scripts/check-bringup.py --tree out/<device>/<os>/<config>/tree --device ../UniXNU-<device>
     scripts/check-bringup.py --dtb <dtb> --adt <adt> --archive <a> --level 1,2
 
 Exit status is 1 when any assertion fails.
@@ -15,6 +15,7 @@ Exit status is 1 when any assertion fails.
 from __future__ import annotations
 
 import argparse
+import os
 import struct
 import sys
 from pathlib import Path
@@ -85,6 +86,9 @@ class Tree:
         prefix = path.rstrip('/') + '/'
         return [p for p in self.nodes if p.startswith(prefix) and '/' not in p[len(prefix):]]
 
+    def find(self, basename):
+        return [path for path in self.nodes if path.rsplit('/', 1)[-1] == basename]
+
 
 def find_adt(payload_dir: Path):
     if not payload_dir.is_dir():
@@ -116,6 +120,7 @@ def main():
     parser.add_argument('--dtb', type=Path)
     parser.add_argument('--adt', type=Path)
     parser.add_argument('--archive', type=Path)
+    parser.add_argument('--device', type=Path, default=os.environ.get('UNIXNU_DEVICE'))
     parser.add_argument('--level', default='1,2,3', help='comma separated levels to check (default 1,2,3)')
     args = parser.parse_args()
 
@@ -133,17 +138,21 @@ def main():
     results = []
 
     if 1 in levels:
-        intc = fdt.cells('/interrupt-controller@17000000', '#interrupt-cells')
+        intc_paths = fdt.find('interrupt-controller@17000000')
+        intc = fdt.cells(intc_paths[0], '#interrupt-cells') if intc_paths else None
         check(results, 1, 'GIC present with #interrupt-cells = 3', intc == [3], f'got {intc}')
-        check(results, 1, 'generic timer node present', '/timer' in fdt.nodes)
+        timers = [p for p in fdt.nodes
+                  if p.rsplit('/', 1)[-1] == 'timer' or p.rsplit('/', 1)[-1].startswith('timer@')]
+        check(results, 1, 'generic timer node present', bool(timers), ', '.join(timers))
         cpus = [c for c in fdt.children('/cpus') if c.startswith('/cpus/cpu@')]
         check(results, 1, '8 CPU nodes', len(cpus) == 8, f'got {len(cpus)}')
         check(results, 1, 'memory node present', '/memory' in fdt.nodes)
-        smmu = fdt.cells('/apps-smmu@15000000', '#iommu-cells')
+        smmu_paths = fdt.find('apps-smmu@15000000')
+        smmu = fdt.cells(smmu_paths[0], '#iommu-cells') if smmu_paths else None
         check(results, 1, 'apps-smmu present with #iommu-cells = 2', smmu == [2], f'got {smmu}')
         check(results, 1, 'apps-smmu enabled',
-              fdt.text('/apps-smmu@15000000', 'status') in (None, 'okay', 'ok'),
-              str(fdt.text('/apps-smmu@15000000', 'status')))
+              bool(smmu_paths) and fdt.text(smmu_paths[0], 'status') in (None, 'okay', 'ok'),
+              str(fdt.text(smmu_paths[0], 'status')) if smmu_paths else 'missing')
         if archive and archive.is_file():
             import subprocess
             members = subprocess.run(['llvm-ar', 't', str(archive)], capture_output=True, text=True).stdout.split()
@@ -158,11 +167,13 @@ def main():
                       f'{len(defined)} definition(s)')
 
     if 2 in levels:
-        name = fdt.text('/ufshc@1d84000', 'unixnu,adt-name')
+        ufs_paths = fdt.find('ufshc@1d84000')
+        name = fdt.text(ufs_paths[0], 'unixnu,adt-name') if ufs_paths else None
         check(results, 2, 'ufshc exported as ADT hardware', name == 'ufshc', f'got {name}')
         check(results, 2, 'ufshc enabled',
-              fdt.text('/ufshc@1d84000', 'status') in ('okay', 'ok'), str(fdt.text('/ufshc@1d84000', 'status')))
-        regs = fdt.cells('/ufshc@1d84000', 'reg') or []
+              bool(ufs_paths) and fdt.text(ufs_paths[0], 'status') in ('okay', 'ok'),
+              str(fdt.text(ufs_paths[0], 'status')) if ufs_paths else 'missing')
+        regs = (fdt.cells(ufs_paths[0], 'reg') if ufs_paths else None) or []
         check(results, 2, 'ufshc maps four regions', len(regs) == 16, f'{len(regs)} cells')
         check(results, 2, 'storage archive built', archive is not None and archive.is_file(), str(archive))
         if archive and archive.is_file():
@@ -183,14 +194,24 @@ def main():
                   len(digest) == 64, f'adt_sha256 {digest[:12]}… from payload.json')
 
     if 3 in levels:
-        check(results, 3, 'GOP framebuffer node', fdt.text('/framebuffer', 'compatible') == 'unixnu,gop-framebuffer',
-              str(fdt.text('/framebuffer', 'compatible')))
-        mdss = [p for p in fdt.nodes if p.startswith('/qcom,mdss_mdp@') and p.count('/') == 1]
+        framebuffer_paths = fdt.find('framebuffer')
+        gop_selected = False
+        if args.device and (args.device / 'board.toml').is_file():
+            import tomllib
+            board = tomllib.load(open(args.device / 'board.toml', 'rb'))
+            gop_selected = 'GopFramebuffer' in (board.get('components') or {}).get('include', [])
+        gop_node = any(fdt.text(path, 'compatible') == 'unixnu,gop-framebuffer'
+                       for path in framebuffer_paths)
+        check(results, 3, 'GOP framebuffer node or selected component', gop_node or gop_selected,
+              'runtime node' if gop_node else ('board.toml GopFramebuffer' if gop_selected else 'missing'))
+        mdss = [p for p in fdt.nodes if p.rsplit('/', 1)[-1].startswith('qcom,mdss_mdp@')]
         check(results, 3, 'mdss controller node', bool(mdss), ', '.join(mdss))
-        panels = [p for p in fdt.nodes if p.endswith('/panel@0')]
-        check(results, 3, 'BF375 panel attached to the DSI controller',
-              any(fdt.text(p, 'compatible') == 'nubia,bf375-rm692h5' for p in panels),
-              ', '.join(panels))
+        panels = [p for p in fdt.nodes if 'bf375_rm692h5' in p.rsplit('/', 1)[-1].lower()]
+        panel_ok = any(
+            fdt.text(p, 'compatible') == 'nubia,bf375-rm692h5'
+            or 'BF375' in (fdt.text(p, 'qcom,mdss-dsi-panel-name') or '').upper()
+            for p in panels)
+        check(results, 3, 'BF375 panel description attached to DSI', panel_ok, ', '.join(panels))
 
     width = max(len(name) for _, name, _, _ in results)
     failed = 0

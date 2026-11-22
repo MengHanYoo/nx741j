@@ -172,7 +172,11 @@ bindings.update({'_sheng_original_pmgr_nub_create': 0xfffffff004a22568,
 asm = OUT / 'original-bindings.S'
 asm.write_text(''.join(f'.globl {name}\n.set {name}, {va:#x}\n' for name, va in bindings.items()))
 sdk = run(['xcrun', '--sdk', 'iphoneos', '--show-sdk-path'], text=True).strip()
-run(['xcrun', 'clang', '-target', TRIPLE, '-isysroot', sdk, '-c', asm, '-o', OUT / 'original-bindings.o'])
+# The Linux xcrun shim returns the literal SDK name, not a directory. The
+# assembly-only object uses no SDK headers, so omit an invalid -isysroot.
+sdk_args = ['-isysroot', sdk] if Path(sdk).is_dir() else []
+run(['xcrun', 'clang', '-target', TRIPLE, *sdk_args, '-c', asm,
+     '-o', OUT / 'original-bindings.o'])
 late = OUT / 'ShengPlatformPower.late.o'
 run(['llvm-objcopy', '--remove-section=__DATA,__mod_init_func',
      '--globalize-symbol=__GLOBAL__sub_I_ShengPlatformPower.cpp', obj, late])
@@ -186,7 +190,8 @@ def text_section(blob):
 require(text_section(raw) == text_section(late.read_bytes()), 'Late registration cannot change instructions')
 archive = OUT / 'libShengPlatformPower.a'
 archive.unlink(missing_ok=True)
-run(['xcrun', 'ar', 'rcs', archive, late, OUT / 'original-bindings.o'])
+run(['xcrun', 'ar', 'rcs', archive, late, OUT / 'original-bindings.o'],
+    env=dict(os.environ, ZERO_AR_DATE='1'))
 report = {'source_sha256': hashlib.sha256(source.read_bytes()).hexdigest(),
           'archive_sha256': hashlib.sha256(archive.read_bytes()).hexdigest(),
           'bindings': {name: hex(va) for name, va in bindings.items()}, 'virtual_entries': 340,

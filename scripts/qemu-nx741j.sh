@@ -6,14 +6,23 @@
 #
 # The ESP gets the DEBUG build of UniXNU.efi, the DarwinBoot driver as an
 # autoloaded kit, and the Payloads/ directory taken from payload.img.  The
-# machine is QEMU virt with 16 CPUs and 16 GiB so DarwinBoot can find its 256 MiB
-# contiguous window. QEMU_MEM and QEMU_SMP can be overridden independently.
+# machine is QEMU virt with a 1 socket / 8 core / 2 thread topology (16 vCPUs)
+# and 16 GiB so DarwinBoot can find its 256 MiB contiguous window. The topology
+# values and memory can be overridden independently.
 set -eu
 
 TREE=${1:?usage: qemu-nx741j.sh <build-tree> [seconds]}
 TIMEOUT=${2:-90}
 QEMU_MEM=${QEMU_MEM:-16G}
 QEMU_SMP=${QEMU_SMP:-16}
+QEMU_SOCKETS=${QEMU_SOCKETS:-1}
+QEMU_CORES=${QEMU_CORES:-8}
+QEMU_THREADS=${QEMU_THREADS:-2}
+if [ "$((QEMU_SOCKETS * QEMU_CORES * QEMU_THREADS))" -ne "$QEMU_SMP" ]; then
+  echo "QEMU topology mismatch: sockets*cores*threads=$((QEMU_SOCKETS * QEMU_CORES * QEMU_THREADS)), QEMU_SMP=$QEMU_SMP" >&2
+  exit 1
+fi
+QEMU_TOPOLOGY="$QEMU_SMP,sockets=$QEMU_SOCKETS,cores=$QEMU_CORES,threads=$QEMU_THREADS"
 REPO=$(cd "$(dirname "$0")/.." && pwd)
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 # shellcheck source=wsl-env.sh
@@ -103,13 +112,14 @@ FW=$(ls /usr/share/AAVMF/AAVMF_CODE.fd /usr/share/qemu-efi-aarch64/QEMU_EFI.fd 2
 
 echo "esp: $ESP"
 echo "firmware: $FW"
+echo "machine: memory=$QEMU_MEM smp=$QEMU_TOPOLOGY"
 set +e
 INT_ARGS=()
 if [ "${QEMU_INT:-0}" = "1" ]; then
   INT_ARGS=(-d int -D "$OUT/int.log")
 fi
 timeout --foreground --kill-after=5s "${TIMEOUT}s" qemu-system-aarch64 \
-  -M virt -cpu cortex-a72 -m "$QEMU_MEM" -smp "$QEMU_SMP" \
+  -M virt -cpu cortex-a72 -m "$QEMU_MEM" -smp "$QEMU_TOPOLOGY" \
   -drive if=pflash,format=raw,readonly=on,file="$FW" \
   -drive format=raw,file=fat:rw:"$ESP" \
   -display none -serial "file:$LOG" -monitor none -no-reboot \

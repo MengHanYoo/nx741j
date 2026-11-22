@@ -61,7 +61,7 @@ rm -rf out/nx741j/ios-16.7.16-20H392/nx741j/tree/build/xnu/ios-obj \
 
 | 检查 | 命令 | 结果 |
 |---|---|---|
-| 启动级断言 | `python3 scripts/check-bringup.py --tree <out>/tree` | 20/20 |
+| 启动级断言 | `python3 scripts/check-bringup.py --tree <out>/tree --device ../UniXNU-nx741j` | 20/20 |
 | 实机 DTB 一致性 | `scripts/audit-live-dtb.py --live stock/dt/live_fdt.dtb` | 10/10 |
 | 适配记录 | `python3 scripts/porting-record.py check --device <repo>` | 14 areas |
 

@@ -44,6 +44,50 @@ $SectorSize = 4096
 function Log([string]$m) { Write-Output ('[' + (Get-Date -Format 'HH:mm:ss') + '] ' + $m) }
 function Fail([string]$m) { Log ('FAILED: ' + $m); exit 1 }
 
+function Test-PaddedImage([string]$Source, [string]$Readback) {
+    # fh_loader sometimes leaves its XML ACK at the start of a converted read.
+    $sourceBytes = [System.IO.File]::ReadAllBytes($Source)
+    $readBytes = [System.IO.File]::ReadAllBytes($Readback)
+    $prefix = 0
+    if ($readBytes.Length -ge 8) {
+        $headLength = [Math]::Min(4096, $readBytes.Length)
+        $head = [Text.Encoding]::ASCII.GetString($readBytes, 0, $headLength)
+        if ($head.StartsWith('<?xml')) {
+            $end = $head.IndexOf('</data>')
+            if ($end -ge 0) {
+                $prefix = $end + 7
+                while ($prefix -lt $readBytes.Length -and
+                       ($readBytes[$prefix] -eq 10 -or $readBytes[$prefix] -eq 13)) {
+                    $prefix++
+                }
+            }
+        }
+    }
+    if ($prefix -ge $readBytes.Length) {
+        return [pscustomobject]@{ Match = $false; Prefix = $prefix }
+    }
+
+    $available = $readBytes.Length - $prefix
+    if ($available -gt $sourceBytes.Length) {
+        return [pscustomobject]@{ Match = $false; Prefix = $prefix }
+    }
+    $sourcePart = New-Object byte[] $available
+    $readPart = New-Object byte[] $available
+    [Array]::Copy($sourceBytes, 0, $sourcePart, 0, $available)
+    [Array]::Copy($readBytes, $prefix, $readPart, 0, $available)
+    if (-not [Linq.Enumerable]::SequenceEqual([byte[]]$sourcePart, [byte[]]$readPart)) {
+        return [pscustomobject]@{ Match = $false; Prefix = $prefix }
+    }
+
+    # A converted read is sector-sized. Padding dropped from the tail must be zero.
+    for ($index = $available; $index -lt $sourceBytes.Length; $index++) {
+        if ($sourceBytes[$index] -ne 0) {
+            return [pscustomobject]@{ Match = $false; Prefix = $prefix }
+        }
+    }
+    return [pscustomobject]@{ Match = $true; Prefix = $prefix }
+}
+
 function Get-EdlPort {
     $p = Get-PnpDevice -PresentOnly -ErrorAction SilentlyContinue |
         Where-Object { $_.FriendlyName -match '9008' } | Select-Object -First 1
@@ -177,7 +221,7 @@ if ($ReadTo) {
 $progXml = Join-Path $work 'program.xml'
 ('<?xml version="1.0" ?><data><program SECTOR_SIZE_IN_BYTES="{0}" filename="boot_a.img" physical_partition_number="{4}" label="{3}" start_sector="{1}" num_partition_sectors="{2}" /></data>' -f $SectorSize, $StartSector, $sectors, $Label, $Lun) |
     Set-Content -Path $progXml -Encoding ASCII
-Log ("program: {0} LUN4 sector {1}, {2} sectors, {3} B" -f $Label, $StartSector, $sectors, $padded)
+Log ("program: {0} LUN{4} sector {1}, {2} sectors, {3} B" -f $Label, $StartSector, $sectors, $padded, $Lun)
 $fhOut = Join-Path $work 'fh.out.txt'
 $p = Start-Process -FilePath (Join-Path $ToolDir 'fh_loader.exe') -ArgumentList @(
     "--port=\\.\$com", '--memoryname=ufs', "--search_path=$work", "--sendxml=$progXml",
@@ -207,7 +251,13 @@ if (-not $NoVerify) {
     if (Test-Path $rb) {
         $rbSha = (Get-FileHash $rb -Algorithm SHA256).Hash.ToLower()
         Log ("verify: readback sha256 " + $rbSha.Substring(0, 16))
-        if ($rbSha -ne $sha) { Fail 'read-back does not match the image' }
+        $check = Test-PaddedImage $target $rb
+        if (-not $check.Match) {
+            Fail 'read-back does not match the image'
+        }
+        if ($check.Prefix -gt 0) {
+            Log ("verify: ignored {0}-byte fh_loader XML ACK prefix" -f $check.Prefix)
+        }
         Log 'verify: match'
     } else {
         Log 'verify: read-back file missing, skipped'

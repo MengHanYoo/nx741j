@@ -6,12 +6,14 @@
 |---|---|
 | 组件选中 | ✅ `ShengUfs` + `VirtioMmioBlock` |
 | 内核配置 | ✅ `CONFIG_XNU_NATIVE_UFS=y` |
-| 内核链接 | ✅ 无未定义符号，最终内核 sha256 `14e63ca1526f9b956fb9a41b33269b7a13390937a7a743bbba17009e9476207a` |
-| payload / boot | ✅ 见构建输出 |
-| 运行时 | ⚠️ 默认参数和镜像已写入，但复位后停在 `QUSB_BULK_CID`；未观察到 APFS 挂载 |
+| 内核链接 | ✅ 无未定义符号，最终内核 sha256 `255cdf323d1d00bc5e077a628d9f6687c6f354de7dc2d9739f2923a70dbd3c9b` |
+| payload / boot | ✅ normal-root `8801fbd7…`、probe=12 `fa777aeb…`、boot `dbb6c35c…` |
+| 运行时 | ⚠️ 捕获日志已到 NativeUfs；复位后停在 `QUSB_BULK_CID`，未观察到 APFS 挂载 |
 
 2026-11-22 更新：真实 OS/SystemOS UUID、VerifiedRoot 双卷 header-only 策略和
 `NXROOTP1` 动态锚点已编入；`native-ufs-noverify` 与固定 `nxroot-lba` 已移除。
+正常根模式现在显式执行 `cold init → nxAdoptBind → startRoot`，adopt 失败
+会打印真实原因并停止，不再回退到本板不可用的 host bring-up。
 当前主机产物见 `STATUS-2026-11-22.md`，真机 APFS 挂载仍未观察。
 
 ## 组成

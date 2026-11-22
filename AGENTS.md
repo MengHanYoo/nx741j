@@ -18,7 +18,8 @@ sudo ./scripts/build-and-test.sh ~/nx741j-build/UniXNU
 ```
 
 它依次跑 `kernel → payload → firmware`，再把 payload 里的 kernel/ADT/trustcache 与 DEBUG 的
-`UniXNU.efi`、`DarwinBoot.efi` 组进 ESP，用 `qemu-system-aarch64 -M virt -m 16G -smp 16` 跑一遍，
+`UniXNU.efi`、`DarwinBoot.efi` 组进 ESP，用
+`qemu-system-aarch64 -M virt -m 16G -smp 16,sockets=1,cores=8,threads=2` 跑一遍，
 最后断言三个标记：
 
 | 标记 | 含义 |

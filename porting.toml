@@ -296,7 +296,10 @@ paths = [
   "package/storage-bringup/SmmuBind.c",
   "package/storage-bringup/Stubs.c",
   "scripts/build-storage-bringup.py",
+  "scripts/build-payload-modes.sh",
   "scripts/patch-native-ufs-root-anchor.py",
+  "scripts/host/flash-rawdump-9008.ps1",
+  "scripts/host/repair-super-progress-sector.ps1",
   "scripts/prepare-verified-root.py",
   "scripts/verify-verified-root.py",
   "scripts/mk-verified-root-policy.py",
@@ -325,7 +328,7 @@ findings = [
   "2026-11-22: real OS/SystemOS UUIDs are DADD93F8-DBBF-4B17-A1DF-0F11E64172F7 and 96096B28-B6DC-4BC7-9D3A-2632A0FE53F1; the root_match_volume_uuid is present in board.toml and the ADT.",
   "2026-11-22: VerifiedRoot authenticated 1,375,753 OS blocks and 669,696 SystemOS blocks using the compiled C/RSA implementation; the signed policy headers are in Policy.o and the hash objects are in the version-2 root image.",
   "2026-11-22: the default payload uses native-ufs-root=1 with sheng-pmgr=2. The PMGR provider is linked, but runtime qualification is still pending on hardware.",
-  "2026-11-22 device test: userdata-root.img and the NXROOTP1 anchor were written through 9008 and read back; payload, FD and efisp-p7 were also written and read back. Reset enumerated as QUSB_BULK_CID:046A_SN:098F0FC3, not Android or iOS.",
+  "2026-11-22 device test: userdata-root.img and the NXROOTP1 anchor were written through 9008 and read back; an older normal-root payload, FD and efisp-p7 were also written and read back. A later EDL read recovered the kernel log through NativeUfs bringup. Reset still enumerated as QUSB_BULK_CID:046A_SN:098F0FC3, not Android or iOS.",
   "UFS is not required for the official stage 2 path: the payload volume is a RAM initrd published by UniXNURamDiskDxe, and DiskIoDxe/Fat mount it successfully on device.",
   "The vendor UFS stack cannot run in this firmware because HALIOMMU needs DTBExtnProtocol and UFSDxe needs the RPMH/SCM chain; both providers are absent.",
   "board.toml changed in this range: the platform ADT inputs (psci_method/dram_size/owned_memory_size/cpu_regs) and the payload trust cache list were made explicit; see docs/STEP6-PLATFORM.md.",
@@ -343,19 +346,21 @@ completion = [
 ]
 limits = [
   "Host-verified on 2026-11-22: dynamic NXROOTP1, both real UUIDs, VerifiedRoot headers/hash objects, normal native-ufs-root=1 payload and the QEMU hand-off gate all build/run.",
-  "The new 8,445,677,568-byte root image and out/userdata-anchor.bin are not installed because no ADB or 9008 device is attached.",
+  "The 8,445,677,568-byte root image and out/userdata-anchor.bin were installed through 9008 and read back. The old loader capture reached NativeUfs; APFS and launchd are still unobserved.",
+  "The old p7 progress record was written to super LBA 20224 because gRawBase was zero. The source is fixed and a fail-closed single-sector restore helper is included, but the repaired loader and super sector are not yet applied.",
   "PMGR is linked but runtime_qualified is false; the original nub publication and power-refusal path require a real phone.",
   "No Mu-side UFS BlockIo: UFSDxe/HALIOMMU cannot be enabled without DTBExtn, NPA and RPMH providers",
   "No hardware observation yet for APFS volume selection, IOMedia root publication or launchd.",
 ]
 next_action = [
-  "Reconnect a phone through ADB or 9008, write the new root image, install the 4 KiB NXROOTP1 anchor and read both back.",
+  "Re-enter 9008 and run scripts/host/repair-super-progress-sector.ps1 to validate and restore only super LBA 20224.",
+  "Write the repaired efisp-p7 loader and the final probe=12 payload, then read the progress, NXLOG and UFS snapshot records.",
   "Boot the final normal-root payload; verify both IOMedia, APFS root matching, launchd and the PMGR observation record.",
   "Only after the first iOS boot, continue persistent Data and performance work.",
 ]
 evidence = [
-  { kind = "host", reference = "docs/STATUS-2026-11-22.md", result = "Normal-root payload and QEMU hand-off pass; PMGR is linked; hardware gate is explicitly pending", command = "QEMU_MEM=16G QEMU_SMP=16 QEMU_INT=1 scripts/qemu-nx741j.sh /opt/work/nx741j-build/UniXNU 60", revision = "1eb7e6fb00ea816a014f8776943779d6d2fe3382" },
-  { kind = "device", reference = "docs/DEVICE-TEST-2026-11-22.md", result = "9008 wrote and verified the root image, anchor, payload, FD and efisp-p7; reset stopped at QUSB_BULK before iOS", command = "flash-boota-9008.ps1 and flash-rawdump-9008.ps1 against COM4; read back all regions", revision = "1eb7e6fb00ea816a014f8776943779d6d2fe3382" },
+  { kind = "host", reference = "docs/STATUS-2026-11-22.md", result = "Normal-root payload and QEMU hand-off pass; PMGR is linked; hardware gate is explicitly pending", command = "QEMU_MEM=16G QEMU_SMP=16 QEMU_CORES=8 QEMU_THREADS=2 QEMU_INT=1 scripts/qemu-nx741j.sh /opt/work/nx741j-build/UniXNU 60", revision = "1eb7e6fb00ea816a014f8776943779d6d2fe3382" },
+  { kind = "device", reference = "docs/DEVICE-TEST-2026-11-22.md", result = "9008 wrote and verified the root image, anchor, payload, FD and efisp-p7; the captured kernel log reached NativeUfs, and reset stopped at QUSB_BULK before iOS", command = "flash-boota-9008.ps1, flash-rawdump-9008.ps1 and read-9008.ps1 against COM4", revision = "1eb7e6fb00ea816a014f8776943779d6d2fe3382" },
   { kind = "source", reference = "board.toml", result = "hardware.storage LBAs, UFS model and payload size" },
   { kind = "source", reference = "docs/PORTING-RECORD.md", result = "GPT inventory and partition strategy" },
   { kind = "device", reference = "docs/STAGE2-CONFORMANCE.md", result = "Payload volume mounted from the initrd (Fat) without any UFS BlockIo", command = "boot the minimal FV and read the UNIXNURAMDISK/Fat lines", revision = "f2584c81ca5ddcf3c9e58a6d15b6866e85e11f85" },
@@ -415,7 +420,7 @@ next_action = [
   "Port the SDE/DSI driver against dts/nx741j-mdss.dtsi, replacing the disabled provider placeholders with the real clock and NoC nodes",
 ]
 evidence = [
-  { kind = "host", reference = "docs/STATUS-2026-11-22.md", result = "Final kernel contains the display/backlight services and the QEMU hand-off gate passes", command = "llvm-nm --defined-only kernel.macho and QEMU_MEM=16G QEMU_SMP=16 scripts/qemu-nx741j.sh", revision = "1eb7e6fb00ea816a014f8776943779d6d2fe3382" },
+  { kind = "host", reference = "docs/STATUS-2026-11-22.md", result = "Final kernel contains the display/backlight services and the QEMU hand-off gate passes", command = "llvm-nm --defined-only kernel.macho and QEMU_MEM=16G QEMU_SMP=16 QEMU_CORES=8 QEMU_THREADS=2 scripts/qemu-nx741j.sh", revision = "1eb7e6fb00ea816a014f8776943779d6d2fe3382" },
   { kind = "source", reference = "board.toml", result = "Panel, GOP geometry and framebuffer region" },
   { kind = "source", reference = "docs/STEP6-DRIVERS-MATRIX.md", result = "STEP6-MATRIX: driver order, selected/planned components and build integration checked" },
   { kind = "source", reference = "docs/DISPLAY-DT.md", result = "DISPLAY-DT: mdss/DSI topology, phandle rewrite rules and the dtc/ADT verification" },
@@ -650,6 +655,9 @@ status = "host-verified"
 components = ["XnuPrelink"]
 paths = [
   "scripts/package.sh",
+  "scripts/build-payload-modes.sh",
+  "scripts/host/flash-rawdump-9008.ps1",
+  "scripts/host/repair-super-progress-sector.ps1",
   "board.toml",
   "docs/HANDOFF-2026-11-07.md",
   "package/firmware-preflight.py",
@@ -675,12 +683,16 @@ configuration = [
 procedure = [
   "./unixnu build kernel -D ../UniXNU-nx741j",
   "./unixnu build payload -D ../UniXNU-nx741j",
+  "./scripts/build-payload-modes.sh <build-tree>",
   "./unixnu bootimg -D ../UniXNU-nx741j --ramdisk <payload.img>",
   "./scripts/package.sh --no-deps",
 ]
 findings = [
-  "2026-11-22: final host outputs are kernel.macho 14e63ca1526f9b956fb9a41b33269b7a13390937a7a743bbba17009e9476207a, root payload 219817f9c2428b0c3cadf758228462569f257ce63b5c47b8a44ddd3abcd114b0, boot.img 8074e86236ae3e158fa30b76d0a1085206aecb80d27e6396f55fe30d4fdb5a9b and FD 3ce5c6d2c61891975c52846358bff3f3d9744413d61fd732ea48f7507a49a009.",
-  "2026-11-22: QEMU_MEM=16G QEMU_SMP=16 passed BootEntry, MARK #29 and EBS ok with panic=0; the phone flash gate remains open because no device is attached.",
+  "2026-11-22: final host outputs are kernel.macho 255cdf323d1d00bc5e077a628d9f6687c6f354de7dc2d9739f2923a70dbd3c9b, normal-root payload 8801fbd728c35227c193d2aac8dfcf1302ea02a5b2f47c55b07c19f9ab0de95c, probe12 payload fa777aeb86eab4b60c573b3086d2b309ffeed1972f00b4a91e18c34337cf0036, boot.img dbb6c35c9e133c35fe3b7c2d52a4b129239db68ca3d3018309acce7aa10e004d and FD 3ce5c6d2c61891975c52846358bff3f3d9744413d61fd732ea48f7507a49a009.",
+  "2026-11-22: QEMU_MEM=16G QEMU_SMP=16 QEMU_CORES=8 QEMU_THREADS=2 passed BootEntry, MARK #29 and EBS ok with panic=0.",
+  "2026-11-22: an EDL read recovered the previous kernel log. XNU completed early VM and kext collection, printed NATIVE_UFS start, bringup enter and hc/cap/hcs/hce, then the old normal-root path entered hostBringUp. The normal-root patch now performs cold init, nxAdoptBind and startRoot, and fails closed with the adopt reason.",
+  "2026-11-22: old p7 never initialized gRawBase, so write_progress wrote absolute super LBA 20224 instead of rawdump+79 MiB. The loader now binds gRawBase/gRawBs after finding rawdump, refuses zero, and calls dump_ufs_state. The repaired loader sha256 is 73b56bf2b2192706ec724974f832457d5b95ab1382038e3442bc392127b4b246.",
+  "2026-11-22: scripts/host/repair-super-progress-sector.ps1 restores only super LBA 20224 from the 2026-11-09 super.img backup after checking that the current sector is the known BP_RECORD.",
   "unixnu build kernel exits 0 from a freshly cloned tree with all 63 patches applied: 856 compile records, eight archive builders, link and prelink.",
   "kernel.macho is 51,691,520 bytes and the prelink report lists 11 components with 23,833 bindings, but abi_qualified and runtime_qualified are both false, so it is an experimental candidate.",
   "The bootimg values must be TOML integers; quoted hex strings fail in verify with a TypeError, and local.toml ramdisk=\"none\" silently drops the payload.",

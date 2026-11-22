@@ -41,8 +41,9 @@ mirror instead of assuming one home directory.
 - `scripts/build-and-test.sh` uses the resolved UniXNU tree, UEFI tree and
   `unixnu.local.toml`; its smoke step uses `$UEFI/Mu_Basecore`.
 - The kernel build uses 16 jobs, smoke uses 8, and the fixture QEMU gate uses
-  16 GB RAM and 16 vCPUs. These values can be overridden independently with `JOBS`,
-  `SMOKE_JOBS`, `QEMU_MEM`, and `QEMU_SMP`.
+  16 GiB RAM with `1 socket × 8 cores × 2 threads` (16 vCPUs). These values can be
+  overridden with `JOBS`, `SMOKE_JOBS`, `QEMU_MEM`, `QEMU_SMP`, `QEMU_CORES`, and
+  `QEMU_THREADS`.
 - `scripts/qemu-nx741j.sh` uses the same UEFI resolver and the tree passed by
   the gate. Fixture ADT generation remains the default; `QEMU_ADT=real` uses
   `scripts/mk-qemu-adt.py`, which now accepts `--tree` or `UNIXNU`.
@@ -59,6 +60,14 @@ mirror instead of assuming one home directory.
 - `scripts/run-local-gate.ps1` runs the sync, environment check and full
   `tree → kernel → payload → firmware → smoke → QEMU` gate from a normal
   PowerShell session.
+- `scripts/host/flash-boota-9008.ps1` now strips a possible `fh_loader` XML ACK
+  prefix before comparing converted readback data. The previous exact-hash
+  check falsely rejected a correct 64 MiB rawdump write even though the image
+  matched byte-for-byte after the ACK.
+- `scripts/host/flash-rawdump-9008.ps1` is tracked with the current normal-root
+  default hash, and `scripts/host/repair-super-progress-sector.ps1` restores
+  only the old loader's known 4 KiB `super` record after validating the current
+  BP_RECORD.
 
 ## QEMU distinction
 
@@ -76,6 +85,10 @@ boot-chain gate have run from this session. The latest aggregate smoke result is
 recorded separately because intermittent AAVMF/TCG boot stalls were explicitly
 deferred by the user.
 
+The current WSL environment check passes with 24 vCPUs, about 19.5 GiB RAM,
+Clang/LLVM, DTC, `qemu-system-aarch64` and `apfsutil`. The fixture QEMU command
+prints `memory=16G smp=16,sockets=1,cores=8,threads=2`.
+
 ## Follow-up: PMGR and warning audit
 
 - `.wslconfig` is 134 bytes, valid UTF-8 with CRLF line endings. After
@@ -87,4 +100,5 @@ deferred by the user.
   audit passes and the final native kernel contains `_sheng_pmgr_run`.
 - The default payload uses `native-ufs-root=1` and `sheng-pmgr=2`; it is still
   labelled unqualified until a real phone runs the PMGR lifecycle.
-- Final QEMU gate: 16 GiB / 16 vCPU, `BootEntry`, `MARK #29`, `EBS ok`, panic=0.
+- Final QEMU gate: 16 GiB with `sockets=1/cores=8/threads=2`, `BootEntry`,
+  `MARK #29`, `EBS ok`, panic=0.

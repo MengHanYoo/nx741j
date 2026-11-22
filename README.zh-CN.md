@@ -75,6 +75,14 @@ sudo ./scripts/build-and-test.sh ~/nx741j-build/UniXNU
 闸门断言三个标记 —— `UNIXNU: BootEntry`、`MARK #29`、`QEMU: EBS ok, entering the kernel` ——
 任一缺失即构建失败。
 
+同时生成 normal-root 与旧版 `probe=12` 对照 payload：
+
+```sh
+./scripts/build-payload-modes.sh ~/nx741j-build/UniXNU
+```
+
+产物在 `out/payload-modes/`；脚本结束前会恢复 tree 中的 normal-root payload。
+
 ## 刷机
 
 本机 ABL 拒绝 `fastboot boot`、`fastboot flash`、`fastboot erase`（回 `unknown command`），
@@ -158,20 +166,31 @@ PMGR 设备构建器通过 340 项 provider 虚表审计，最终内核包含
 
 | 文件 | SHA-256 |
 |---|---|
-| `kernel.macho` | `14e63ca1526f9b956fb9a41b33269b7a13390937a7a743bbba17009e9476207a` |
-| `payload.img` | `219817f9c2428b0c3cadf758228462569f257ce63b5c47b8a44ddd3abcd114b0` |
+| `kernel.macho` | `255cdf323d1d00bc5e077a628d9f6687c6f354de7dc2d9739f2923a70dbd3c9b` |
+| `payload.img` | `8801fbd728c35227c193d2aac8dfcf1302ea02a5b2f47c55b07c19f9ab0de95c` |
+| `payload-probe12.img` | `fa777aeb86eab4b60c573b3086d2b309ffeed1972f00b4a91e18c34337cf0036` |
 | `SILICIUM_UEFI.fd` | `3ce5c6d2c61891975c52846358bff3f3d9744413d61fd732ea48f7507a49a009` |
+| `boot.img` | `dbb6c35c9e133c35fe3b7c2d52a4b129239db68ca3d3018309acce7aa10e004d` |
 
-QEMU 在 16 GiB / 16 vCPU 下通过 `UNIXNU: BootEntry`、`MARK #29` 和
+QEMU 在 16 GiB、`1 socket × 8 cores × 2 threads`（16 vCPU）下通过
+`UNIXNU: BootEntry`、`MARK #29` 和
 `QEMU: EBS ok, entering the kernel`，panic=0。真机还没有 APFS 选卷、
 `launchd`、显示、亮度、触摸或按键证据。
 第 7 步及持久 Data/性能按用户要求冻结到能启动 iOS 之后。
 
-随后设备实际接入 9008：根镜像、`NXROOTP1` 锚点、payload、FD 和
-`efisp-p7.img` 都已写入并回读一致；复位后设备没有进入 Android 或 iOS，
-而是枚举为 `QUSB_BULK_CID:046A_SN:098F0FC3`。这仍不是 iOS 启动证据，
-需要按 [DEVICE-TEST-2026-11-22.md](docs/DEVICE-TEST-2026-11-22.md)
-重新进入 9008 读取 loader progress/log 后继续。
+随后设备实际接入 9008：根镜像、`NXROOTP1` 锚点、payload、FD 和旧
+`efisp-p7.img` 都已写入并回读一致。再次进入 EDL 后取到旧 loader 捕获的
+内核日志：XNU 已完成 early VM 和 kext collection，并打印
+`NATIVE_UFS start`、`NATIVE_UFS bringup: enter` 与 `hc=...`。因此问题不是
+loader 没跑，而是旧正常根路径随后误入 `hostBringUp()`；该路径已改为
+`cold init → nxAdoptBind → startRoot`，失败会明确报因并停止。
+
+复位后设备仍枚举为 `QUSB_BULK_CID:046A_SN:098F0FC3`，还不是 iOS 启动证据。
+另外确认旧 loader 因 `gRawBase` 未赋值，把进度记录误写到 `super` LBA
+`20224`；源码已修复并以 rawdump 基址 fail-closed，新 loader SHA-256 为
+`73b56bf2b2192706ec724974f832457d5b95ab1382038e3442bc392127b4b246`。
+下次进入 9008 时按 [DEVICE-TEST-2026-11-22.md](docs/DEVICE-TEST-2026-11-22.md)
+先精确恢复该 4 KiB，再写入新 loader 和读取新一轮日志。
 
 完整的 UniXNU 框架差异在 `patches/framework/UniXNU-ba9e14fb-nx741j.patch`，应用与复现方法见
 [docs/INTEGRATION-2026-11-22.md](docs/INTEGRATION-2026-11-22.md)，当前验收边界见

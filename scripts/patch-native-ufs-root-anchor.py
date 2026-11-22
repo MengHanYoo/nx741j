@@ -12,10 +12,10 @@ import sys
 
 ROOT = Path(os.environ.get("UNIXNU_UFS_ROOT", Path(__file__).resolve().parents[1]))
 NATIVE = next((path for path in (
-    ROOT / "drivers/ShengUfs/NativeUfs.cpp", ROOT / "NativeUfs.cpp"
+    ROOT / "NativeUfs.cpp", ROOT / "drivers/ShengUfs/NativeUfs.cpp"
 ) if path.is_file()), ROOT / "drivers/ShengUfs/NativeUfs.cpp")
 LAYOUT = next((path for path in (
-    ROOT / "drivers/ShengUfs/RootLayout.h", ROOT / "RootLayout.h"
+    ROOT / "RootLayout.h", ROOT / "drivers/ShengUfs/RootLayout.h"
 ) if path.is_file()), ROOT / "drivers/ShengUfs/RootLayout.h")
 MARKER = "NXROOTP1"
 
@@ -435,7 +435,54 @@ def patch_native() -> None:
     if "native-ufs-noverify" in text:
         text = "\n".join(line for line in text.splitlines()
                          if "native-ufs-noverify" not in line) + "\n"
-    if MARKER in text and "layout->imageLba" in text:
+    if MARKER in text:
+        # Older revisions of this script already added the anchor parser but
+        # left normal-root mode on the unsafe host-bringup fallback.  Keep the
+        # patch idempotent while upgrading that already-patched source too.
+        root_mode_old = "  if (rootMode && !probe) {\n    return startRoot (provider);\n  }"
+        root_mode_new = ("  if (rootMode && !probe) {\n"
+                         "    printf (\"NATIVE_UFS: cold init %d\\n\", board_ufs_cold_init ());\n"
+                         "    bool adopted = nxAdoptBind ();\n"
+                         "    printf (\"NATIVE_UFS: adopt bind %d\\n\", adopted ? 1 : 0);\n"
+                         "    if (!adopted) return false;\n"
+                         "    bool published = startRoot (provider);\n"
+                         "    printf (\"NATIVE_UFS: publication done=%d published=%u\\n\", published ? 1 : 0,\n"
+                         "            (unsigned)native_ufs_blocks_published);\n"
+                         "    if (!published) return false;\n"
+                         "    thread_t thread = nullptr;\n"
+                         "    if (kernel_thread_start (mediaReportThread, nullptr, &thread) != KERN_SUCCESS) return false;\n"
+                         "    thread_deallocate (thread);\n"
+                         "    return true;\n"
+                         "  }")
+        if root_mode_old in text:
+            text = replace_once(text, root_mode_old, root_mode_new, "normal root mode queue")
+        start_old = """  RootLayout *layout = static_cast<RootLayout *> (IOMalloc (sizeof (RootLayout)));
+  bool nxAdoptLayout = layout && nxAdoptRootLayout (layout, &why);
+  if (!nxAdoptLayout && !hostBringUp (&why)) {
+    rootDiagnosticFailure (why);
+    IOLog ("NativeUfs: root bring-up failed: %s\\n", why);
+    IOFree (layout, sizeof (RootLayout));
+    return false;
+  }
+  native_ufs_root_step = 2;
+  if (!nxAdoptLayout && (!layout || !findRootLayout (layout, &why))) {
+    rootDiagnosticFailure (layout ? why : "root layout allocation failed");
+    IOLog ("NativeUfs: root layout failed: %s\\n", why);
+    if (layout) IOFree (layout, sizeof (RootLayout));
+    return false;
+  }"""
+        start_new = """  RootLayout *layout = static_cast<RootLayout *> (IOMalloc (sizeof (RootLayout)));
+  bool nxAdoptLayout = layout && nxAdoptRootLayout (layout, &why);
+  if (!nxAdoptLayout) {
+    const char *adoptWhy = layout ? why : "root layout allocation failed";
+    rootDiagnosticFailure (adoptWhy);
+    IOLog ("NativeUfs: adopted root layout failed: %s\\n", adoptWhy);
+    if (layout) IOFree (layout, sizeof (RootLayout));
+    return false;
+  }
+  native_ufs_root_step = 2;"""
+        if start_old in text and "NativeUfs: adopted root layout failed" not in text:
+            text = replace_once(text, start_old, start_new, "adopted-root fail-closed path")
         NATIVE.write_text(text, encoding="utf-8", errors="surrogateescape")
         return
     start = text.find("static bool nxAdoptRootLayout (RootLayout *layout, const char **why)\n{")
@@ -453,10 +500,45 @@ def patch_native() -> None:
     root_mode_old = "  if (rootMode && !probe) {\n    return startRoot (provider);\n  }"
     root_mode_new = ("  if (rootMode && !probe) {\n"
                      "    printf (\"NATIVE_UFS: cold init %d\\n\", board_ufs_cold_init ());\n"
-                     "    if (!nxAdoptBind ()) return false;\n"
-                     "    return startRoot (provider);\n"
+                     "    bool adopted = nxAdoptBind ();\n"
+                     "    printf (\"NATIVE_UFS: adopt bind %d\\n\", adopted ? 1 : 0);\n"
+                     "    if (!adopted) return false;\n"
+                     "    bool published = startRoot (provider);\n"
+                     "    printf (\"NATIVE_UFS: publication done=%d published=%u\\n\", published ? 1 : 0,\n"
+                     "            (unsigned)native_ufs_blocks_published);\n"
+                     "    if (!published) return false;\n"
+                     "    thread_t thread = nullptr;\n"
+                     "    if (kernel_thread_start (mediaReportThread, nullptr, &thread) != KERN_SUCCESS) return false;\n"
+                     "    thread_deallocate (thread);\n"
+                     "    return true;\n"
                      "  }")
     text = replace_once(text, root_mode_old, root_mode_new, "normal root mode queue")
+    start_old = """  RootLayout *layout = static_cast<RootLayout *> (IOMalloc (sizeof (RootLayout)));
+  bool nxAdoptLayout = layout && nxAdoptRootLayout (layout, &why);
+  if (!nxAdoptLayout && !hostBringUp (&why)) {
+    rootDiagnosticFailure (why);
+    IOLog ("NativeUfs: root bring-up failed: %s\\n", why);
+    IOFree (layout, sizeof (RootLayout));
+    return false;
+  }
+  native_ufs_root_step = 2;
+  if (!nxAdoptLayout && (!layout || !findRootLayout (layout, &why))) {
+    rootDiagnosticFailure (layout ? why : "root layout allocation failed");
+    IOLog ("NativeUfs: root layout failed: %s\\n", why);
+    if (layout) IOFree (layout, sizeof (RootLayout));
+    return false;
+  }"""
+    start_new = """  RootLayout *layout = static_cast<RootLayout *> (IOMalloc (sizeof (RootLayout)));
+  bool nxAdoptLayout = layout && nxAdoptRootLayout (layout, &why);
+  if (!nxAdoptLayout) {
+    const char *adoptWhy = layout ? why : "root layout allocation failed";
+    rootDiagnosticFailure (adoptWhy);
+    IOLog ("NativeUfs: adopted root layout failed: %s\\n", adoptWhy);
+    if (layout) IOFree (layout, sizeof (RootLayout));
+    return false;
+  }
+  native_ufs_root_step = 2;"""
+    text = replace_once(text, start_old, start_new, "adopted-root fail-closed path")
     text = text.replace("uint64_t absolute = layout->userdataFirst * 4096ULL + layout->window[index].offset;",
                         "uint64_t absolute = layout->imageLba * 4096ULL + layout->window[index].offset;")
     text = text.replace("NATIVE_UFS root windows\\n\"\n"

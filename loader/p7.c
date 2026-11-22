@@ -260,7 +260,9 @@ static void write_progress(UINT32 step, UINT64 status)
     r->Magic = 0x32444244;
     r->Step = step;
     r->Status = status;
-    if (gIo == 0 || gRawBs == 0) return;
+    // Never fall back to an absolute LBA.  A zero base used to write this
+    // record into the super partition instead of rawdump.
+    if (gIo == 0 || gRawBs == 0 || gRawBase == 0) return;
     ((EFI_STATUS (*)(EFI_BLOCK_IO_PROTOCOL *, UINT32, UINT64, UINTN, void *))gIo->WriteBlocks)
         (gIo, gIo->Media->MediaId, gRawBase + (79ULL * 1024 * 1024) / gRawBs, 4096, rec);
 }
@@ -460,7 +462,6 @@ static void capture_previous_log(void)
     {
         static UINT8 st[4096];
         UINT8 *q = st;
-        UINTN bs3 = gRawBs ? gRawBs : 4096;
         for (UINTN z = 0; z < sizeof(st); z++) st[z] = 0;
         q[0] = 'N'; q[1] = 'X'; q[2] = 'L'; q[3] = 'G'; q[4] = 'S'; q[5] = 'T'; q[6] = '1';
         *(UINT64 *)(st + 8) = found;
@@ -507,6 +508,9 @@ EFI_STATUS EFIAPI EfiMain(EFI_HANDLE image, EFI_SYSTEM_TABLE *st)
     if (!find_partition("rawdump", &base)) {
         out_ascii("rawdump not found\r\n"); for (;;) { stall(1000000); }
     }
+    gRawBase = base;
+    gRawBs = gBlockSize;
+    dump_ufs_state();
     out_ascii("rawdump lba "); out_hex(base); out_ascii(" bs "); out_hex(gBlockSize); out_ascii("\r\n");
 
     // payload (64 MiB) at rawdump + 0

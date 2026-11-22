@@ -234,14 +234,21 @@ Final host hashes:
 
 | File | SHA-256 |
 |---|---|
-| `kernel.macho` | `14e63ca1526f9b956fb9a41b33269b7a13390937a7a743bbba17009e9476207a` |
-| `payload.img` | `219817f9c2428b0c3cadf758228462569f257ce63b5c47b8a44ddd3abcd114b0` |
+| `kernel.macho` | `255cdf323d1d00bc5e077a628d9f6687c6f354de7dc2d9739f2923a70dbd3c9b` |
+| `payload.img` | `8801fbd728c35227c193d2aac8dfcf1302ea02a5b2f47c55b07c19f9ab0de95c` |
+| `payload-probe12.img` | `fa777aeb86eab4b60c573b3086d2b309ffeed1972f00b4a91e18c34337cf0036` |
 | `SILICIUM_UEFI.fd` | `3ce5c6d2c61891975c52846358bff3f3d9744413d61fd732ea48f7507a49a009` |
+| `boot.img` | `dbb6c35c9e133c35fe3b7c2d52a4b129239db68ca3d3018309acce7aa10e004d` |
 
 The phone was later connected through 9008: the root image, `NXROOTP1` anchor, payload, FD and
-`efisp-p7.img` were all written and read back. After reset the phone did not boot Android or iOS;
-it enumerated as `QUSB_BULK_CID:046A_SN:098F0FC3`. This is not an iOS success. Recovery and the
-loader progress capture are documented in
+the then-current `efisp-p7.img` were all written and read back. A later EDL read recovered the
+kernel's captured log: XNU completed early VM and kext collection, then reached
+`NATIVE_UFS start` and `NATIVE_UFS bringup: enter`. After reset the phone still enumerated as
+`QUSB_BULK_CID:046A_SN:098F0FC3`; this is not an iOS success. The old loader also wrote its
+progress record to `super` LBA 20224 because `gRawBase` was never initialized. The source now
+binds the rawdump base explicitly, enables the UFS snapshot, and builds `efisp-p7.img` with
+SHA-256 `73b56bf2b2192706ec724974f832457d5b95ab1382038e3442bc392127b4b246`. Recovery and the
+single-sector repair are documented in
 [docs/DEVICE-TEST-2026-11-22.md](docs/DEVICE-TEST-2026-11-22.md). Step 7 and persistent
 Data/performance work stay deferred until iOS starts. The aggregate smoke suite remains separate
 from the green direct QEMU gate.

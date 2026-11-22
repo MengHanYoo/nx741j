@@ -1,7 +1,7 @@
 #!/bin/bash
 set -eu
 R=/mnt/e/default-workspace/z80u-collect/repos/UniXNU-nx741j
-WORK=/tmp/p7-build
+WORK=${P7_BUILD_DIR:-/mnt/e/default-workspace/z80u-collect/_tmp/wsl-tmp/p7-build}
 mkdir -p "$WORK"
 clang --target=aarch64-unknown-windows-msvc -ffreestanding -fno-builtin -fno-stack-protector \
       -fshort-wchar -O2 -Wall -c "$R/loader/p7.c" -o "$WORK/p7.obj"

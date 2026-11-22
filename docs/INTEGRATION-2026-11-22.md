@@ -9,13 +9,14 @@
 |---|---|---|
 | 工作区、输入和 WSL 磁盘在 E 盘 | 完成 | 旧 C 盘树归档；WSL VHDX 为 `E:\wsl\Ubuntu\ext4.vhdx` |
 | WSL 冷启动配置 | 通过 | `.wslconfig` 134 B、UTF-8/CRLF；重启后不再出现旧警告 |
-| 构建资源 | 完成 | kernel 16 jobs、smoke 8 jobs、QEMU 16 GiB/16 vCPU，均可独立覆盖 |
+| 构建资源 | 完成 | kernel 16 jobs、smoke 8 jobs、QEMU 16 GiB / 8C16T（1 socket × 8 cores × 2 threads），均可覆盖 |
 | 4K XNU 内核 | 通过 | 归档、native link 和 prelink 成功 |
 | PMGR | 主机 ABI 完成 | `ShengPlatformPower` 340 项审计通过，`_sheng_pmgr_run` 已链接 |
 | 正常 UFS 根 payload | 通过 | `native-ufs-root=1` + `sheng-pmgr=2` 通过 payload 检查 |
 | QEMU 引导门禁 | 通过 | `BootEntry`、`MARK #29`、`EBS ok`；panic=0 |
 | 9008 镜像安装 | 已完成 | 根镜像、锚点、payload、FD、efisp-p7 全部写入并回读 |
-| 真机启动 | 未通过 | 复位后出现 `QUSB_BULK_CID:046A_SN:098F0FC3`，无 ADB/9008 |
+| 真机启动 | 未通过 | 捕获日志已过 VM/kext collection 并进入 NativeUfs；复位后为 `QUSB_BULK` |
+| loader 进度记录 | 已修源码 | 旧 loader 的 `gRawBase=0` 误写 `super` LBA `20224`；新 loader 为 `73b56bf2…`，待写入 |
 | 最终记录 | 完成 | 本文件、`STATUS-2026-11-22.md`、`OPEN-ITEMS.md` 已更新 |
 
 ## 关键修复
@@ -59,6 +60,7 @@ virtual_entries: 340
 runtime_qualified: false
 original_executable_modified: false
 not a functional power backend
+archive sha256: bb7e253cd9a945e34985db2078e0f7d4ff5978280883915bdb9a35a697e11032
 ```
 
 因此 PMGR 可以构建、链接并接受正常根 payload 的启动参数，但不能替代真机
@@ -70,11 +72,13 @@ not a functional power backend
 
 | 文件 | SHA-256 |
 |---|---|
-| `kernel.macho` | `14e63ca1526f9b956fb9a41b33269b7a13390937a7a743bbba17009e9476207a` |
-| `payload.img` | `219817f9c2428b0c3cadf758228462569f257ce63b5c47b8a44ddd3abcd114b0` |
+| `kernel.macho` | `255cdf323d1d00bc5e077a628d9f6687c6f354de7dc2d9739f2923a70dbd3c9b` |
+| `payload.img` | `8801fbd728c35227c193d2aac8dfcf1302ea02a5b2f47c55b07c19f9ab0de95c` |
+| `payload-probe12.img` | `fa777aeb86eab4b60c573b3086d2b309ffeed1972f00b4a91e18c34337cf0036` |
 | `SILICIUM_UEFI.fd` | `3ce5c6d2c61891975c52846358bff3f3d9744413d61fd732ea48f7507a49a009` |
-| `boot.img` | `8074e86236ae3e158fa30b76d0a1085206aecb80d27e6396f55fe30d4fdb5a9b` |
-| `pmgr-report.json` | `aed984979c4b864b581d1877d922f960ce48faacedc827a3e0278443202bf0a9` |
+| `boot.img` | `dbb6c35c9e133c35fe3b7c2d52a4b129239db68ca3d3018309acce7aa10e004d` |
+| `pmgr-report.json` | `6ce58fe5e41e6eb018010824199985ca125b98da527c688f345d93945fab5ee6` |
+| `efisp-p7.img`（修复版，待写入） | `73b56bf2b2192706ec724974f832457d5b95ab1382038e3442bc392127b4b246` |
 
 `kernel.json`、`kernel.log`、`pmgr-build.log`、`qemu-serial.log` 和
 `qemu-int.log` 也保留在同一目录。`out/` 是主机产物目录，不表示设备已刷入。
@@ -86,12 +90,29 @@ not a functional power backend
 - `userdata-root.img` 写入 `246662139..248724071`，全量回读 SHA-256
   `f45c3288b555a43f945c78a8c75ad56343039f3f5f5350fe57316c64539d2b70`；
 - 4 KiB `NXROOTP1` 锚点写入 `248838138`，回读一致；
-- payload、FD 和 `efisp-p7.img` 分别写入 rawdump/efisp 并回读一致。
+- 旧 normal-root payload、FD 和旧 `efisp-p7.img` 分别写入 rawdump/efisp
+  并回读一致；
+- probe=12 payload `8221c727…` 于 13:13 写入 rawdump，64 MiB 完整回读一致。
+
+重新进入 9008 后，旧 loader 捕获的日志显示 XNU 已完成 early VM、OSLog 和
+kext collection，并到达：
+
+```text
+NATIVE_UFS start provider=nubia,nx741j
+NATIVE_UFS bringup: enter
+NATIVE_UFS bringup: hc=fffffff6bc035000 cap=d5c7031f
+```
 
 复位后设备没有出现在 ADB，而是以
 `QUSB_BULK_CID:046A_SN:098F0FC3`（`VID_19D2&PID_0112`）出现在 Windows，
 没有 9008 COM 端口。真实启动未通过，详细信息见
 [DEVICE-TEST-2026-11-22.md](DEVICE-TEST-2026-11-22.md)。
+
+旧 loader 的 `write_progress()` 从未设置 `gRawBase`，所以约定位置
+`4764200` 是全零，记录被写到绝对 LBA `20224`。该 LBA 位于 `super`。
+修复后的 loader 显式设置 rawdump 基址并启用 UFS snapshot；
+`scripts/host/repair-super-progress-sector.ps1` 可从 2026-11-09 的
+`super.img` 备份只恢复受影响 4 KiB，且在写入前校验当前 BP_RECORD。
 
 ## 复现命令
 
@@ -105,8 +126,9 @@ cd UniXNU
 ./unixnu defconfig nx741j_defconfig -D ../UniXNU-nx741j
 ./unixnu tree -D ../UniXNU-nx741j
 ./unixnu kernel -D ../UniXNU-nx741j -j 16
-./unixnu payload -D ../UniXNU-nx741j
+./scripts/build-payload-modes.sh /path/to/UniXNU
 ./unixnu firmware -D ../UniXNU-nx741j
+./unixnu bootimg -D ../UniXNU-nx741j
 ```
 
 框架补丁为
@@ -116,10 +138,10 @@ cd UniXNU
 
 ## 边界
 
-- 根镜像、尾锚点、payload、FD 和 loader 已写并回读；复位后停在
-  QUSB_BULK，未观察 APFS 选卷和 `launchd`。
-- 需要先强制进入 9008，读取 rawdump 的 loader progress/log，再决定
-  loader/FD/payload 修复或恢复原厂 efisp。
+- 根镜像、尾锚点、payload、FD 和旧 loader 已写并回读；捕获日志到
+  NativeUfs，但尚未观察 APFS 选卷和 `launchd`。
+- 下次进入 9008 必须先修复 `super` 的已知单扇区误写，再写入新 loader
+  并读取新日志。
 - PMGR 只完成 ABI/链接资格，原始 nub 运行仍未硬件合格。
 - QEMU 只验证引导链交接，不模拟面板、UFS、TouchCom 或 PMGR。
 - smoke 六场景仍是独立套件；旧 AAVMF/TCG 偶发卡死没有伪装成通过。
