@@ -23,6 +23,7 @@ param(
     [switch]$NoReboot,
     [switch]$PreflightOnly,
     [switch]$AuditOnly,
+    [switch]$SkipRoot,
     [switch]$SkipSahara,
     [switch]$SkipConfigure
 )
@@ -355,11 +356,36 @@ if ($gpt.first_lba -ne $manifest.userdata_first_lba -or
 
 $preflight = @()
 $mismatches = @()
+$rootAction = @{}
 foreach ($range in $manifest.ranges) {
+    if ($SkipRoot) {
+        $rootAction[$range.file] = 'skip'
+        continue
+    }
     $tag = 'root-preflight-' + [IO.Path]::GetFileNameWithoutExtension($range.file)
     $path = Read-Region $com 0 'userdata' $range.userdata_start_lba $range.blocks $tag
     $sha = Get-Sha256 $path
-    if ($sha -ne $range.base_sha256) {
+    if ($sha -eq $range.base_sha256) {
+        $rootAction[$range.file] = 'write'
+        $preflight += [pscustomobject]@{
+            file = $range.file
+            start_sector = $range.userdata_start_lba
+            blocks = $range.blocks
+            status = 'base'
+            base_sha256 = $sha
+        }
+        Log ("PREFLIGHT {0}: base block matches" -f $range.file)
+    } elseif ($sha -eq $range.sha256) {
+        $rootAction[$range.file] = 'skip'
+        $preflight += [pscustomobject]@{
+            file = $range.file
+            start_sector = $range.userdata_start_lba
+            blocks = $range.blocks
+            status = 'target'
+            target_sha256 = $sha
+        }
+        Log ("PREFLIGHT {0}: already target; will skip" -f $range.file)
+    } else {
         $mismatches += [pscustomobject]@{
             file = $range.file
             logical_start = $range.logical_start
@@ -372,13 +398,10 @@ foreach ($range in $manifest.ranges) {
         Log ("PREFLIGHT {0}: MISMATCH {1} != {2}" -f $range.file, $sha, $range.base_sha256)
         continue
     }
-    $preflight += [pscustomobject]@{
-        file = $range.file
-        start_sector = $range.userdata_start_lba
-        blocks = $range.blocks
-        base_sha256 = $sha
-    }
-    Log ("PREFLIGHT {0}: base block matches" -f $range.file)
+}
+
+if ($SkipRoot) {
+    Log 'root deltas: skipped by request; previous write report already verified them'
 }
 
 if ($AuditOnly) {
@@ -415,7 +438,12 @@ if ($PreflightOnly) {
 }
 
 $writes = @()
+$skipped = @()
 foreach ($range in $manifest.ranges) {
+    if ($rootAction[$range.file] -eq 'skip') {
+        $skipped += $range.file
+        continue
+    }
     $tag = 'root-write-' + [IO.Path]::GetFileNameWithoutExtension($range.file)
     $result = Write-Region $com 0 'userdata' $range.userdata_start_lba (Join-Path $DeltaDir $range.file) $tag
     $writes += $result
@@ -435,6 +463,7 @@ $final = [ordered]@{
     userdata = $gpt
     preflight = $preflight
     writes = $writes
+    skipped = $skipped
     boot_sha256 = $bootSha
     efisp_sha256 = $efispSha
     root_target_sha256 = $manifest.target_sha256
@@ -451,4 +480,5 @@ if (-not $NoReboot) {
     if ($resetText -notmatch 'ACK') { Fail 'reset ACK missing' }
     Log 'reset ACK; device is booting the integrated proven route'
 }
-Log ('PASS all writes verified; report ' + $ReportPath)
+Log ('PASS all writes verified; skipped {0} already-current root ranges; report {1}' -f
+    $skipped.Count, $ReportPath)
