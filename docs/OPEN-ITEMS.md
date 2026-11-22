@@ -1,4 +1,8 @@
-# 未完成项（2026-11-22）
+# 未完成项（2026-11-22，历史记录）
+
+> **状态已更新。** 当前已验证路线、设备写入报告和剩余项见
+> [PROVEN-ROUTE-2026-11-23.md](PROVEN-ROUTE-2026-11-23.md)。
+> 本文件中的 QUSB_BULK、Mu BDS、NativeUfs 和 APFS 阻塞已不代表当前主线。
 
 > **路线更新：** 当前可启动存储主线是 data-a-live 的固定 extent + HFSX +
 > `ufsroot0`，不是旧的 OS/SystemOS APFS VerifiedRoot 路线。根卷已从原始 IPSW

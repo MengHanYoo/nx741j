@@ -5,11 +5,16 @@
 **努比亚 Z80 Ultra（NX741J）** 的设备仓库 — 高通 **SM8850**（Kaanapali，代号 `canoe`），8 核，
 Adreno 840，UFS，面板 `bf375`/`rm692h5` 1440×3200。
 
-本移植通过官方 UniXNU 链路启动 Apple XNU：
+本机最终采用的 NX741J iOS 路线是：
 
 ```
-bootloader -> efisp loader -> UniXNU (UEFI) -> DarwinBoot -> XNU -> userland
+bootloader -> 原厂 efisp LinuxLoader -> boot_a shim loader
+  -> SWEETXNU payload -> XNU -> HFSX ufsroot0 -> launchd
 ```
+
+仓库仍保留官方 Mu/UEFI -> DarwinBoot 实现和诊断，但它不是最终真机镜像：
+本机 Mu 停在 DxeCore/BDS 句柄枚举。已验证路线、哈希和 9008 回读证据见
+[PROVEN-ROUTE-2026-11-23.md](docs/PROVEN-ROUTE-2026-11-23.md)。
 
 目标系统：**iOS 16.7.16（20H392）**，XNU **8796.141.3**，arm64，4 KiB 页。OS profile 固定在
 [board.toml](board.toml) 中，是本移植唯一可用的 IPSW。
@@ -21,10 +26,14 @@ bootloader -> efisp loader -> UniXNU (UEFI) -> DarwinBoot -> XNU -> userland
 | 1 | 板级描述、组件、构建输入 | 完成 |
 | 2 | 固件（UniXNU UEFI 应用、DarwinBoot） | 完成 |
 | 3 | 负载（内核、ADT、trust cache） | 完成 |
-| 4 | 启动链交接（loader -> UEFI -> DarwinBoot -> XNU） | 完成 |
-| 5 | 内核 bring-up（platform expert、IOKit、预链接 kext） | **完成** |
-| 6 | 存储（UFS） | **主机完成、待真机**（见下文） |
-| 7 | 用户态（根卷、`launchd`） | **构建完成、待真机** |
+| 4 | 启动链交接 | 已验证的 loader -> SWEETXNU -> XNU 镜像已写入并回读 |
+| 5 | 内核 bring-up | 已验证内核在 shim-loader QEMU 中进入中断控制器；历史真机已到用户态 |
+| 6 | 存储与驱动 | 39 段固定 extent HFSX `ufsroot0`；显示/触摸/HID/CPU 代码在成功内核中 |
+| 7 | USB/Wi-Fi/音频/基带/相机/背屏 | 按你的要求冻结，等 iOS 用户态可用后再做 |
+
+**2026-11-23 检查点**：根卷来自原始 IPSW，不使用 `iosroot-GOLDEN.img`。
+本次在一次 9008 会话中写入 13 个根差异块、原厂 efisp 和 54,329,344 字节
+`boot_a`，全部逐区回读一致；复位后旧的 `QUSB_BULK` 失败形态未再出现。
 
 **阶段 5 里程碑（2026-11-12）**：内核 console 已能直接画到面板上，所有启动阶段都可以在设备上
 观察，不再只有彩带屏：
@@ -115,6 +124,9 @@ wsl\flash-boota-9008.ps1 -Img <image> -StartSector <lba> -Label <label> -Lun <lu
 | `scripts/` | 构建脚本（`build-fast.sh`、`build-and-test.sh` 等） |
 | `scripts/patch-native-ufs-*.py` | ShengUfs 预置补丁与驱动 diff 的构建钩子 |
 | `docs/` | 分析、审计、阶段记录、硬件清单 |
+
+当前结论、根卷修复、QEMU 边界和 9008 回读报告以
+[docs/PROVEN-ROUTE-2026-11-23.md](docs/PROVEN-ROUTE-2026-11-23.md) 为准。
 
 ## 近期关键修复
 

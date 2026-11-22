@@ -5,11 +5,18 @@
 Device repository for the **Nubia Z80 Ultra (NX741J)** — Qualcomm **SM8850** (Kaanapali,
 codename `canoe`), 8 cores, Adreno 840, UFS, panel `bf375`/`rm692h5` 1440×3200.
 
-The port boots Apple's XNU through the official UniXNU chain:
+The device-proven NX741J iOS route is:
 
 ```
-bootloader -> efisp loader -> UniXNU (UEFI) -> DarwinBoot -> XNU -> userland
+bootloader -> stock efisp LinuxLoader -> boot_a shim loader
+  -> SWEETXNU payload -> XNU -> HFSX ufsroot0 -> launchd
 ```
+
+The repository also retains the official Mu/UEFI -> DarwinBoot implementation
+and its diagnostics. It is not the final device image: Mu stops at DxeCore/BDS
+handle enumeration on this unit. See
+[PROVEN-ROUTE-2026-11-23.md](docs/PROVEN-ROUTE-2026-11-23.md) for the installed
+route and exact hashes.
 
 Target: **iOS 16.7.16 (20H392)**, XNU **8796.141.3**, arm64, 4 KiB pages. The OS profile is pinned
 in [board.toml](board.toml); it is the only IPSW available for this port.
@@ -21,10 +28,16 @@ in [board.toml](board.toml); it is the only IPSW available for this port.
 | 1 | board description, components, build inputs | done |
 | 2 | firmware (UniXNU UEFI app, DarwinBoot) | done |
 | 3 | payload (kernel, ADT, trust cache) | done |
-| 4 | boot chain hand-offs (loader -> UEFI -> DarwinBoot -> XNU) | done |
-| 5 | kernel bring-up (platform expert, IOKit, prelinked kexts) | **done** |
-| 6 | storage (UFS) | **host-verified; device validation pending** (see below) |
-| 7 | userland (root volume, `launchd`) | **build-ready; device validation pending** |
+| 4 | boot chain handoffs | proven loader -> SWEETXNU -> XNU route installed and read back |
+| 5 | kernel bring-up | proven kernel reaches interrupt setup in the loader QEMU model and was previously device-proven to userspace |
+| 6 | storage and drivers | fixed 39-extent HFSX `ufsroot0`; display/touch/HID/CPU paths in the proven kernel |
+| 7 | USB/Wi-Fi/audio/baseband/camera/back display | frozen by owner until iOS userspace is available |
+
+**2026-11-23 checkpoint.** The integrated route uses the original IPSW root,
+not `iosroot-GOLDEN.img`. A 13-block root repair, stock efisp and a 54,329,344
+byte `boot_a` were written in one 9008 session and every region matched on
+readback. After reset, the previous QUSB_BULK failure did not reappear. See
+[PROVEN-ROUTE-2026-11-23.md](docs/PROVEN-ROUTE-2026-11-23.md).
 
 **Stage 5 milestone (2026-11-12).** The kernel console now renders on the panel, so every boot stage
 is observable on the device instead of a colour-bar screen:
@@ -197,6 +210,7 @@ back the stock `efisp` (`sha256 4df18359...`) restores the vendor boot chain.
 
 ## Documentation
 
+- [docs/PROVEN-ROUTE-2026-11-23.md](docs/PROVEN-ROUTE-2026-11-23.md) — current device-proven route, hashes, root repair, QEMU and 9008 readback evidence
 - [docs/TASKS.md](docs/TASKS.md) — consolidated task and status log
 - [docs/INTEGRATION-2026-11-22.md](docs/INTEGRATION-2026-11-22.md) — reproducible framework patch and integration checkpoint
 - [docs/SWEET-ROOT-2026-11-22.md](docs/SWEET-ROOT-2026-11-22.md) — current data-a-live extent/HFSX root, built artifacts and device gate
@@ -212,12 +226,13 @@ back the stock `efisp` (`sha256 4df18359...`) restores the vendor boot chain.
 Patches and board code follow the upstream UniXNU licensing (BSD-2-Clause-Patent where noted in the
 individual files). Vendor-derived tables are data recovered from the device's own firmware.
 
-## Current status — 2026-11-22
+## Current status — 2026-11-23
 
-Stage 6 now uses a dynamic `NXROOTP1` tail anchor instead of a fixed LBA, and VerifiedRoot
-authenticates both original APFS windows: 1,375,753 OS blocks and 669,696 SystemOS blocks. The
-real volume UUIDs are set in `board.toml`, and the prelink keeps Apple's complete IOStorageFamily
-while applying the pinned `Apple_APFS` content hint.
+The current device route does not use APFS VerifiedRoot or the adopted NativeUfs queue. It exposes
+the pinned 16 GiB HFSX root through the data-a-live-style `ufsroot0` path. The patched root adds the
+MobileGestalt container and launchd/SpringBoard bring-up preferences missing from the plain IPSW
+root. The integrated image passed the static gate and the shim-loader QEMU gate; 9008 install and
+readback are complete. Direct launchd/lockscreen capture remains open while step 7 is frozen.
 
 The default payload is now the normal root path:
 
