@@ -44,6 +44,12 @@ GPU 与电源后端仍缺，步骤 7 已按要求冻结，步骤 8 的本地整�
 
 ## 当前阻塞
 
+路线纠偏记录见
+[OFFICIAL-ALIGNMENT-2026-11-22.md](OFFICIAL-ALIGNMENT-2026-11-22.md)。
+当前主线不再继续混用 adopt firmware queue、标准 host queue 和 VerifiedRoot
+policy table；iOS 16 存储将按 data-a-live 的固定 extent + HFS+ `ufsroot0`
+路线重新移植。
+
 1. **真机启动停在 QUSB_BULK**：旧日志最终明确停在 NativeUfs 的正常根
    路径；新 probe=12 payload 已写入，需再进 9008 读取日志。
 2. **super 单扇区误写**：旧 p7 把 BP_RECORD 写到 LBA `20224`；已提供
