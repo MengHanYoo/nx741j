@@ -200,6 +200,7 @@ back the stock `efisp` (`sha256 4df18359...`) restores the vendor boot chain.
 - [docs/TASKS.md](docs/TASKS.md) — consolidated task and status log
 - [docs/INTEGRATION-2026-11-22.md](docs/INTEGRATION-2026-11-22.md) — reproducible framework patch and integration checkpoint
 - [docs/STATUS-2026-11-22.md](docs/STATUS-2026-11-22.md) — current acceptance boundary and remaining work
+- [docs/DEVICE-TEST-2026-11-22.md](docs/DEVICE-TEST-2026-11-22.md) — real-device 9008 write and reset record
 - [docs/STATUS-2026-11-11.md](docs/STATUS-2026-11-11.md) — stage-by-stage status
 - [docs/BOOT-CHAIN.md](docs/BOOT-CHAIN.md) — boot chain against the official description
 - [docs/UFS-QCOM-PHY-PORT.md](docs/UFS-QCOM-PHY-PORT.md) — restored PHY tables and call order
@@ -237,8 +238,11 @@ Final host hashes:
 | `payload.img` | `219817f9c2428b0c3cadf758228462569f257ce63b5c47b8a44ddd3abcd114b0` |
 | `SILICIUM_UEFI.fd` | `3ce5c6d2c61891975c52846358bff3f3d9744413d61fd732ea48f7507a49a009` |
 
-No phone was attached, so the new root image and tail anchor have not been written, and APFS
-selection, `launchd`, display, brightness, touch and keys remain unverified. Step 7 and persistent
+The phone was later connected through 9008: the root image, `NXROOTP1` anchor, payload, FD and
+`efisp-p7.img` were all written and read back. After reset the phone did not boot Android or iOS;
+it enumerated as `QUSB_BULK_CID:046A_SN:098F0FC3`. This is not an iOS success. Recovery and the
+loader progress capture are documented in
+[docs/DEVICE-TEST-2026-11-22.md](docs/DEVICE-TEST-2026-11-22.md). Step 7 and persistent
 Data/performance work stay deferred until iOS starts. The aggregate smoke suite remains separate
 from the green direct QEMU gate.
 

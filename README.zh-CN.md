@@ -124,6 +124,7 @@ wsl\flash-boota-9008.ps1 -Img <image> -StartSector <lba> -Label <label> -Lun <lu
 - [docs/TASKS.md](docs/TASKS.md) — 任务与状态汇总
 - [docs/INTEGRATION-2026-11-22.md](docs/INTEGRATION-2026-11-22.md) — 框架补丁与可复现整合记录
 - [docs/STATUS-2026-11-22.md](docs/STATUS-2026-11-22.md) — 当前验收边界与剩余任务
+- [docs/DEVICE-TEST-2026-11-22.md](docs/DEVICE-TEST-2026-11-22.md) — 真机 9008 写入与复位失败记录
 - [docs/STATUS-2026-11-11.md](docs/STATUS-2026-11-11.md) — 逐阶段状态
 - [docs/BOOT-CHAIN.md](docs/BOOT-CHAIN.md) — 与官方启动链描述的对照
 - [docs/UFS-QCOM-PHY-PORT.md](docs/UFS-QCOM-PHY-PORT.md) — 还原的 PHY 表与调用顺序
@@ -162,9 +163,15 @@ PMGR 设备构建器通过 340 项 provider 虚表审计，最终内核包含
 | `SILICIUM_UEFI.fd` | `3ce5c6d2c61891975c52846358bff3f3d9744413d61fd732ea48f7507a49a009` |
 
 QEMU 在 16 GiB / 16 vCPU 下通过 `UNIXNU: BootEntry`、`MARK #29` 和
-`QEMU: EBS ok, entering the kernel`，panic=0。当前没有 ADB/9008 设备，因此还没有
-真机 APFS 选卷、`launchd`、显示、亮度、触摸或按键证据；新根镜像和尾部锚点也尚未写入手机。
+`QEMU: EBS ok, entering the kernel`，panic=0。真机还没有 APFS 选卷、
+`launchd`、显示、亮度、触摸或按键证据。
 第 7 步及持久 Data/性能按用户要求冻结到能启动 iOS 之后。
+
+随后设备实际接入 9008：根镜像、`NXROOTP1` 锚点、payload、FD 和
+`efisp-p7.img` 都已写入并回读一致；复位后设备没有进入 Android 或 iOS，
+而是枚举为 `QUSB_BULK_CID:046A_SN:098F0FC3`。这仍不是 iOS 启动证据，
+需要按 [DEVICE-TEST-2026-11-22.md](docs/DEVICE-TEST-2026-11-22.md)
+重新进入 9008 读取 loader progress/log 后继续。
 
 完整的 UniXNU 框架差异在 `patches/framework/UniXNU-ba9e14fb-nx741j.patch`，应用与复现方法见
 [docs/INTEGRATION-2026-11-22.md](docs/INTEGRATION-2026-11-22.md)，当前验收边界见

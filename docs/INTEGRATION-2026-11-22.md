@@ -14,6 +14,8 @@
 | PMGR | 主机 ABI 完成 | `ShengPlatformPower` 340 项审计通过，`_sheng_pmgr_run` 已链接 |
 | 正常 UFS 根 payload | 通过 | `native-ufs-root=1` + `sheng-pmgr=2` 通过 payload 检查 |
 | QEMU 引导门禁 | 通过 | `BootEntry`、`MARK #29`、`EBS ok`；panic=0 |
+| 9008 镜像安装 | 已完成 | 根镜像、锚点、payload、FD、efisp-p7 全部写入并回读 |
+| 真机启动 | 未通过 | 复位后出现 `QUSB_BULK_CID:046A_SN:098F0FC3`，无 ADB/9008 |
 | 最终记录 | 完成 | 本文件、`STATUS-2026-11-22.md`、`OPEN-ITEMS.md` 已更新 |
 
 ## 关键修复
@@ -77,6 +79,20 @@ not a functional power backend
 `kernel.json`、`kernel.log`、`pmgr-build.log`、`qemu-serial.log` 和
 `qemu-int.log` 也保留在同一目录。`out/` 是主机产物目录，不表示设备已刷入。
 
+## 真机写入与观测
+
+9008 实测通过：
+
+- `userdata-root.img` 写入 `246662139..248724071`，全量回读 SHA-256
+  `f45c3288b555a43f945c78a8c75ad56343039f3f5f5350fe57316c64539d2b70`；
+- 4 KiB `NXROOTP1` 锚点写入 `248838138`，回读一致；
+- payload、FD 和 `efisp-p7.img` 分别写入 rawdump/efisp 并回读一致。
+
+复位后设备没有出现在 ADB，而是以
+`QUSB_BULK_CID:046A_SN:098F0FC3`（`VID_19D2&PID_0112`）出现在 Windows，
+没有 9008 COM 端口。真实启动未通过，详细信息见
+[DEVICE-TEST-2026-11-22.md](DEVICE-TEST-2026-11-22.md)。
+
 ## 复现命令
 
 ```sh
@@ -100,7 +116,10 @@ cd UniXNU
 
 ## 边界
 
-- 没有 ADB/9008 设备，未写根镜像或尾锚点，未观察 APFS 选卷和 `launchd`。
+- 根镜像、尾锚点、payload、FD 和 loader 已写并回读；复位后停在
+  QUSB_BULK，未观察 APFS 选卷和 `launchd`。
+- 需要先强制进入 9008，读取 rawdump 的 loader progress/log，再决定
+  loader/FD/payload 修复或恢复原厂 efisp。
 - PMGR 只完成 ABI/链接资格，原始 nub 运行仍未硬件合格。
 - QEMU 只验证引导链交接，不模拟面板、UFS、TouchCom 或 PMGR。
 - smoke 六场景仍是独立套件；旧 AAVMF/TCG 偶发卡死没有伪装成通过。

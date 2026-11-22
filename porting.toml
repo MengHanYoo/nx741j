@@ -325,6 +325,7 @@ findings = [
   "2026-11-22: real OS/SystemOS UUIDs are DADD93F8-DBBF-4B17-A1DF-0F11E64172F7 and 96096B28-B6DC-4BC7-9D3A-2632A0FE53F1; the root_match_volume_uuid is present in board.toml and the ADT.",
   "2026-11-22: VerifiedRoot authenticated 1,375,753 OS blocks and 669,696 SystemOS blocks using the compiled C/RSA implementation; the signed policy headers are in Policy.o and the hash objects are in the version-2 root image.",
   "2026-11-22: the default payload uses native-ufs-root=1 with sheng-pmgr=2. The PMGR provider is linked, but runtime qualification is still pending on hardware.",
+  "2026-11-22 device test: userdata-root.img and the NXROOTP1 anchor were written through 9008 and read back; payload, FD and efisp-p7 were also written and read back. Reset enumerated as QUSB_BULK_CID:046A_SN:098F0FC3, not Android or iOS.",
   "UFS is not required for the official stage 2 path: the payload volume is a RAM initrd published by UniXNURamDiskDxe, and DiskIoDxe/Fat mount it successfully on device.",
   "The vendor UFS stack cannot run in this firmware because HALIOMMU needs DTBExtnProtocol and UFSDxe needs the RPMH/SCM chain; both providers are absent.",
   "board.toml changed in this range: the platform ADT inputs (psci_method/dram_size/owned_memory_size/cpu_regs) and the payload trust cache list were made explicit; see docs/STEP6-PLATFORM.md.",
@@ -354,6 +355,7 @@ next_action = [
 ]
 evidence = [
   { kind = "host", reference = "docs/STATUS-2026-11-22.md", result = "Normal-root payload and QEMU hand-off pass; PMGR is linked; hardware gate is explicitly pending", command = "QEMU_MEM=16G QEMU_SMP=16 QEMU_INT=1 scripts/qemu-nx741j.sh /opt/work/nx741j-build/UniXNU 60", revision = "1eb7e6fb00ea816a014f8776943779d6d2fe3382" },
+  { kind = "device", reference = "docs/DEVICE-TEST-2026-11-22.md", result = "9008 wrote and verified the root image, anchor, payload, FD and efisp-p7; reset stopped at QUSB_BULK before iOS", command = "flash-boota-9008.ps1 and flash-rawdump-9008.ps1 against COM4; read back all regions", revision = "1eb7e6fb00ea816a014f8776943779d6d2fe3382" },
   { kind = "source", reference = "board.toml", result = "hardware.storage LBAs, UFS model and payload size" },
   { kind = "source", reference = "docs/PORTING-RECORD.md", result = "GPT inventory and partition strategy" },
   { kind = "device", reference = "docs/STAGE2-CONFORMANCE.md", result = "Payload volume mounted from the initrd (Fat) without any UFS BlockIo", command = "boot the minimal FV and read the UNIXNURAMDISK/Fat lines", revision = "f2584c81ca5ddcf3c9e58a6d15b6866e85e11f85" },

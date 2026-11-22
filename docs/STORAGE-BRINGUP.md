@@ -8,7 +8,7 @@
 | 内核配置 | ✅ `CONFIG_XNU_NATIVE_UFS=y` |
 | 内核链接 | ✅ 无未定义符号，最终内核 sha256 `14e63ca1526f9b956fb9a41b33269b7a13390937a7a743bbba17009e9476207a` |
 | payload / boot | ✅ 见构建输出 |
-| 运行时 | ⚠️ 已启用默认参数，待真机：`native-source-storage=1 native-ufs-root=1 sheng-pmgr=2`；尚未刷机 |
+| 运行时 | ⚠️ 默认参数和镜像已写入，但复位后停在 `QUSB_BULK_CID`；未观察到 APFS 挂载 |
 
 2026-11-22 更新：真实 OS/SystemOS UUID、VerifiedRoot 双卷 header-only 策略和
 `NXROOTP1` 动态锚点已编入；`native-ufs-noverify` 与固定 `nxroot-lba` 已移除。

@@ -21,14 +21,14 @@
 
 | 项 | 状态 | 当前证据/边界 |
 |---|---|---|
-| UFS adopt + 动态根锚点 | 主机完成，待真机 | `NXROOTP1`、GPT 边界、manifest SHA-256、`SHNGROOT` 解析均已实现；锚点未写入手机 |
+| UFS adopt + 动态根锚点 | 已安装、待成功启动 | 根镜像和 `NXROOTP1` 已写入并回读；APFS 尚未观察到挂载 |
 | 真实 VerifiedRoot | 主机完成 | OS/SystemOS 全部块哈希通过 C/RSA 实现；最终 header-only 策略已编入 `Policy.o` |
 | 正常 `native-ufs-root=1` | 构建通过 | 默认 payload 已切换；`sheng-pmgr=2` 通过 payload 构建器检查；真机能否挂根未验证 |
 | PMGR | 主机 ABI 完成，运行待测 | `ShengPlatformPower` 340 项虚表审计通过；`_sheng_pmgr_run` 已链接；报告明确 `runtime_qualified=false` |
 | 显示/亮度 | 源码完成，待真机 | `SweetFramebuffer`、`IOCoreSurfaceRoot`、`AppleCLCD`、`AppleARMBacklight` 已链接；QEMU 不模拟真实面板 |
 | 触摸/HID/按键 | 源码完成，待真机 | Synaptics TouchCom、GPIO SPI、HID service、PON/GPIO101 worker 已链接；供电和 GPIO 状态未在手机验证 |
 | CPU idle | 源码完成，待真机 | PSCI core retention state 0x4；连续拒绝会回退 WFI；调频 governor 未做 |
-| APFS 选卷与 `launchd` | 待真机 | 根路径和 UUID 已准备；没有手机日志，不宣称进入 iOS |
+| APFS 选卷与 `launchd` | 待真机 | 复位后停在 `QUSB_BULK_CID`，没有 ADB/9008；不宣称进入 iOS |
 | 持久 Data / 性能 | 冻结（用户要求） | 等能启动 iOS 后再做 |
 | GPU/Metal | 未完成 | Adreno 840v2 仍需要 A740 接口适配、GMEM 和 Metal/Turnip 路径 |
 | 电池/温控 | 未完成 | 需要真实 PMIC 电量和温度源 |
@@ -38,12 +38,15 @@
 
 ## 当前阻塞
 
-1. **没有 ADB/9008 设备**：不能写新根镜像、安装尾锚点、刷 FD/payload，
-   因此不能宣称 APFS 挂载或 `launchd`。
+1. **真机启动停在 QUSB_BULK**：根镜像、锚点、payload、FD 和 `efisp-p7`
+   已写入，但复位后没有 ADB/9008；先恢复下载连接并读取 loader progress。
 2. **PMGR 运行资格**：源码和 ABI 已验证，但原厂 nub 发布、AMFI 依赖和
    电源拒绝路径只能在真机上完成。
 3. **持久化**：用户要求第 7 步前冻结；当前不做 Data 分配、回写和性能测试。
 4. **GPU 和温控**：SM8850 的 Adreno 840v2、频率和热管理还没有硬件闭环。
+
+真机写入和恢复步骤见
+[DEVICE-TEST-2026-11-22.md](DEVICE-TEST-2026-11-22.md)。
 
 ## 验证入口
 

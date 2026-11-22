@@ -2,7 +2,8 @@
 
 依据官方[适配驱动](https://unixnu.com/zh/porting/drivers)的 8 级硬件依赖顺序与构建接入规则。
 设备仓库修订以 `STATUS-2026-11-22.md` 为准。2026-11-22 的主机状态是：
-内核、正常根 payload、固件和 QEMU 交接通过；真机尚未连接。
+内核、正常根 payload、固件和 QEMU 交接通过；真机 9008 写入成功，
+但复位后停在 `QUSB_BULK_CID`，未进入 iOS。
 
 ## 8 级顺序与本地状态
 

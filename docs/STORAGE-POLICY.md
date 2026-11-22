@@ -111,6 +111,6 @@ payload 限制；`out/userdata-root.img` 为 8,445,677,568 B。
 
 ## 当前剩余边界（策略包之外）
 
-1. **真机投递**：新镜像和 `NXROOTP1` 尾部锚点尚未写入手机；
+1. **真机投递**：新镜像和 `NXROOTP1` 尾部锚点已写入并回读；复位后设备停在 QUSB_BULK；
 2. **真机运行**：APFS 选卷、`IOMedia` 根设备和 `launchd` 仍需手机日志；
 3. **PMGR 运行资格**：`sheng-pmgr=2` 已链接，但 `runtime_qualified` 仍为 false。
