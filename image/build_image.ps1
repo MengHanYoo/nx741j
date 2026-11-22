@@ -2,10 +2,11 @@
 param(
   [string]$Base = "E:\default-workspace\z80u-collect\iosroot-IPSW.img",
   [string]$Out  = "E:\default-workspace\z80u-collect\iosroot-BUILD.img",
-  [string]$Repo = "E:\default-workspace\z80u-collect\repos\nx741j"
+  [string]$Repo = "E:\default-workspace\z80u-collect\repos\nx741j",
+  [string]$Manifest = ""
 )
 $ErrorActionPreference = "Stop"
-$manifest  = Join-Path $Repo "image\manifest.json"
+$manifest = if ($Manifest) { $Manifest } else { Join-Path $Repo "image\manifest.json" }
 $artifacts = "E:\default-workspace\z80u-collect\image-artifacts"
 if (-not (Test-Path $Base)) { throw "BASE missing: $Base" }
 if (-not (Test-Path $manifest)) { throw "manifest missing: $manifest" }
@@ -18,7 +19,7 @@ Copy-Item -LiteralPath $Base -Destination $Out
 Write-Host ("OUT {0} bytes in {1:N1}s" -f (Get-Item $Out).Length, ((Get-Date) - $t0).TotalSeconds)
 
 Write-Host "=== 2. initramfs ==="
-$m  = "/mnt/e/default-workspace/z80u-collect/repos/nx741j/image/manifest.json"
+$m  = "/mnt/e/" + ($manifest -replace '^[A-Z]:\\', '' -replace '\\', '/')
 $mk = "/mnt/e/default-workspace/z80u-collect/repos/nx741j/image/make_initramfs.py"
 $a  = "/mnt/e/default-workspace/z80u-collect/image-artifacts"
 wsl -d Ubuntu -u root -e bash -lc ("python3 " + $mk + " --manifest " + $m + " --artifacts " + $a + " --out /root/imgbuild.gz")

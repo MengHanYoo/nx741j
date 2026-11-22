@@ -8,12 +8,12 @@ QEMU starts the arm64 Image like ABL does (EL1, MMU off, x0 = dtb). virt RAM sta
 kernel RAM (0x8c0000000 + 5 GiB) are plain memory. The phone's GIC/UART/etc. are not there:
 this checks the loader and the kernel's early boot, not drivers.
 
-Writes fb.png (1220x2656, what the phone would show), fb.txt (decoded fbcon text when
+Writes fb.png (1216x2688, what the phone would show), fb.txt (decoded fbcon text when
 --kernel gives the unstripped kernel with _iso_font), regs.txt, qemu.log.
 """
 import argparse, json, os, socket, struct, subprocess, sys, time, zlib
 
-FB_BASE, FB_W, FB_H = 0xfc800000, 1220, 2656
+FB_BASE, FB_W, FB_H = 0xfc800000, 1216, 2688
 FB_STRIDE = FB_W * 4
 RAM_TOP = 0xc00000000
 
