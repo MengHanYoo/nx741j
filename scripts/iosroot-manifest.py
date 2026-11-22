@@ -23,6 +23,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--image", required=True)
     parser.add_argument("--output", required=True)
+    parser.add_argument("--ipsw")
     parser.add_argument("--os", required=True)
     parser.add_argument("--systemos", required=True)
     parser.add_argument("--appos", required=True)
@@ -45,6 +46,7 @@ def main():
         },
         "source": {
             "golden_image_used": False,
+            **({"ipsw": describe(args.ipsw)} if args.ipsw else {}),
             "os": describe(args.os),
             "systemos": describe(args.systemos),
             "appos": describe(args.appos),

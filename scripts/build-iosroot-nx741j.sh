@@ -14,6 +14,8 @@ set -euo pipefail
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 IPSW_DIR=${IPSW_DIR:-/mnt/e/default-workspace/ipsw}
+DEFAULT_IPSW="$IPSW_DIR/iPhone10,3,iPhone10,6_16.7.16_20H392_Restore (1).ipsw"
+IPSW_FILE=${IPSW_FILE:-$DEFAULT_IPSW}
 ARTIFACT_DIR=${ARTIFACT_DIR:-/mnt/e/default-workspace/z80u-collect/iosroot-artifacts}
 WORK_ROOT=${WORK_ROOT:-/opt/work/iosroot-build}
 LIVE_DTB=${LIVE_DTB:-/mnt/e/default-workspace/z80u-collect/stock/dt/live_fdt.dtb}
@@ -46,7 +48,7 @@ if [[ ${1:-} == -h || ${1:-} == --help ]]; then
 	exit 0
 fi
 [[ $EUID -eq 0 ]] || { echo 'run as root inside WSL' >&2; exit 1; }
-for file in "$OS_DMG" "$SYSOS_DMG" "$APPOS_DMG" "$MKIOSROOT" "$STAGE_ROOT" \
+for file in "$IPSW_FILE" "$OS_DMG" "$SYSOS_DMG" "$APPOS_DMG" "$MKIOSROOT" "$STAGE_ROOT" \
 	"$ROOT_TWEAKS" "$LIVE_DTB" "$D22AP_ADT" "$EXTENTS_JSON"; do
 	[[ -f $file ]] || { echo "missing input: $file" >&2; exit 1; }
 done
@@ -187,6 +189,7 @@ published_fsck=$(fsck.hfsplus -f -n "$OUT" 2>&1) || {
 python3 "$ROOT/scripts/iosroot-manifest.py" \
 	--image "$OUT" \
 	--output "$MANIFEST" \
+	--ipsw "$IPSW_FILE" \
 	--os "$OS_DMG" \
 	--systemos "$SYSOS_DMG" \
 	--appos "$APPOS_DMG" \

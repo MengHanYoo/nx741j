@@ -8,12 +8,16 @@
 
 | 输入 | 实值 |
 |---|---|
+| 原始 IPSW | `iPhone10,3,iPhone10,6_16.7.16_20H392_Restore (1).ipsw`，6,171,035,648 B，SHA-256 `ece1194f7e233e9109c5790a8d23a4564a10a254e15ec5b09978a343265568fb` |
 | 实机 FDT | `stock/dt/live_fdt.dtb`，911,287 B，SHA-256 `a5c109c0ca6fb30ebe34b915ea090ea4494fe000aadda92042c8575d5b2a8292` |
 | OS | `087-86698-044.dmg`，4,730,814,044 B，SHA-256 `80f426d5b8fca8552f95be427434f1911dbb4c2c6d28aad94f2426ddd0c92483` |
 | SystemOS | `087-86593-047.dmg`，2,743,074,816 B，SHA-256 `9cd738f3b0169055549df84ad6d8d13e50a2da39af618ce0522ca4e06df86849` |
 | AppOS | `087-86715-047.dmg`，10,485,760 B，SHA-256 `391f2df322c3172b021b2874f6da5c3e78b70b3df8f502e1a4af2b1d715c4608` |
 | D22AP identity | `repos/nx741j/tools/d22ap_raw.adt`，186,084 B，SHA-256 `9e670987c80493bd69aba7be62e3179c04663324d9249b0973675baac175dbf1` |
 | 固定 extent 表 | `_tmp/nx741j-iosroot-extents-20261122.json`，39 段 |
+
+三个 DMG 已直接从原始 IPSW 条目流式重算 SHA-256，结果与上表及构建 manifest
+完全一致。因此根卷输入不是旧镜像复用。
 
 根卷流程固定为：
 
