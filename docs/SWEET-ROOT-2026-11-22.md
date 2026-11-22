@@ -121,23 +121,33 @@ rd=ufsroot0 ufsroot=userdata ufsrw=1 rootrw=1
 - Boot image SHA-256：`6757294804e1f158c8c8bd8c9e177fff99292afb4c9d8552a2e1e4d44cb2fa96`。
 - QEMU 16 GiB、8C/16T：`BootEntry`、`MARK #29`、`EBS ok`，`panic=0`。
 
-## 真机剩余步骤
+## 真机写入与启动
 
-当前 Windows 没有枚举 Android/ADB、fastboot 或 9008，因此不能执行第 4 步的 raw
-写入和第 5 步的真机启动。设备重新连接 Android 后按顺序执行：
+2026-11-22 已完成：
 
-```powershell
-# 1. 只读检查：pinned、39 段未变化、首尾 raw 块为空
-.\scripts\write-iosroot-device.ps1 `
-  -Image E:\default-workspace\z80u-collect\iosroot-artifacts\iosroot-NX741J-20H392-20261122.img `
-  -ExtentsJson E:\default-workspace\z80u-collect\_tmp\nx741j-iosroot-extents-20261122.json
+- Android 恢复后确认 root、f2fs、`/dev/block/sda12` 和 pinned 16 GiB 文件；
+- 39 段 extent 与构建时 JSON 完全一致；
+- `pinfile rawwrite` 写入 4,194,304 个 4 KiB 块，写入流 SHA-256 为
+  `7fd949bb026ef84d22bf316f28c41234358e41c65e4f393e1a3d1ffe1731b6ea`；
+- 设备端 raw 全量 `rawhash` 再次得到相同 SHA-256；
+- HFSX 签名回读为 `HX`，pinned 状态和 extents 均未变化；
+- 为规避 Windows→adb 长二进制管道提前结束，镜像先作为普通临时文件上传到设备，
+  再由设备内部 `pinfile rawwrite` 写入 raw extent；临时输入随后删除；
+- 9008 按固定顺序写入并回读：
+  - payload `36aa6a00…b6ea`，LUN0 rawdump+0；
+  - FD `3ce5c6d2…a009`，LUN0 rawdump+64 MiB；
+  - efisp loader `73b56bf2…b246`，LUN4 sector 748894。
 
-# 2. 显式指定 NX741J userdata，流式写 16 GiB 后做全量 raw SHA-256 与 HFSX 回读
-.\scripts\write-iosroot-device.ps1 `
-  -Image E:\default-workspace\z80u-collect\iosroot-artifacts\iosroot-NX741J-20H392-20261122.img `
-  -ExtentsJson E:\default-workspace\z80u-collect\_tmp\nx741j-iosroot-extents-20261122.json `
-  -Write
+复位后 Windows 枚举为：
+
+```text
+QUSB_BULK_CID:046A_SN:098F0FC3
+USB\VID_19D2&PID_0112
 ```
+
+这还不足以判断 iOS 是否启动。下一步必须重新进入 9008，读取本轮 loader progress
+（rawdump LBA 4764200）、NXLOG（4764464 起）和 UFS snapshot（4764488），以确认
+UFS bypass、extent 加载、HFSX 和 `launchd` 的首个失败点。
 
 写入脚本固定使用：
 

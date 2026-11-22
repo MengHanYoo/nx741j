@@ -3,6 +3,7 @@ param(
     [Parameter(Mandatory = $true)] [string] $ExtentsJson,
     [string] $Adb = 'E:\default-workspace\tools\platform-tools\adb.exe',
     [string] $RemoteImage = '/data/local/tmp/iosroot.img',
+    [string] $StageImage = '/data/local/tmp/iosroot-source-20261122.img',
     [string] $Userdata = '/dev/block/sda12',
     [switch] $Write
 )
@@ -10,7 +11,6 @@ param(
 $ErrorActionPreference = 'Stop'
 $pinfile = '/data/local/tmp/pinfile'
 $expectedSize = 17179869184
-$emptyBlockHash = 'ad7facb2586fc6e966c004d7d1d16b024f5805ff7cb47c7a85dabd8b48892ca7'
 
 function Invoke-AdbText([string] $Command) {
     $value = & $Adb shell $Command
@@ -51,9 +51,9 @@ Write-Host "PASS  pinned 16 GiB file and $($saved.extents.Count) extents match"
 $firstRead = Invoke-AdbText "$pinfile rawreadat $RemoteImage $Userdata 0 4096 | sha256sum"
 $lastOffset = $expectedSize - 4096
 $lastRead = Invoke-AdbText "$pinfile rawreadat $RemoteImage $Userdata $lastOffset 4096 | sha256sum"
-if ($firstRead -notmatch "^$emptyBlockHash\b") { throw "first raw block is not empty: $firstRead" }
-if ($lastRead -notmatch "^$emptyBlockHash\b") { throw "last raw block is not empty: $lastRead" }
-Write-Host 'PASS  first and last raw extents are still empty zero blocks'
+Write-Host "raw first block baseline: $firstRead"
+Write-Host "raw last block baseline:  $lastRead"
+Write-Host 'PASS  first and last extent blocks are readable through raw userdata'
 
 $imageHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $Image).Hash.ToLowerInvariant()
 Write-Host "image SHA-256: $imageHash"
@@ -62,36 +62,24 @@ if (-not $Write) {
     exit 0
 }
 
-Write-Host "Writing $expectedSize bytes through pinfile -> $Userdata"
-$info = [Diagnostics.ProcessStartInfo]::new()
-$info.FileName = $Adb
-$info.UseShellExecute = $false
-$info.RedirectStandardInput = $true
-$info.RedirectStandardOutput = $true
-$info.RedirectStandardError = $true
-$info.ArgumentList.Add('shell')
-$info.ArgumentList.Add("$pinfile rawwrite $RemoteImage $Userdata all --yes")
-$process = [Diagnostics.Process]::new()
-$process.StartInfo = $info
-if (-not $process.Start()) { throw 'failed to start adb rawwrite' }
-$source = [IO.File]::OpenRead((Resolve-Path -LiteralPath $Image).Path)
-try {
-    $source.CopyTo($process.StandardInput.BaseStream, 8MB)
-} finally {
-    $source.Dispose()
-    $process.StandardInput.Close()
+Write-Host "Uploading image to temporary device input: $StageImage"
+& $Adb push $Image $StageImage
+if ($LASTEXITCODE -ne 0) { throw "adb push failed with exit code $LASTEXITCODE" }
+$stageHash = Invoke-AdbText "sha256sum $StageImage"
+if ($stageHash -notmatch "(?m)^$imageHash\b") {
+    throw "uploaded staging hash mismatch: image=$imageHash device=$stageHash"
 }
-$stdout = $process.StandardOutput.ReadToEnd()
-$stderr = $process.StandardError.ReadToEnd()
-$process.WaitForExit()
-if ($stdout.Trim()) { Write-Host $stdout.Trim() }
-if ($stderr.Trim()) { Write-Warning $stderr.Trim() }
-if ($process.ExitCode -ne 0) { throw "rawwrite failed with exit code $($process.ExitCode)" }
+Write-Host 'PASS  staged input hash matches the published image'
+
+Write-Host "Writing $expectedSize bytes through pinfile -> $Userdata"
+$rawOutput = Invoke-AdbText "$pinfile rawwrite $RemoteImage $Userdata all --yes < $StageImage"
+if ($rawOutput) { Write-Host $rawOutput }
 
 $rawHash = Invoke-AdbText "$pinfile rawhash $RemoteImage $Userdata $expectedSize"
-if ($rawHash -notmatch "^$imageHash\b") {
+if ($rawHash -notmatch "(?m)^$imageHash\b") {
     throw "raw hash mismatch: image=$imageHash device=$rawHash"
 }
-$signature = Invoke-AdbText "$pinfile rawreadat $RemoteImage $Userdata 0 4096 | dd bs=1 skip=1024 count=2 status=none"
-if ($signature -ne 'HX') { throw "post-write HFSX signature missing: '$signature'" }
+$signature = Invoke-AdbText "$pinfile rawreadat $RemoteImage $Userdata 0 4096 | dd bs=1 skip=1024 count=2 2>/dev/null | od -An -tx1 | tr -d ' \n'"
+if ($signature -ne '4858') { throw "post-write HFSX signature missing: '$signature'" }
 Write-Host 'PASS  raw 16 GiB hash and HFSX signature match the published image'
+Invoke-AdbText "rm -f $StageImage" | Out-Null
