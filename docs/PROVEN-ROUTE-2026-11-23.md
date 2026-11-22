@@ -84,6 +84,12 @@ k39-amfi.macho
   -> Android boot header v4, kernel-only, no ramdisk
 ```
 
+The loader source is mirrored in the same GitHub repository on the
+[`proven-loader`](https://github.com/MengHanYoo/nx741j/tree/proven-loader)
+branch. `scripts/build-proven-route.sh` expects a local clone at
+`E:\default-workspace\z80u-collect\repos\nx741j` and accepts `LEGACY=<path>`
+to move it.
+
 The ADT deliberately does not contain stale `pandora-log-extents` or
 `pandora-fw-extents`. Those old mappings belonged to the previous root and
 could have written through reused userdata blocks.
