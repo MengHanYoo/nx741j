@@ -10,6 +10,7 @@
 *.log
 out/
 outq/
+/shim/loader/out-proven-route/
 __pycache__/
 /tools/pinfile/pinfile
 out-root/
