@@ -338,90 +338,6 @@ index 259bb88a27ff52415c36217958f4fd197b370330..951262d00da7ac68b6a80cf49e4627d9
  
  [[source]]
  name = "corecrypto-2023"
-diff --git a/macosx/usr/include/TargetConditionals.h b/macosx/usr/include/TargetConditionals.h
-new file mode 100644
-index 0000000000000000000000000000000000000000..97fbf3b5e95fbd73e46ea9de73abaab8a9e79e66
---- /dev/null
-+++ b/macosx/usr/include/TargetConditionals.h
-@@ -0,0 +1,48 @@
-+#ifndef __TARGETCONDITIONALS__
-+#define __TARGETCONDITIONALS__
-+#ifndef TARGET_OS_MAC
-+#define TARGET_OS_MAC 1
-+#endif
-+#ifndef TARGET_OS_OSX
-+#define TARGET_OS_OSX 1
-+#endif
-+#ifndef TARGET_OS_IPHONE
-+#define TARGET_OS_IPHONE 0
-+#endif
-+#ifndef TARGET_OS_IOS
-+#define TARGET_OS_IOS 0
-+#endif
-+#ifndef TARGET_OS_TV
-+#define TARGET_OS_TV 0
-+#endif
-+#ifndef TARGET_OS_WATCH
-+#define TARGET_OS_WATCH 0
-+#endif
-+#ifndef TARGET_OS_VISION
-+#define TARGET_OS_VISION 0
-+#endif
-+#ifndef TARGET_OS_BRIDGE
-+#define TARGET_OS_BRIDGE 0
-+#endif
-+#ifndef TARGET_OS_DRIVERKIT
-+#define TARGET_OS_DRIVERKIT 0
-+#endif
-+#ifndef TARGET_OS_SIMULATOR
-+#define TARGET_OS_SIMULATOR 0
-+#endif
-+#ifndef TARGET_OS_EMBEDDED
-+#define TARGET_OS_EMBEDDED 0
-+#endif
-+#ifndef TARGET_OS_UNIX
-+#define TARGET_OS_UNIX 0
-+#endif
-+#ifndef TARGET_OS_WIN32
-+#define TARGET_OS_WIN32 0
-+#endif
-+#ifndef TARGET_CPU_ARM64
-+#define TARGET_CPU_ARM64 1
-+#endif
-+#ifndef TARGET_CPU_X86_64
-+#define TARGET_CPU_X86_64 0
-+#endif
-+#endif
-diff --git a/package/Scripts/qemu-run.py b/package/Scripts/qemu-run.py
-index 54eb81f58d23bc8b65c705712924b1ed57869d41..d8601ae777d798e5cb0fbf3f5f629008b38c9771 100644
---- a/package/Scripts/qemu-run.py
-+++ b/package/Scripts/qemu-run.py
-@@ -117,7 +117,7 @@ def main() -> int:
-     parser.add_argument("--display-size", metavar="WxH",
-                         help="use a virtio-gpu display of this size instead of ramfb (for example 1080x2400)")
-     parser.add_argument("--disk", action="append", default=[], type=Path, help="extra raw disk image (read-only)")
--    parser.add_argument("--timeout", type=float, default=90.0)
-+    parser.add_argument("--timeout", type=float, default=180.0)
-     parser.add_argument("--cpus", type=int, default=2, help="number of virtual CPUs (default: 2)")
-     parser.add_argument("--finish-on-expect", action="store_true",
-                         help="finish two seconds after all expected patterns match")
-@@ -244,5 +244,15 @@ def main() -> int:
-     return 0 if failed == 0 else 1
- 
- 
-+def main_with_retry() -> int:
-+    status = main()
-+    if status == 0 or os.environ.get("UNIXNU_QEMU_NO_RETRY") == "1":
-+        return status
-+    print("QEMU scenario failed; retrying once", flush=True)
-+    env = dict(os.environ)
-+    env["UNIXNU_QEMU_NO_RETRY"] = "1"
-+    return subprocess.call([sys.executable, str(Path(__file__).resolve()), *sys.argv[1:]], env=env)
-+
-+
- if __name__ == "__main__":
--    sys.exit(main())
-+    sys.exit(main_with_retry())
 diff --git a/package/Scripts/smoke.sh b/package/Scripts/smoke.sh
 index 252be3c0c940f5030565b4dab9ca12d7583d6b29..55f8cf979e8e974701dd48ba121f3a39a76a0b56 100644
 --- a/package/Scripts/smoke.sh
@@ -523,7 +439,7 @@ index 7d4def5e9b41f6b9ac5accdbd8bbe5b4067fe604..cd2a9e00250969f670d206f2341be670
    mMedia.MediaId          = 1;
    mMedia.RemovableMedia   = FALSE;
 diff --git a/package/UniXNUPkg/Library/UniXNULib/Boot.c b/package/UniXNUPkg/Library/UniXNULib/Boot.c
-index 4b1e7375a12442feec572c513dcd9e72a8902b2b..f85b807e1a76b5563060ba8861df279df05933b8 100644
+index 4b1e7375a12442feec572c513dcd9e72a8902b2b..852c7d6b15ef3bdad751f3844e763244b0a3c1dc 100644
 --- a/package/UniXNUPkg/Library/UniXNULib/Boot.c
 +++ b/package/UniXNUPkg/Library/UniXNULib/Boot.c
 @@ -6,6 +6,8 @@
@@ -535,15 +451,16 @@ index 4b1e7375a12442feec572c513dcd9e72a8902b2b..f85b807e1a76b5563060ba8861df279d
  
  #include <Guid/Fdt.h>
  #include <Protocol/UniXNULoader.h>
-@@ -55,6 +57,7 @@ RunXnu (
+@@ -55,6 +57,8 @@ RunXnu (
    UNIXNU_LOADER_KEXT             *Kexts;
    UINTN                         KextCount;
  
 +  UniXNUProgress (35, 0);
++  Print (L"UNIXNU: RunXnu entered, entry '%s'\r\n", Entry->Title);
    Status = gBS->LocateProtocol (&gUniXNULoaderProtocolGuid, NULL, (VOID **)&Loader);
    if (EFI_ERROR (Status)) {
      UniXNULog ("xnu: no loader protocol installed; UniXNU does not provide one");
-@@ -83,14 +86,16 @@ RunXnu (
+@@ -83,14 +87,18 @@ RunXnu (
    Request.Volume         = Entry->Volume;
    Request.KernelPath     = Entry->Path;
    Request.BootArgs       = Entry->Args;
@@ -557,20 +474,23 @@ index 4b1e7375a12442feec572c513dcd9e72a8902b2b..f85b807e1a76b5563060ba8861df279d
    Request.KextCount      = KextCount;
    UniXNULog ("xnu: handing off %u staged kext(s) to loader", (UINT32)KextCount);
 +  UniXNUProgress (37, 0);
++  Print (L"UNIXNU: calling Loader->Boot (kernel %s, ramdisk %lu)\r\n", Request.KernelPath, (UINT64)Request.RamdiskSize);
    Status = Loader->Boot (Loader, &Request);
++  Print (L"UNIXNU: Loader->Boot returned %r\r\n", Status);
 +  UniXNUProgress (38, (UINT64)Status);
    UniXNUFreeKexts (Kexts, KextCount);
    return Status;
  }
-@@ -115,6 +120,7 @@ UniXNUBootEntry (
+@@ -115,6 +123,8 @@ UniXNUBootEntry (
    CHAR16                     *ExitData;
    VOID                       *FirmwareFdt;
  
 +  UniXNUProgress (32, 0);
++  Print (L"UNIXNU: BootEntry '%s' type %u\r\n", Entry->Title, (UINT32)Entry->Type);
    UniXNULog ("boot: entry '%a' (%s)", (Entry->Id != NULL) ? Entry->Id : "?", Entry->Title);
  
    if (Entry->KextConfigError) {
-@@ -138,6 +144,7 @@ UniXNUBootEntry (
+@@ -138,6 +148,7 @@ UniXNUBootEntry (
      FirmwareFdt = NULL;
    }
  
@@ -578,7 +498,7 @@ index 4b1e7375a12442feec572c513dcd9e72a8902b2b..f85b807e1a76b5563060ba8861df279d
    Status = UniXNUPrepareDeviceTree (Config, Entry, &Fdt, &FdtSize);
    if (EFI_ERROR (Status)) {
      return Status;
-@@ -162,6 +169,7 @@ UniXNUBootEntry (
+@@ -162,6 +173,7 @@ UniXNUBootEntry (
    }
  
    if (Entry->Type == UniXNUEntryXnu) {
@@ -3053,6 +2973,32 @@ index a79fd8bcf3c9a0f0e361980142c144a81e31478f..74dd5646214fbdb285929a51e8e215f8
  (out / 'compile-command.json').write_text(json.dumps(command, indent=2) + '\n')
  r = subprocess.run(command, cwd=record['directory'], capture_output=True, text=True)
  (out / 'compile.log').write_text(r.stdout + r.stderr)
+diff --git a/scripts/build-arm-driver.py b/scripts/build-arm-driver.py
+index 4dcaa91609308f0544ce22ca1b12ea40440325ae..ec638ef6b61a160fdd1daa8cf02e9c732a7209db 100644
+--- a/scripts/build-arm-driver.py
++++ b/scripts/build-arm-driver.py
+@@ -37,6 +37,13 @@ record = json.loads(recipe.read_text().strip().rstrip(','))
+ directory = 'GopFramebuffer' if runtime in ('NativeLegacyDisplay', 'NativeGOPPresenter') else 'AdrenoMetal' if runtime in ('NativeOfflineGPU', 'NativeOfflineAccelerator', 'NativeIOGPUProviderProbe') else identifier
+ filename = next((name for name in metadata.get('source_files', []) if name.endswith('.cpp')), runtime + '.cpp')
+ source = ROOT / 'drivers' / directory / filename
++
++# Device bring-up override: compile a board-local copy of the UFS driver.
++import os as _os
++_override = _os.environ.get('UNIXNU_UFS_SOURCE')
++if component == 'NativeUfs' and _override:
++    source = Path(_override)
++    print('build-arm-driver: NativeUfs source override -> ' + str(source), flush=True)
+ outputs = metadata.get('outputs', [])
+ archive_output = next((path for path in outputs if path.endswith('.a')), None)
+ aux_dirs = {'NativeLegacyDisplay':'native-legacy-display', 'NativeGOPPresenter':'native-gop-presenter',
+@@ -78,6 +85,7 @@ while index < len(arguments):
+     index += 1
+ command.extend(['-Wall', '-Wextra', '-Werror', '-Wno-unused-parameter',
+                 '-Wno-c99-designator', '-Wno-reorder-init-list', '-Wno-deprecated-enum-enum-conversion',
++                '-Wno-missing-designated-field-initializers',
+                 '-Wno-unnecessary-virtual-specifier', '-I', str(ROOT / '.cache/xnu-work/osfmk')])
+ if component in ('NativeVirtioBlock', 'NativeRamBlock', 'NativeUfs'):
+     command += ['-I', str(ROOT / 'build/storage-abi/include')]
 diff --git a/scripts/build-libpthread-kernel.py b/scripts/build-libpthread-kernel.py
 index c6ac86063abfaa78558a5a275d1335b7aab98416..2ae421f7924ae47ed545a47e8d265b7a01850932 100644
 --- a/scripts/build-libpthread-kernel.py
@@ -3066,6 +3012,23 @@ index c6ac86063abfaa78558a5a275d1335b7aab98416..2ae421f7924ae47ed545a47e8d265b7a
  if subprocess.check_output(['git', '-C', SOURCE, 'rev-parse', 'HEAD'], text=True).strip() != REVISION:
      raise SystemExit('Unexpected libpthread source revision')
  if subprocess.check_output(['git', '-C', SOURCE, 'status', '--porcelain'], text=True):
+diff --git a/scripts/build-sheng-platform-power.py b/scripts/build-sheng-platform-power.py
+new file mode 100644
+index 0000000000000000000000000000000000000000..c5f90787f4b1a6f122b1cd82aa7f3d5016938dd7
+--- /dev/null
++++ b/scripts/build-sheng-platform-power.py
+@@ -0,0 +1,11 @@
++#!/usr/bin/env python3
++"""Run the device-owned original-PMGR ABI builder from the assembled tree."""
++import runpy
++from pathlib import Path
++
++
++ROOT = Path.cwd().resolve()
++builder = ROOT / "kits" / "nx741j" / "sheng" / "build-sheng-platform-power.py"
++if not builder.is_file():
++    raise SystemExit(f"Sheng PMGR builder missing: {builder}")
++runpy.run_path(str(builder), run_name="__main__")
 diff --git a/scripts/build-storage-bringup.py b/scripts/build-storage-bringup.py
 new file mode 100644
 index 0000000000000000000000000000000000000000..a7f7e6b2323c18b96f2d8a40de73df9d2affae5b
@@ -3461,19 +3424,22 @@ index 0d96c639d552b9bae69a108f078aee361c98e859..296c11774becb17600b2db9475fd325c
  
      def option_text(self, flag, env=None):
 diff --git a/scripts/unixnu/devicetree.py b/scripts/unixnu/devicetree.py
-index cdf0f908c2a0c733a818f8863acdca1f657304c6..dd4839f9b6e2d551b212b6f81dc91ec6032b996b 100644
+index cdf0f908c2a0c733a818f8863acdca1f657304c6..132e0aeb46eabe775203bd206ed58c66933a8abf 100644
 --- a/scripts/unixnu/devicetree.py
 +++ b/scripts/unixnu/devicetree.py
-@@ -203,7 +203,7 @@ def arm_io_window(hardware):
+@@ -202,8 +202,9 @@ def arm_io_window(hardware):
+     return base, top - base
  
  
- STRINGS = {'compatible', 'device_type', 'reg-names', 'interrupt-names', 'clock-names', 'method'}
+-STRINGS = {'compatible', 'device_type', 'reg-names', 'interrupt-names', 'clock-names', 'method'}
 -U32 = {'phandle', 'linux,phandle', '#interrupt-cells', '#iommu-cells', '#clock-cells', 'clock-frequency', 'timebase-frequency'}
-+U32 = {'phandle', 'linux,phandle', '#interrupt-cells', '#iommu-cells', '#clock-cells', 'clock-frequency', 'timebase-frequency', 'transport-encoding', 'transport-speed'}
++STRINGS = {'name', 'compatible', 'device_type', 'reg-names', 'interrupt-names', 'clock-names', 'method'}
++U32 = {'phandle', 'linux,phandle', '#interrupt-cells', '#iommu-cells', '#clock-cells', 'clock-frequency', 'timebase-frequency',
++       'transport-encoding', 'transport-speed', 'canvas-width', 'canvas-height'}
  U64 = {'redistributor-stride'}
  FLAGS = {'interrupt-controller', 'dma-coherent'}
  REFERENCES = {'interrupt-parent': None, 'iommus': '#iommu-cells', 'clocks': '#clock-cells'}
-@@ -256,10 +256,13 @@ def hardware_properties(entry, handles, base=0):
+@@ -256,10 +257,13 @@ def hardware_properties(entry, handles, base=0):
      return properties
  
  
@@ -3488,7 +3454,7 @@ index cdf0f908c2a0c733a818f8863acdca1f657304c6..dd4839f9b6e2d551b212b6f81dc91ec6
              raise Error(f'Unknown ADT property type: {kind}')
          for key, value in properties.items():
              if kind == 'string':
-@@ -274,7 +277,17 @@ def typed_properties(table):
+@@ -274,7 +278,17 @@ def typed_properties(table):
      return result
  
  
@@ -3507,7 +3473,7 @@ index cdf0f908c2a0c733a818f8863acdca1f657304c6..dd4839f9b6e2d551b212b6f81dc91ec6
      root = read_fdt(Path(dtb).read_bytes())
      entries = list(root.walk())
      handles = {}
-@@ -292,7 +305,8 @@ def generate(dtb, config, *, unique_chip_id=None, data=False, trust=False, addon
+@@ -292,7 +306,8 @@ def generate(dtb, config, *, unique_chip_id=None, data=False, trust=False, addon
      dram_base, dram_size = registers(memory[0])[0]
      if payload.get('dram_size') is not None and int(str(payload['dram_size']), 0) != dram_size:
          raise Error('payload.dram_size differs from the hardware DTS')
@@ -3517,7 +3483,7 @@ index cdf0f908c2a0c733a818f8863acdca1f657304c6..dd4839f9b6e2d551b212b6f81dc91ec6
                ('dram-size', struct.pack('<Q', dram_size)), *empty_nvram_proxy()]
      if unique_chip_id:
          seed = int(str(unique_chip_id), 16)
-@@ -322,6 +336,7 @@ def generate(dtb, config, *, unique_chip_id=None, data=False, trust=False, addon
+@@ -322,6 +337,7 @@ def generate(dtb, config, *, unique_chip_id=None, data=False, trust=False, addon
      mappings = [('PackedRAMDisk' if options.get('packed_data_ramdisk') else 'RAMDisk', bytes(16))] if data else []
      mappings += [('TrustCache', bytes(16))] if trust else []
      mappings += [('GpuAddon', bytes(16))] if addon else []
@@ -3525,7 +3491,7 @@ index cdf0f908c2a0c733a818f8863acdca1f657304c6..dd4839f9b6e2d551b212b6f81dc91ec6
      children = [node('chosen', chosen, [node('memory-map', mappings), node('manifest-properties')])]
      cpus = next((entry for entry in root.children if entry.name == 'cpus'), None)
      if cpus is None:
-@@ -333,10 +348,17 @@ def generate(dtb, config, *, unique_chip_id=None, data=False, trust=False, addon
+@@ -333,10 +349,17 @@ def generate(dtb, config, *, unique_chip_id=None, data=False, trust=False, addon
          values = registers(entry)
          if len(values) != 1 or values[0][0] > 0xffffffff:
              raise Error(f'{entry.name}: CPU affinity must fit a u32')
@@ -3547,7 +3513,7 @@ index cdf0f908c2a0c733a818f8863acdca1f657304c6..dd4839f9b6e2d551b212b6f81dc91ec6
      if not cpu_nodes:
          raise Error('Hardware DTS requires an enabled boot CPU')
      children.append(node('cpus', children=cpu_nodes))
-@@ -355,9 +377,13 @@ def generate(dtb, config, *, unique_chip_id=None, data=False, trust=False, addon
+@@ -355,9 +378,13 @@ def generate(dtb, config, *, unique_chip_id=None, data=False, trust=False, addon
                           [node(name, hardware_properties(entry, handles, base)) for name, entry in zip(names, hardware)]))
      for name in ('defaults', 'options', 'product', 'buttons'):
          if name in platform or name in ('defaults', 'options', 'product'):
@@ -3634,7 +3600,7 @@ index 19558bd756fccfa08574b60f8a28b6e451736d2d..fd2d617ad036396f13b6e44d2ffa0de5
      run(command, cwd=ctx.tree, log_file=ctx.logs / 'prelink.log')
      log(f'kernel: {output} sha256 {sha256_file(output)}')
 diff --git a/scripts/unixnu/payload.py b/scripts/unixnu/payload.py
-index 1bb9ad039b2e30f171595eb38ffcc23496ee3799..c87d78674171d7fb2b20d149684f804063a7693d 100644
+index 1bb9ad039b2e30f171595eb38ffcc23496ee3799..e39d2e671f85fc6ca60e8ea75f1ebdbf41cdc761 100644
 --- a/scripts/unixnu/payload.py
 +++ b/scripts/unixnu/payload.py
 @@ -26,6 +26,21 @@ def paths(ctx):
@@ -3659,7 +3625,7 @@ index 1bb9ad039b2e30f171595eb38ffcc23496ee3799..c87d78674171d7fb2b20d149684f8040
  def check_args(arguments):
      for value in arguments:
          if not re.fullmatch(r'[A-Za-z0-9_.\-]+(=[A-Za-z0-9_.,/\-]+)?', value):
-@@ -178,9 +193,32 @@ def build(ctx, kernel=None):
+@@ -178,9 +193,33 @@ def build(ctx, kernel=None):
          run(command, cwd=ctx.tree, env=dict(os.environ, UNIXNU_UEFI=str(ctx.uefi or '')), log_file=ctx.logs / 'payload-adt.log')
      initrd = 'initrd = "Payloads/scratch-data.img"\n' if data else ''
      loader = '' if spec.get('loader', 'firmware') == 'firmware' else '[[driver]]\npath = "Payloads/DarwinBoot.efi"\n'
@@ -3688,13 +3654,23 @@ index 1bb9ad039b2e30f171595eb38ffcc23496ee3799..c87d78674171d7fb2b20d149684f8040
 +    kit_lines = [f'autoload = {str(kits.get("autoload", False)).lower()}']
 +    if kits.get('directory'):
 +        kit_lines.append(f'directory = {json.dumps(kits["directory"])}')
++    entry_dtb = f'dtb = {json.dumps(spec["dtb"])}\n' if spec.get('dtb') else ''
 +    config = ('version = 1\n[boot]\n' + '\n'.join(boot_lines) + '\n[ui]\n' + '\n'.join(ui_lines) +
 +              '\n[kits]\n' + '\n'.join(kit_lines) + '\n' + loader +
 +              f'[[entry]]\nid = "xnu"\ntitle = {json.dumps(spec.get("title", "UniXNU"))}\ntype = "xnu"\n'
-+              f'path = "Payloads/kernel.macho"\n{initrd}args = "{line}"\n')
++              f'path = "Payloads/kernel.macho"\n{entry_dtb}{initrd}args = "{line}"\n')
      install = spec.get('install')
      if install:
          if not data:
+@@ -191,7 +230,7 @@ def build(ctx, kernel=None):
+         # The second boot menu entry: the same kernel and seed behind a confirmation whose choices add a boot argument (for example the Data reset).
+         config += (f'[[entry]]\nid = "install"\ntitle = {json.dumps(install.get("title", "Install and boot"))}\n'
+                    f'confirm = {json.dumps(install["confirm"])}\nconfirm_titles = {json.dumps(titles)}\nconfirm_args = {json.dumps(extra)}\n'
+-                   f'type = "xnu"\npath = "Payloads/kernel.macho"\n{initrd}args = "{line}"\n')
++                   f'type = "xnu"\npath = "Payloads/kernel.macho"\n{entry_dtb}{initrd}args = "{line}"\n')
+     # A loaded configuration replaces the built-in menu (UniXNULib Config.c) and with it that menu's Restart and Power off.
+     config += ('[[entry]]\nid = "reset"\ntitle = "Restart"\ntype = "action"\naction = "reset"\n'
+                '[[entry]]\nid = "shutdown"\ntitle = "Power off"\ntype = "action"\naction = "shutdown"\n')
 diff --git a/scripts/unixnu/pipeline.py b/scripts/unixnu/pipeline.py
 new file mode 100644
 index 0000000000000000000000000000000000000000..fbeac31e1d6e9efb5b192de7d38032ee087363f3

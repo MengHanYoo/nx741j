@@ -2,12 +2,13 @@
 """Build the opt-in, guarded sheng original-PMGR integration instrument."""
 import hashlib
 import json
+import os
 from pathlib import Path
 import struct
 import subprocess
 import sys
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path.cwd().resolve()
 OUT = ROOT / 'build/sheng-platform-power'
 OUT.mkdir(parents=True, exist_ok=True)
 sys.path.insert(0, str(ROOT / 'kits/XnuPrelink'))
@@ -70,6 +71,7 @@ while i < len(arguments):
         command.append(arg)
     i += 1
 command += ['-Wall', '-Wextra', '-Werror', '-Wno-unused-parameter', '-Wno-c99-designator',
+            '-Wno-missing-designated-field-initializers',
             '-Wno-reorder-init-list', '-Wno-deprecated-enum-enum-conversion',
             '-Wno-unnecessary-virtual-specifier', '-I', OUT, '-I', ROOT / '.cache/xnu-work/osfmk']
 run(command, cwd=record['directory'])
@@ -99,13 +101,48 @@ for segment in info['segments']:
                     relocations[section['va'] + offset] = symbols[bits & 0xffffff][0]
 entries = [relocations.get(vtable + 16 + i * 8) for i in range(340)]
 require(all(entries) and vtable + 16 + 340 * 8 not in relocations, 'Exact 340-entry provider table')
-reference = ROOT / 'build/xnu-prelink/native-owner-ufs-rootauth3-candidate.macho'
+reference = None
+override = os.environ.get('UNIXNU_PMGR_REFERENCE')
+if override:
+    reference = Path(override).expanduser()
+if reference is None:
+    reference = ROOT / 'build/xnu-prelink/native-owner-ufs-rootauth3-candidate.macho'
 if not reference.exists():
     # Build products are pruned: a later candidate built from the same original kernelcache has the identical original
     # ApplePMGR class and inherited native IOPMGR slots; every slot/pointer check below still runs against it.
     later = sorted((ROOT / 'build/xnu-prelink').glob('native-owner-ufs-cpu-desktop-*-candidate.macho'), key=lambda f: f.stat().st_mtime)
-    require(later, 'No reference candidate available')
-    reference = later[-1]
+    if later:
+        reference = later[-1]
+    else:
+        candidates = [
+            ROOT.parent / 'kernel/kernel.macho',
+            ROOT / 'build/sheng-platform-power/reference.macho',
+        ]
+        reference = next((path for path in candidates if path.is_file()), None)
+        if reference is None:
+            # The bootstrap kernel pass has already produced the native kernel
+            # when this recipe runs.  Build a deterministic ApplePMGR candidate
+            # from it instead of treating the un-rebased original kernelcache as
+            # a candidate (its data addresses are not the final prelink layout).
+            native = ROOT / 'build/xnu/ios-obj/DEVELOPMENT_ARM64_BCM2837/mach.development.bcm2837'
+            cache_candidates = [
+                Path(os.environ['UNIXNU_KERNELCACHE']).expanduser()
+                if os.environ.get('UNIXNU_KERNELCACHE') else None,
+                Path('/opt/work/ipsw/kernelcache.arm64'),
+                Path('/mnt/e/default-workspace/z80u-collect/ipsw/kernelcache.arm64'),
+            ]
+            cache = next((path for path in cache_candidates if path and path.is_file()), None)
+            if native.is_file() and cache:
+                reference = ROOT / 'build/sheng-platform-power/reference.macho'
+                reference.unlink(missing_ok=True)
+                run([
+                    sys.executable, ROOT / 'kits/XnuPrelink/emit_prelink.py',
+                    '--kernel', native, '--prelinked', cache,
+                    '--slide=-0x1000000', '--output', reference,
+                    '--root', 'com.apple.driver.ApplePMGR',
+                ], cwd=ROOT)
+        require(reference and reference.is_file(),
+                'No PMGR reference candidate; set UNIXNU_PMGR_REFERENCE or UNIXNU_KERNELCACHE')
 candidate = reference.read_bytes()
 meta = macho(candidate)
 native_names = {n: va for va, names in exports(candidate, meta).items() for n in names}

@@ -124,7 +124,9 @@ nx741j 还需为 iOS 16 profile 提供对应策略目录（`scripts/policies/ios
 
 ## 构建已打通（本地 bring-up）
 
-`ShengUfs` 已选中并链接成功（`kernel.macho` sha256 `ec801093…`）：官方 audit 产出
+当前最终内核（含 PMGR、显示、HID 和 CPU idle）sha256
+`d802015dca266cdf43dfec060e1e49ca47ac5515225d6b98d3f559beef1be5f0`。
+ShengUfs 已选中并链接成功：官方 audit 产出
 `IOBlockStorageDevice-reference.o`，设备仓库 `package/storage-bringup/Stubs.c` +
 `scripts/build-storage-bringup.py` 提供剩余符号，框架 `build-xnu-4k-baseline.sh` 追加
 `-force_load` 入链接。运行时仍受 `native-source-storage=1` 门控；verified-root 已换成真实实现并 fail-closed，
@@ -138,8 +140,8 @@ nx741j 还需为 iOS 16 profile 提供对应策略目录（`scripts/policies/ios
 |---|---|---|
 | `[payload.adt] cpu_regs` | ✅ 补全为 8 个 MPIDR：`0,0x100,0x200,0x300,0x400,0x500,0x10000,0x10100` | 实机 DTB `/cpus` 的 8 个节点 reg（`fdtget` 读出）。格式 2 的 ADT 生成器直接读 DT 的 `/cpus`，此键只服务格式 1 的 `--cpu-regs` |
 | `[[userdata.windows]]` | ✅ 两个窗口：`OS` → 组件 `OS`；`SystemOS` → 组件 `Cryptex1,SystemOS` | 本机 IPSW `BuildManifest.plist`（iPhone10,3 / 20H392 / Erase 身份）的 `VariantContents` 与 `Manifest`：OS → `087-86698-044.dmg`（4511 MiB），SystemOS → `087-86593-047.dmg`（2616 MiB） |
-| `[payload.adt] root_match_volume_uuid` | ⬜ 未填（已加注释） | 必须是 OS 窗口卷的 UUID（`/chosen/root-matching` 用它选根卷），只能从 `./unixnu userdata` 产出的镜像里读，DTB / BuildManifest 都推不出 |
-| `[[payload.block_slice]]` | ⬜ 未填（映射已就绪） | `payload.py` 的 `render_block_slices()` 已支持；窗口偏移/长度要等 SHNGROOT 镜像生成后才能定 |
+| `[payload.adt] root_match_volume_uuid` | ✅ 已填 `DADD93F8-DBBF-4B17-A1DF-0F11E64172F7` | 从本地生成的 `userdata-root.img` 的 OS APFS 卷超级块读取；SystemOS 为 `96096B28-B6DC-4BC7-9D3A-2632A0FE53F1` |
+| `[[payload.block_slice]]` | 已由动态根模式取代 | 内核用 `NXROOTP1` 尾部锚点定位 `SHNGROOT`，不再依赖固定 LBA 或静态 block slice |
 
 容量核对：`(248838138 - 4875048 + 1) * 4096 = 999,272,820,736 B`（**930.65 GiB**），
 OS（4.40 GiB）+ SystemOS（2.55 GiB）远小于容量。

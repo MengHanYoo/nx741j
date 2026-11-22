@@ -188,7 +188,7 @@ evidence = [
 id = "cpu"
 status = "implemented"
 components = ["ArmCpu"]
-paths = ["dts/nx741j.dts", "board.toml", "configs/nx741j_defconfig"]
+paths = ["dts/nx741j.dts", "board.toml", "configs/nx741j_defconfig", "patches/xnu/nx741j-cpu-idle.patch"]
 inputs = [
   "8 cores in two clusters: cluster0 cpu@0..500 (6 cores), cluster1 cpu@10000,10100 (2 cores)",
   "MIDR 0x51 / 0x002 (Qualcomm Oryon) on all cores, read from the running device",
@@ -205,6 +205,8 @@ procedure = [
   "build the kernel with ./unixnu build kernel and check the arch timer patch in the series",
 ]
 findings = [
+  "2026-11-22: NX741JCpuIdle.c links a conservative PSCI core-retention state 0x4 path, with residence thresholds and automatic WFI fallback after eight refusals.",
+  "2026-11-22: CPU frequency control and the full hardware idle governor are still open.",
   "The stock DT has no CPU frequency table and no MIDR; both had to be read from the running Android system.",
   "L2 cache is per-core on cluster0 and shared through phandle 0x0e on cluster1.",
   "board.toml also selects ArmSmmu4K now: it is a kit, not an archive, and the storage archive compiles it in; this area is unchanged by that selection.",
@@ -214,12 +216,14 @@ completion = [
   "IPI delivery works between the two clusters",
 ]
 limits = [
-  "No on-device checkpoint has been reached yet; the kernel has only been built and linked",
+  "The retention helper is built and linked, but PSCI state 0x4 and per-cluster residency have not been accepted or measured on the phone.",
+  "CPU frequency scaling, thermal policy and long-idle power measurement are not implemented.",
 ]
 next_action = [
-  "Boot the kernel and record the per-CPU entry checkpoints in the diagnostics log",
+  "Once iOS reaches a usable state, sample the NX741J IDLE log for PSCI refusals, retention residency and WFI fallback on all eight CPUs",
 ]
 evidence = [
+  { kind = "host", reference = "docs/STATUS-2026-11-22.md", result = "The final kernel links the PSCI retention helper; the phone acceptance remains pending", command = "strings -a kernel.macho | grep 'NX741J IDLE'", revision = "1eb7e6fb00ea816a014f8776943779d6d2fe3382" },
   { kind = "source", reference = "dts/nx741j.dts", result = "CPU topology, mpidr and capacity values for both clusters" },
   { kind = "source", reference = "board.toml", result = "hardware.cpu section with MIDR, frequencies and cache layout" },
   { kind = "source", reference = "docs/STEP6-PLATFORM.md", result = "STEP6-PLATFORM cpu: inputs from the compiled board DTS" },
@@ -278,7 +282,7 @@ evidence = [
 # ---------------------------------------------------------------------------
 [[area]]
 id = "storage"
-status = "planned"
+status = "host-verified"
 components = [
   "ShengUfs",
   "VirtioMmioBlock",
@@ -292,6 +296,9 @@ paths = [
   "package/storage-bringup/SmmuBind.c",
   "package/storage-bringup/Stubs.c",
   "scripts/build-storage-bringup.py",
+  "scripts/patch-native-ufs-root-anchor.py",
+  "scripts/prepare-verified-root.py",
+  "scripts/verify-verified-root.py",
   "scripts/mk-verified-root-policy.py",
 ]
 inputs = [
@@ -314,6 +321,10 @@ procedure = [
   "write and read back a boot image through the Android root path (dd to /dev/block/by-name/boot_a) and compare SHA-256",
 ]
 findings = [
+  "2026-11-22: the root image is selected through a dynamic NXROOTP1 tail anchor; nxroot-lba and native-ufs-noverify are absent from the final source and kernel.",
+  "2026-11-22: real OS/SystemOS UUIDs are DADD93F8-DBBF-4B17-A1DF-0F11E64172F7 and 96096B28-B6DC-4BC7-9D3A-2632A0FE53F1; the root_match_volume_uuid is present in board.toml and the ADT.",
+  "2026-11-22: VerifiedRoot authenticated 1,375,753 OS blocks and 669,696 SystemOS blocks using the compiled C/RSA implementation; the signed policy headers are in Policy.o and the hash objects are in the version-2 root image.",
+  "2026-11-22: the default payload uses native-ufs-root=1 with sheng-pmgr=2. The PMGR provider is linked, but runtime qualification is still pending on hardware.",
   "UFS is not required for the official stage 2 path: the payload volume is a RAM initrd published by UniXNURamDiskDxe, and DiskIoDxe/Fat mount it successfully on device.",
   "The vendor UFS stack cannot run in this firmware because HALIOMMU needs DTBExtnProtocol and UFSDxe needs the RPMH/SCM chain; both providers are absent.",
   "board.toml changed in this range: the platform ADT inputs (psci_method/dram_size/owned_memory_size/cpu_regs) and the payload trust cache list were made explicit; see docs/STEP6-PLATFORM.md.",
@@ -330,16 +341,19 @@ completion = [
   "The configured volume mounts and launchd starts; writes survive reboot",
 ]
 limits = [
+  "Host-verified on 2026-11-22: dynamic NXROOTP1, both real UUIDs, VerifiedRoot headers/hash objects, normal native-ufs-root=1 payload and the QEMU hand-off gate all build/run.",
+  "The new 8,445,677,568-byte root image and out/userdata-anchor.bin are not installed because no ADB or 9008 device is attached.",
+  "PMGR is linked but runtime_qualified is false; the original nub publication and power-refusal path require a real phone.",
   "No Mu-side UFS BlockIo: UFSDxe/HALIOMMU cannot be enabled without DTBExtn, NPA and RPMH providers",
-  "No XNU UFS driver yet: ShengUfs targets SM8550 and needs an SM8850 clock/reset table plus ArmSmmu4K",
-  "ShengUfs link needs build-boot-progress.py plus storage policy/VerifiedRoot archives; the upstream public script depends on private kits/sheng sources and build-sheng-source-storage.py is not published (404). The policy envelope itself is generated locally now, but nothing loads it into verified_root_policies[] yet.",
+  "No hardware observation yet for APFS volume selection, IOMedia root publication or launchd.",
 ]
 next_action = [
-  "Keep the payload-volume path for stage 2/3 verification and revisit UFS only for the root volume after stage 4 passes",
-  "Read the UFS model through fh_loader --getstorageinfo in 9008 (or root sysfs) and record it here.",
-  "Decide where the 128 MiB envelope (or a narrowed authenticated range) is loaded from and populate verified_root_policies[]; port source-storage-runtime.patch to xnu-8796; then flash and verify capacity/GPT/mount.",
+  "Reconnect a phone through ADB or 9008, write the new root image, install the 4 KiB NXROOTP1 anchor and read both back.",
+  "Boot the final normal-root payload; verify both IOMedia, APFS root matching, launchd and the PMGR observation record.",
+  "Only after the first iOS boot, continue persistent Data and performance work.",
 ]
 evidence = [
+  { kind = "host", reference = "docs/STATUS-2026-11-22.md", result = "Normal-root payload and QEMU hand-off pass; PMGR is linked; hardware gate is explicitly pending", command = "QEMU_MEM=16G QEMU_SMP=16 QEMU_INT=1 scripts/qemu-nx741j.sh /opt/work/nx741j-build/UniXNU 60", revision = "1eb7e6fb00ea816a014f8776943779d6d2fe3382" },
   { kind = "source", reference = "board.toml", result = "hardware.storage LBAs, UFS model and payload size" },
   { kind = "source", reference = "docs/PORTING-RECORD.md", result = "GPT inventory and partition strategy" },
   { kind = "device", reference = "docs/STAGE2-CONFORMANCE.md", result = "Payload volume mounted from the initrd (Fat) without any UFS BlockIo", command = "boot the minimal FV and read the UNIXNURAMDISK/Fat lines", revision = "f2584c81ca5ddcf3c9e58a6d15b6866e85e11f85" },
@@ -353,7 +367,7 @@ evidence = [
 # ---------------------------------------------------------------------------
 [[area]]
 id = "display"
-status = "implemented"
+status = "host-verified"
 components = ["GopFramebuffer"]
 paths = [
   "board.toml",
@@ -361,6 +375,8 @@ paths = [
   "dts/nx741j-mdss.dtsi",
   "dts/nx741j-panel-bf375.dtsi",
   "scripts/mk-mdss-dtsi.py",
+  "scripts/inspect-display-abi.py",
+  "patches/xnu/nx741j-native-display.patch",
 ]
 inputs = [
   "Panel bf375 / rm692h5 6.8 inch, native 1440x3200, DSI command mode with dual 1216x2688 modes (120/60 fps)",
@@ -378,9 +394,10 @@ procedure = [
   "build the kernel and check that GopFramebuffer is linked from the selected component",
 ]
 findings = [
+  "2026-11-22: SweetFramebuffer, IOCoreSurfaceRoot, IOMobileFramebufferUserClient, AppleCLCD and AppleARMBacklight are linked into the final kernel.",
+  "2026-11-22: the ADT publishes disp0 as compatible sweet,display with a 1216x2688 canvas; QEMU suppresses video and cannot validate the real panel.",
   "The 10-26 CI line carried a panel geometry fix (1216x2688); that geometry must not regress to 1220x2656.",
-  "UEFI side output is confirmed; the XNU side has not been started.",
-  "UEFI GOP gives the 1216x2688 menu; the XNU display driver is not implemented yet, so kernel-time geometry/backlight remain unverified.",
+  "UEFI GOP and the source display path both build; kernel-time geometry and brightness still need a phone run.",
   "The SDE/MDP and DSI controller nodes are in dts/nx741j-mdss.dtsi, generated from the live FDT by scripts/mk-mdss-dtsi.py: 33 real nodes plus 19 disabled provider placeholders, with the BF375 panel attached below &dsi0. The hardware DTB compiles (5,614 -> 56,798 bytes) and the generated ADT is unchanged; the DPU/DSI driver itself is still missing.",
   "board.toml also selects ArmSmmu4K now: it is a kit, not an archive, and the storage archive compiles it in; this area is unchanged by that selection.",
 ]
@@ -388,14 +405,15 @@ completion = [
   "The panel shows the menu at 1216x2688 and the kernel keeps the same geometry",
 ]
 limits = [
-  "XNU display and brightness are not started; only the UEFI GOP framebuffer paints",
+  "The source framebuffer, IOSurface and backlight services are linked, but the real panel, DSI brightness command and physical refresh timing are not hardware-qualified.",
   "The MSM display controller has a device tree but no driver: the TLMM pin states, the SDE reserved-memory region and the DP/CESTA blocks are not modelled yet",
 ]
 next_action = [
-  "Bring up GopFramebuffer after the kernel boots and record the first paint",
+  "After the phone root path reaches launchd, verify the first paint, brightness set/get and panel timing on the real device",
   "Port the SDE/DSI driver against dts/nx741j-mdss.dtsi, replacing the disabled provider placeholders with the real clock and NoC nodes",
 ]
 evidence = [
+  { kind = "host", reference = "docs/STATUS-2026-11-22.md", result = "Final kernel contains the display/backlight services and the QEMU hand-off gate passes", command = "llvm-nm --defined-only kernel.macho and QEMU_MEM=16G QEMU_SMP=16 scripts/qemu-nx741j.sh", revision = "1eb7e6fb00ea816a014f8776943779d6d2fe3382" },
   { kind = "source", reference = "board.toml", result = "Panel, GOP geometry and framebuffer region" },
   { kind = "source", reference = "docs/STEP6-DRIVERS-MATRIX.md", result = "STEP6-MATRIX: driver order, selected/planned components and build integration checked" },
   { kind = "source", reference = "docs/DISPLAY-DT.md", result = "DISPLAY-DT: mdss/DSI topology, phandle rewrite rules and the dtc/ADT verification" },
@@ -406,9 +424,14 @@ evidence = [
 # ---------------------------------------------------------------------------
 [[area]]
 id = "input"
-status = "planned"
+status = "host-verified"
 components = []
-paths = ["board.toml", "docs/DRIVER-CHECKLIST.md"]
+paths = [
+  "board.toml",
+  "docs/DRIVER-CHECKLIST.md",
+  "patches/xnu/nx741j-hid.patch",
+  "docs/TOUCH-TCM-DRAFT.md",
+]
 inputs = [
   "Synaptics TCM touch on SPI, reset GPIO <0x33 0x42 0x00>, input device synaptics_tcm_touch",
   "Goodix fingerprint as a separate input device",
@@ -426,6 +449,8 @@ procedure = [
   "verify pointer events in the menu and in the kernel",
 ]
 findings = [
+  "2026-11-22: SweetHID, IOHIDEvent, TouchCom v1 GPIO SPI, SweetHIDTouch, SweetHIDButtons and SweetKeys are linked in nx741j-hid.patch.",
+  "2026-11-22: touch uses SPI GENI 0x1a80000, MISO/MOSI/CLK/CS = 48/49/50/51, reset GPIO66 and IRQ GPIO158; keys use PMK8850 PON for Power/Volume- and TLMM GPIO101 for Volume+.",
   "Stock DTS maps the keys to TLMM: VOL+ = gpio 101 (active low, pull-up), FOCUS = gpio 179, SHOOT = gpio 95; VOL- is the PMIC pmk8350-pon resin line.",
   "MemoryMapLib declares the TLMM window as 0x0F000000/0x01000000 MMIO, but reading 0x0F010000 faults and per-pin reads at 0x65000/0xB3000/0x5F000 have not yet returned data.",
   "Vendor ButtonsDxe needs PmicGpio/TLMM/PmicPON; PmicDxeLa cannot start (RPMH assert), and KeypadDxe alone cannot produce input.",
@@ -437,16 +462,15 @@ completion = [
   "Touch coordinates map to the 1216x2688 menu and to the kernel input device",
 ]
 limits = [
-  "No working UEFI input device: neither the vendor stack nor a board TLMM driver has produced SimpleTextInput on device",
-  "No touch protocol driver exists for this panel yet",
-  "Synaptics TCM firmware/config is not exposed to the shell; read /vendor/firmware_mnt/image with root.",
-  "The TCM firmware image is extracted; the touch driver still needs the TCM protocol/IRQ/SPI wiring implemented.",
+  "The source paths build and link, but no real touch frame or key event has been observed.",
+  "Touch avdd/vdd power sequencing, GENI GPIO ownership and the PMK8850 PPID/TLMM register state still need a phone run.",
+  "The UEFI SimpleTextInput path remains separate from the kernel HID path.",
 ]
 next_action = [
-  "Boot V41 and read the KEYS: dump for the three pin blocks, then either hardcode the mapping or fix the MMU mapping for the TLMM window",
-  "After keys, port the Synaptics TCM protocol layer and wire it into ShengHidInput",
+  "After the phone reaches the iOS menu, verify the securityd/hid event stream, touch coordinates, PON status and Volume+ GPIO101",
 ]
 evidence = [
+  { kind = "host", reference = "docs/STATUS-2026-11-22.md", result = "The final kernel links TouchCom, SweetHIDTouch, SweetHIDButtons and SweetKeys; the panel path remains hardware-unverified", command = "strings -a kernel.macho | grep -E 'NX741J TOUCH|NX741J KEYS|SweetHID'", revision = "1eb7e6fb00ea816a014f8776943779d6d2fe3382" },
   { kind = "device", reference = "docs/ANALYSIS-EFISP-VENDORBOOT.md", result = "TLMM probe faults at 0x0F010000; key calibration reports NOT DETECTED for the scanned window", command = "flash V22/V31/V34/V36 and capture the TLMMPROBE/KEYS lines", revision = "f2584c81ca5ddcf3c9e58a6d15b6866e85e11f85" },
   { kind = "source", reference = "docs/STEP6-DRIVERS-MATRIX.md", result = "STEP6-MATRIX: driver order, selected/planned components and build integration checked" },
 ]
@@ -576,7 +600,14 @@ evidence = [
 id = "power"
 status = "planned"
 components = []
-paths = ["board.toml", "docs/DRIVER-CHECKLIST.md", "docs/FIRMWARE-DRIVERS.md"]
+paths = [
+  "board.toml",
+  "docs/DRIVER-CHECKLIST.md",
+  "docs/FIRMWARE-DRIVERS.md",
+  "package/sheng/ShengPlatformPower.cpp",
+  "package/sheng/build-sheng-platform-power.py",
+  "patches/xnu/nx741j-pmgr-hook.patch",
+]
 inputs = [
   "RPMh, SPMI, PMIC, clock and interconnect controllers under SM8850",
   "PMIC rails and the regulator set from the stock device tree",
@@ -589,6 +620,8 @@ procedure = [
   "complete RpmhDxe in the firmware export, then port the platform operations to SM8850",
 ]
 findings = [
+  "2026-11-22: the guarded original-PMGR provider builds, links 340 virtual entries and exposes _sheng_pmgr_run; its ABI report still marks runtime_qualified=false.",
+  "2026-11-22: the default native-root payload requires and contains sheng-pmgr=2. This is a build/link qualification, not a functional clock/regulator backend.",
   "Layer 2 currently fails at RpmhDxe (FAR=0x58) because the RPMh register set needs the SMEM contents that XBL normally provides.",
   "board.toml also selects ArmSmmu4K now: it is a kit, not an archive, and the storage archive compiles it in; this area is unchanged by that selection.",
 ]
@@ -596,10 +629,11 @@ completion = [
   "Regulators, clocks and power domains come up and the SoC leaves the boot state",
 ]
 limits = [
-  "Blocked at RpmhDxe in layer 2; no SM8850 platform operations exist",
+  "The PMGR nub lifecycle is host-audited but not hardware-qualified; unimplemented power slots deliberately panic rather than pretending success.",
+  "No SM8850 clock, regulator, battery or thermal policy backend exists yet.",
 ]
 next_action = [
-  "Provide the SMEM contents and finish the RPMh driver, then start the SM8850 platform port",
+  "On the first connected phone boot, capture the PMGR observation record, verify ApplePMGRNub publication and replace refused power slots with a real SM8850 backend",
 ]
 evidence = [
   { kind = "source", reference = "docs/STEP6-DRIVERS-MATRIX.md", result = "STEP6-MATRIX: driver order, selected/planned components and build integration checked" },
@@ -620,6 +654,9 @@ paths = [
   "scripts/ci-local.sh",
   "scripts/apply-firmware-overlay.py",
   "scripts/read-device-identity.sh",
+  "scripts/export-framework-patch.sh",
+  "scripts/verify-verified-root.py",
+  "package/sheng/build-sheng-platform-power.py",
 ]
 inputs = [
   "Self-built XNU kernel (8796.141.3) and the original kernelcache matching the profile pin (2ec297ba)",
@@ -640,6 +677,8 @@ procedure = [
   "./scripts/package.sh --no-deps",
 ]
 findings = [
+  "2026-11-22: final host outputs are kernel.macho 14e63ca1526f9b956fb9a41b33269b7a13390937a7a743bbba17009e9476207a, root payload 219817f9c2428b0c3cadf758228462569f257ce63b5c47b8a44ddd3abcd114b0, boot.img 8074e86236ae3e158fa30b76d0a1085206aecb80d27e6396f55fe30d4fdb5a9b and FD 3ce5c6d2c61891975c52846358bff3f3d9744413d61fd732ea48f7507a49a009.",
+  "2026-11-22: QEMU_MEM=16G QEMU_SMP=16 passed BootEntry, MARK #29 and EBS ok with panic=0; the phone flash gate remains open because no device is attached.",
   "unixnu build kernel exits 0 from a freshly cloned tree with all 63 patches applied: 856 compile records, eight archive builders, link and prelink.",
   "kernel.macho is 51,691,520 bytes and the prelink report lists 11 components with 23,833 bindings, but abi_qualified and runtime_qualified are both false, so it is an experimental candidate.",
   "The bootimg values must be TOML integers; quoted hex strings fail in verify with a TypeError, and local.toml ramdisk=\"none\" silently drops the payload.",
@@ -657,6 +696,7 @@ limits = [
   "early_security_init is empty, so AMFI does not run its early initializer",
   "runtime_qualified is false; the prelink has not been validated on hardware",
   "mockfs is disabled because this snapshot cannot produce the compile records its fixture builder reads",
+  "The aggregate six-scenario smoke suite is separate from the direct QEMU hand-off gate and remains deferred.",
 ]
 next_action = [
   "Rebuild the boot image with the known-good firmware volume and bisect the FD regression",

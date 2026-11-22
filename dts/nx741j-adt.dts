@@ -42719,3 +42719,14 @@
 &{/soc/interrupt-controller@17000000} { unixnu,adt-name = "intc"; };
 &{/soc/timer} { unixnu,adt-name = "arm-timer"; };
 &{/soc/ufshc@1d84000} { unixnu,adt-name = "ufshc"; };
+
+/* The firmware-reserved GOP scanout is published as the iOS display nub. */
+/ {
+	display0: sweet,display {
+		compatible = "sweet,display";
+		device_type = "display-subsystem";
+		canvas-width = <0x4c0>;
+		canvas-height = <0xa80>;
+		unixnu,adt-name = "disp0";
+	};
+};

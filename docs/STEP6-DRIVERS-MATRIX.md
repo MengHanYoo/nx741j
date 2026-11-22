@@ -1,20 +1,21 @@
 # 步骤 6 · 驱动适配矩阵（nx741j）
 
 依据官方[适配驱动](https://unixnu.com/zh/porting/drivers)的 8 级硬件依赖顺序与构建接入规则。
-设备仓库 revision `c1b229907e4b8d9aff1db6223bd73d36fb0ecde3`。
+设备仓库修订以 `STATUS-2026-11-22.md` 为准。2026-11-22 的主机状态是：
+内核、正常根 payload、固件和 QEMU 交接通过；真机尚未连接。
 
 ## 8 级顺序与本地状态
 
 | 顺序 | 能力 | 官方组件 | 本机状态 | 说明 |
 |---|---|---|---|---|
 | 1 | CPU/中断/定时器/RAM/DMA | ArmDTPlatform、ArmCpu、ArmSmmu4K | 🟡 部分 | 前两者已选并按 arch profile 归档；**ArmSmmu4K 已选中并编入**（`libShengUfs.a` 的 `ArmSmmu4K.o`+`SmmuBind.o`，`kernel.macho` 里 `_ArmSmmu4KBuild` 已链接，`boot_progress_poll` 由绑定实现）；SMMU 节点与实机 FDT 一致；平台输入见 `STEP6-PLATFORM.md` |
-| 2 | 存储/根卷/持久 Data | ShengUfs、RamBlock、VirtioMmioBlock、VerifiedRoot | 🟡 构建通过 | 已选中并链接（`libShengUfs.a` 含 ABI 参考对象 + 真实 VerifiedRoot）；UFS 节点已导出到 ADT（`ufshc`）；运行时仍 fail-closed（无策略包） |
-| 3 | 帧缓冲/刷新/亮度 | GopFramebuffer、DisplayTimingProbe、AppleARMBacklight、GeniI2c | 🟡 部分 | 面板 `bf375`+`rm692h5`、GOP 1216×2688 已确认；仅 `GopFramebuffer` 已选；MSM 显示控制器的 DT 已入库（`DISPLAY-DT.md`），驱动未实现 |
-| 4 | 触控与按键 | QcomGeniSpi、ShengHidInput、ButtonProbe（+自建 Synaptics TCM） | ⬜ 未开始 | 触控为 Synaptics TCM（`syna_firmware.img` 已提取），`ShengNovatekTouch` 不适用；UEFI 按键仍受 TLMM 映射阻塞 |
+| 2 | 存储/根卷/持久 Data | ShengUfs、RamBlock、VirtioMmioBlock、VerifiedRoot | 🟢 主机通过、待真机 | 动态 `NXROOTP1`、真实双卷 UUID、VerifiedRoot、正常根 payload 和 PMGR 均已链接；APFS 选卷/`launchd` 尚无手机日志 |
+| 3 | 帧缓冲/刷新/亮度 | GopFramebuffer、DisplayTimingProbe、AppleARMBacklight、GeniI2c | 🟢 主机通过、待真机 | `IOCoreSurfaceRoot`、`AppleCLCD`、`AppleARMBacklight` 已链接；真实 DSI/亮度仍需面板验证 |
+| 4 | 触控与按键 | QcomGeniSpi、ShengHidInput、ButtonProbe（+自建 Synaptics TCM） | 🟢 主机通过、待真机 | Synaptics TCM、HID service、PON/GPIO101 worker 已链接；TouchCom 供电和 GPIO 状态仍需手机 |
 | 5 | GPU/Metal | Adreno740、AdrenoMetal、Sm8550Platform、AdrenoFirmware、AdrenoPM4、AirNir | ⬜ 未开始 | 实机 DTB `Adreno840v2`（gen8-2-1，chipid `0x44050a01`）；目录 A740 需新实现 |
 | 6 | Wi-Fi/蓝牙/USB | Ath12kWifi、WifiProbe、WifiNet、MhiBoot、QcaBluetooth、QcomDwc3 | ⬜ 未开始 | 实机 WCN7880：BT 固件 BRAHMA/GANGES、PEACH BDWLAN、MAC `5C:7D:AE:43:D9:F8` 已取；组件按 WCN7850 编写需适配 |
 | 6a | 基带 | QcomBaseband、modem/QRTR/IPA | ⬜ 未开始 | 目录参考 SC7180 |
-| 7 | DSP/音频/电池/调频/电源 | AdspProbe、AudioProbe、ShengBattery、CpuFreqProbe、ShengPlatformPower | ⬜ 未开始 | codec WSA884x（`mixer_paths_canoe_mtp_wsa884x`）已识别；排在存储/显示之后 |
+| 7 | DSP/音频/电池/调频/电源 | AdspProbe、AudioProbe、ShengBattery、CpuFreqProbe、ShengPlatformPower | 🟡 部分 | PSCI retention idle 和 guarded PMGR 已链接；PMGR `runtime_qualified=false`，音频/电池/调频仍未开始；第 7 步按用户要求冻结 |
 | 8 | OS 服务与打包 | SoftwareAES、AppleKeyStoreState、XnuPrelink、DarwinBoot、ShengPreflight | 🟡 部分 | SoftwareAES/XnuPrelink/DarwinBoot 已选；AppleKeyStoreState/ShengPreflight 未选 |
 
 ## 构建接入（官方第 3 节）

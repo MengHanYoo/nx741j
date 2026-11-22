@@ -1,5 +1,11 @@
 # Verified-root 策略包（本地生成 + 主机验证）
 
+> 2026-11-22 当前方案：两个 544 B 签名头编译进 `Policy.o`，每个窗口的
+> 64 MiB 块哈希表作为 version-2 `<window>.vroot` 对象放进
+> `userdata-root.img`，不再把 128 MiB 信封塞进 payload。OS 1,375,753 块和
+> SystemOS 669,696 块已由宿主 C/RSA 验证器逐块通过。下文关于“128 MiB 信封”
+> 的内容保留为设计推导；实际交付方式以本段为准。
+
 存储路径的 verified-root 校验链有两半：`kits/VerifiedRoot/tools/manifest.py` 负责签名，
 `kits/VerifiedRoot/src/verified_root.c` 负责逐块校验。设备仓库原来只锚定了空的
 `verified_root_key` 和 `verified_root_policy_count = 0`（`package/storage-bringup/Stubs.c`），
@@ -100,10 +106,11 @@ python3 $KIT/tools/verify_image.py --library libverifiedroot.so --manifest manif
 | 符号 | `_verified_root_key` / `_verified_root_policies` / `_verified_root_policy_count` 均为 `D`（已定义） |
 | 密钥字节 | `56524f4f 544b4559` = `VROOTKEY`，后接 384 字节模数 |
 
-真实镜像还没编进去：17 GiB 需要 128 MiB 信封，会先被大小检查拦下，投递方式见下。
+真实镜像现在使用 header-only + 镜像内 version-2 对象，不再触发 128 MiB
+payload 限制；`out/userdata-root.img` 为 8,445,677,568 B。
 
-## 仍然缺的三件事（策略包之外）
+## 当前剩余边界（策略包之外）
 
-1. **信封投递**：`Stubs.c` 里 `verified_root_policies[16]` 是空数组，谁来读信封、放在哪、多大，未定；
-2. **xnu-8796 的 `source-storage-runtime.patch`**：现有补丁只到 xnu-12377，见 `STEP6-UFS.md`；
-3. **bootargs 门控**：`native-source-storage=1`、`native-ufs-root=1` 未加，实机即便刷入也不会走存储路径。
+1. **真机投递**：新镜像和 `NXROOTP1` 尾部锚点尚未写入手机；
+2. **真机运行**：APFS 选卷、`IOMedia` 根设备和 `launchd` 仍需手机日志；
+3. **PMGR 运行资格**：`sheng-pmgr=2` 已链接，但 `runtime_qualified` 仍为 false。

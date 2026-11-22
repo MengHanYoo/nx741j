@@ -1,0 +1,103 @@
+--- /dev/null
++++ b/osfmk/arm64/NX741JCpuIdle.c
+@@ -0,0 +1,71 @@
++// SPDX-License-Identifier: BSD-2-Clause-Patent
++// Conservative PSCI core-retention idle for NX741J.
++#include <kern/clock.h>
++#include <kern/misc_protos.h>
++#include <mach/mach_time.h>
++#include <pexpert/pexpert.h>
++#include <stdint.h>
++
++#define NX741J_CPUS 8
++#define NX741J_PSCI_CPU_SUSPEND 0xC4000001ULL
++#define NX741J_RET_STATE 0x4ULL
++
++static uint64_t nx741j_idle_residency[2];
++static unsigned nx741j_idle_mode;
++static int32_t nx741j_idle_last_error;
++static uint32_t nx741j_idle_failures[NX741J_CPUS];
++static uint64_t nx741j_idle_ret_entries[NX741J_CPUS];
++static uint64_t nx741j_idle_wfi_entries[NX741J_CPUS];
++
++static int32_t
++nx741j_cpu_suspend(uint64_t state)
++{
++	register uint64_t x0 __asm__("x0") = NX741J_PSCI_CPU_SUSPEND;
++	register uint64_t x1 __asm__("x1") = state;
++	register uint64_t x2 __asm__("x2") = 0;
++	register uint64_t x3 __asm__("x3") = 0;
++	__asm__ volatile("smc #0"
++	    : "+r"(x0), "+r"(x1), "+r"(x2), "+r"(x3)
++	    :
++	    : "x4", "x5", "x6", "x7", "x8", "x9", "x10", "x11",
++	      "x12", "x13", "x14", "x15", "x16", "x17", "cc", "memory");
++	return (int32_t)x0;
++}
++
++void
++nx741j_cpu_idle_start(void)
++{
++	int enabled = 1;
++	PE_parse_boot_argn("nx741j-idle", &enabled, sizeof(enabled));
++	nanoseconds_to_absolutetime(560 * 1000ULL, &nx741j_idle_residency[0]);
++	nanoseconds_to_absolutetime(686 * 1000ULL, &nx741j_idle_residency[1]);
++	__atomic_store_n(&nx741j_idle_mode, enabled == 1, __ATOMIC_RELEASE);
++	printf("NX741J IDLE: %s\n", enabled == 1
++	    ? "PSCI retention state 0x4 enabled" : "WFI only");
++}
++
++void
++nx741j_cpu_idle_wfi(unsigned cpu, uint64_t pop)
++{
++	if (cpu < NX741J_CPUS && __atomic_load_n(&nx741j_idle_mode, __ATOMIC_ACQUIRE)) {
++		const uint64_t now = mach_absolute_time();
++		const unsigned cluster = ((__builtin_arm_rsr64("MPIDR_EL1") >> 16) & 0xff) != 0;
++		if (pop > now && pop - now >= nx741j_idle_residency[cluster]) {
++			const int32_t result = nx741j_cpu_suspend(NX741J_RET_STATE);
++			if (result == 0) {
++				++nx741j_idle_ret_entries[cpu];
++				return;
++			}
++			nx741j_idle_last_error = result;
++			if (++nx741j_idle_failures[cpu] >= 8) {
++				__atomic_store_n(&nx741j_idle_mode, 0, __ATOMIC_RELAXED);
++				printf("NX741J IDLE: CPU%u PSCI refused=%d; WFI fallback\n",
++				    cpu, result);
++			}
++		}
++	}
++	if (cpu < NX741J_CPUS) {
++		++nx741j_idle_wfi_entries[cpu];
++	}
++	__builtin_arm_wfi();
++}
+--- a/osfmk/arm64/cpu.c
++++ b/osfmk/arm64/cpu.c
+@@ -82,6 +82,7 @@
+ 
+ extern boolean_t        idle_enable;
+ extern uint64_t         wake_abstime;
++extern void nx741j_cpu_idle_wfi(unsigned cpu, uint64_t pop);
+ 
+ #if WITH_CLASSIC_S2R
+ void sleep_token_buffer_init(void);
+@@ -588,7 +589,7 @@
+ #if HAS_RETENTION_STATE
+ 		arm64_retention_wfi();
+ #else
+-		__builtin_arm_wfi();
++		nx741j_cpu_idle_wfi((unsigned)(uintptr_t)cpu_data_ptr->cpu_id, cpu_data_ptr->rtcPop);
+ #endif
+ 
+ #if defined(APPLETYPHOON)
+--- a/osfmk/conf/files.arm64
++++ b/osfmk/conf/files.arm64
+@@ -33,6 +33,7 @@
+ osfmk/arm64/caches_asm.s		optional nos_arm_asm
+ osfmk/arm64/copyio.c	standard
+ osfmk/arm64/cpu.c		standard
++osfmk/arm64/NX741JCpuIdle.c	standard
+ osfmk/arm/cpu_common.c		standard
+ osfmk/arm/cpuid.c   standard
+ osfmk/arm/data.s	standard

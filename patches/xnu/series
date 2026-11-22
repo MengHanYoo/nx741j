@@ -24,3 +24,7 @@
 0021-console-log-capture.patch
 0022-sweet-ufs-port.patch
 0023-ufs-iova0.patch
+nx741j-pmgr-hook.patch
+nx741j-native-display.patch
+nx741j-hid.patch
+nx741j-cpu-idle.patch

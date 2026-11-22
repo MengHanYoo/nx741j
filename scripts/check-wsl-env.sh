@@ -25,7 +25,7 @@ echo "wsl_vhdx=$(test -f /mnt/e/wsl/Ubuntu/ext4.vhdx && echo present || echo mis
 TOOLCHAIN=${UNIXNU_TOOLCHAIN:-/opt/unixnu-linux}
 echo "toolchain_root=$TOOLCHAIN"
 echo "toolchain_clang=$(test -x "$TOOLCHAIN/llvm/bin/clang" && echo present || echo missing)"
-for tool in python3 dtc qemu-system-aarch64 clang llvm-ar; do
+for tool in python3 dtc qemu-system-aarch64 clang llvm-ar apfsutil; do
   if command -v "$tool" >/dev/null 2>&1; then
     printf '%s=%s\n' "$tool" "$(command -v "$tool")"
   else

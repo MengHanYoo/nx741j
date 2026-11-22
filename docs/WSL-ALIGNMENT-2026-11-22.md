@@ -75,3 +75,16 @@ The root WSL session is operational through
 boot-chain gate have run from this session. The latest aggregate smoke result is
 recorded separately because intermittent AAVMF/TCG boot stalls were explicitly
 deferred by the user.
+
+## Follow-up: PMGR and warning audit
+
+- `.wslconfig` is 134 bytes, valid UTF-8 with CRLF line endings. After
+  `wsl --shutdown`, a fresh WSL start did not reproduce the old
+  invalid-escape/unknown-key warning; the file was not rewritten.
+- `/etc/sysctl.d` was restored from the temporary writable mode to `755`.
+- The device PMGR ABI builder now runs as the
+  `archive-11-build-sheng-platform-power` recipe. Its 340-entry virtual table
+  audit passes and the final native kernel contains `_sheng_pmgr_run`.
+- The default payload uses `native-ufs-root=1` and `sheng-pmgr=2`; it is still
+  labelled unqualified until a real phone runs the PMGR lifecycle.
+- Final QEMU gate: 16 GiB / 16 vCPU, `BootEntry`, `MARK #29`, `EBS ok`, panic=0.

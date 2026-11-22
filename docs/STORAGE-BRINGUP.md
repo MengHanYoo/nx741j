@@ -6,9 +6,13 @@
 |---|---|
 | 组件选中 | ✅ `ShengUfs` + `VirtioMmioBlock` |
 | 内核配置 | ✅ `CONFIG_XNU_NATIVE_UFS=y` |
-| 内核链接 | ✅ 无未定义符号，`kernel.macho` sha256 `5b51a0558b38be5250e7a8ec12d70c988ced7dc336f2b41fffff6e656c6c3839` |
+| 内核链接 | ✅ 无未定义符号，最终内核 sha256 `14e63ca1526f9b956fb9a41b33269b7a13390937a7a743bbba17009e9476207a` |
 | payload / boot | ✅ 见构建输出 |
-| 运行时 | ⚠️ 尚未启用：未加 `native-source-storage=1`，也未刷机 |
+| 运行时 | ⚠️ 已启用默认参数，待真机：`native-source-storage=1 native-ufs-root=1 sheng-pmgr=2`；尚未刷机 |
+
+2026-11-22 更新：真实 OS/SystemOS UUID、VerifiedRoot 双卷 header-only 策略和
+`NXROOTP1` 动态锚点已编入；`native-ufs-noverify` 与固定 `nxroot-lba` 已移除。
+当前主机产物见 `STATUS-2026-11-22.md`，真机 APFS 挂载仍未观察。
 
 ## 组成
 
@@ -30,7 +34,7 @@
   payload）与 xnu-8796 的 `source-storage-runtime.patch`。详见 `STORAGE-POLICY.md`。
 - `IOBlockStorageDevice` 参考对象来自公开 Darwin 23 源码；`SourceStorage` 运行时会校验
   kernelcache 中基类大小（0x90），不匹配会 panic。
-- 运行时还需 `native-source-storage=1` 与 `native-ufs-root=1` 才会真正挂载；当前 bootargs 未加，
-  因此即使刷入也不会执行存储路径。
+- 当前默认 payload 已带 `native-source-storage=1`、`native-ufs-root=1` 和
+  `sheng-pmgr=2`；没有手机时仍不能把“会执行存储路径”当作已经挂载成功。
 - 构建可复现：所有对象已并入 `libShengUfs.a`（该归档本就由 `XNU_NATIVE_UFS` 分支 force_load），
   不再依赖任何框架脚本补丁。

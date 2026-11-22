@@ -18,7 +18,10 @@ index=$(mktemp)
 trap 'rm -f "$index"' EXIT
 mkdir -p "$(dirname "$OUT")"
 GIT_INDEX_FILE=$index git -C "$TREE" read-tree HEAD
-GIT_INDEX_FILE=$index git -C "$TREE" add -A -- . ':(exclude)unixnu.local.toml.bak'
+GIT_INDEX_FILE=$index git -C "$TREE" add -A -- . \
+  ':(exclude)unixnu.local.toml.bak' \
+  ':(exclude)macosx' \
+  ':(exclude)package/Build'
 GIT_INDEX_FILE=$index git -C "$TREE" diff --cached --binary --full-index HEAD > "$OUT"
 [ -s "$OUT" ] || {
   echo "framework working tree has no changes against $BASE" >&2

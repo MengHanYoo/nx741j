@@ -1,5 +1,9 @@
 # 八个移植步骤本地核对（nx741j）
 
+> 历史审计快照。2026-11-22 的当前状态、PMGR 接入、动态根锚点、
+> VerifiedRoot 和硬件边界以 `STATUS-2026-11-22.md` 与 `OPEN-ITEMS.md`
+> 为准；下文标为 planned 的行不再代表当前仓库状态。
+
 依据官方[移植设备 · 八步](https://unixnu.com/zh/porting/steps)。设备仓库 revision `c948b72`（2026-11-10）。
 
 > **闸门**：第 4/7 步的「通过」以**真跑 QEMU** 为准——`scripts/build-and-test.sh` 依次构建 kernel → payload → firmware，

@@ -23,8 +23,8 @@ bootloader -> efisp loader -> UniXNU (UEFI) -> DarwinBoot -> XNU -> userland
 | 3 | 负载（内核、ADT、trust cache） | 完成 |
 | 4 | 启动链交接（loader -> UEFI -> DarwinBoot -> XNU） | 完成 |
 | 5 | 内核 bring-up（platform expert、IOKit、预链接 kext） | **完成** |
-| 6 | 存储（UFS） | **条件 1-4 完成、5 部分**（见下文） |
-| 7 | 用户态（根卷、`launchd`） | 被阶段 6 阻塞 |
+| 6 | 存储（UFS） | **主机完成、待真机**（见下文） |
+| 7 | 用户态（根卷、`launchd`） | **构建完成、待真机** |
 
 **阶段 5 里程碑（2026-11-12）**：内核 console 已能直接画到面板上，所有启动阶段都可以在设备上
 观察，不再只有彩带屏：
@@ -136,30 +136,37 @@ wsl\flash-boota-9008.ps1 -Img <image> -StartSector <lba> -Label <label> -Lun <lu
 
 ## 当前进度 — 2026-11-22
 
-阶段 6（UFS）的条件 1-4 已完成，**两个根窗口都已发布**：把官方镜像写到 `userdata` 最后 9 GiB
-（绝对 LBA 246,662,139）后，内核日志为
+阶段 6 的动态根锚点和 VerifiedRoot 已完成主机验证：根镜像不再使用固定
+`nxroot-lba`，尾部 `NXROOTP1` 锚点严格校验 GPT 边界、manifest LBA、镜像长度和
+SHA-256；OS 1,375,753 块与 SystemOS 669,696 块均由 C/RSA 实现逐块认证。
 
-```
-NATIVE_UFS: cold init 0
-NATIVE_UFS: adopt bind 1
-NATIVE_UFS root: fixed lba=eb3c3fb
-NATIVE_UFS read: lba=eb3c3fb b0=53484e47      （SHNG 清单）
-NativeUfs: published SystemOS
-NativeUfs: SystemOS window started (noverify)
-NativeUfs: published OS
-NativeUfs: OS window started (noverify)
-NATIVE_UFS: publication done=1 published=2
+正常根模式已接入默认 payload：
+
+```text
+keepsyms=1 kextlog=0x1 sweetfb_hz=60 sweetfb_noconsole=1
+native-source-storage=1 native-ufs-root=1 sheng-pmgr=2
+native-ufs-diagnostics=0 native-ufs-dma-offset=0
+native-ufs-cold-init=1 native-ufs-keepqueue=2
 ```
 
-prelink 现在保留 Apple 完整的 IOStorageFamily，只对
-`IOBlockStorageDriver::instantiateMediaObject()` 的 ADRP/ADD 空字符串加载点应用
-`Apple_APFS` 定点补丁。原始 8 字节指令必须完全匹配，除补丁点以外的可执行字节逐字节保持不变。
+PMGR 设备构建器通过 340 项 provider 虚表审计，最终内核包含
+`_sheng_pmgr_run`；但报告仍标记 `runtime_qualified: false`，不能替代真机电源验证。
+正常根 payload 和内嵌 `Apple_APFS` content hint 已通过构建器检查。
 
-当前内核/prelink 与 QEMU 引导链可复现，QEMU 已到达 `BootEntry`、`MARK #29` 和
-`EBS ok, entering the kernel`。APFS 选卷和 `launchd` 仍需真机验证，真实
-`root_match_volume_uuid` 保持未填。smoke 六场景曾完整通过，之后总门禁遇到 AAVMF/TCG
-偶发卡死，按用户决定暂缓继续修 QEMU smoke。
+最终主机产物：
+
+| 文件 | SHA-256 |
+|---|---|
+| `kernel.macho` | `14e63ca1526f9b956fb9a41b33269b7a13390937a7a743bbba17009e9476207a` |
+| `payload.img` | `219817f9c2428b0c3cadf758228462569f257ce63b5c47b8a44ddd3abcd114b0` |
+| `SILICIUM_UEFI.fd` | `3ce5c6d2c61891975c52846358bff3f3d9744413d61fd732ea48f7507a49a009` |
+
+QEMU 在 16 GiB / 16 vCPU 下通过 `UNIXNU: BootEntry`、`MARK #29` 和
+`QEMU: EBS ok, entering the kernel`，panic=0。当前没有 ADB/9008 设备，因此还没有
+真机 APFS 选卷、`launchd`、显示、亮度、触摸或按键证据；新根镜像和尾部锚点也尚未写入手机。
+第 7 步及持久 Data/性能按用户要求冻结到能启动 iOS 之后。
 
 完整的 UniXNU 框架差异在 `patches/framework/UniXNU-ba9e14fb-nx741j.patch`，应用与复现方法见
 [docs/INTEGRATION-2026-11-22.md](docs/INTEGRATION-2026-11-22.md)，当前验收边界见
-[docs/STATUS-2026-11-22.md](docs/STATUS-2026-11-22.md)。
+[docs/STATUS-2026-11-22.md](docs/STATUS-2026-11-22.md) 和
+[docs/OPEN-ITEMS.md](docs/OPEN-ITEMS.md)。

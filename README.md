@@ -23,8 +23,8 @@ in [board.toml](board.toml); it is the only IPSW available for this port.
 | 3 | payload (kernel, ADT, trust cache) | done |
 | 4 | boot chain hand-offs (loader -> UEFI -> DarwinBoot -> XNU) | done |
 | 5 | kernel bring-up (platform expert, IOKit, prelinked kexts) | **done** |
-| 6 | storage (UFS) | **conditions 1-4 done, 5 partial** (see below) |
-| 7 | userland (root volume, `launchd`) | blocked by stage 6 |
+| 6 | storage (UFS) | **host-verified; device validation pending** (see below) |
+| 7 | userland (root volume, `launchd`) | **build-ready; device validation pending** |
 
 **Stage 5 milestone (2026-11-12).** The kernel console now renders on the panel, so every boot stage
 is observable on the device instead of a colour-bar screen:
@@ -52,7 +52,7 @@ timer on this build.
 | 3 command completion | done | `TEST UNIT READY lun0: ocs=0 resp=00 scsi=00 db=0` |
 | 4 known-block read | done | `READ(10)` LBA 1 returns `sig=4546492050415254` (EFI PART), `entlba=2 cnt=32 esz=128`; entries parsed, `userdata` at `first=0x4a6328` |
 | 5 root volume | partial | official `SHNGROOT` manifest read through the kernel transport, `img=0x1f3800000`, `w0=0x14fe08600`, `w1=0xa3800000`, `bounds=1 ord=1`; OS window block 4 returns `NXSB`; publishing the windows as `IOMedia` is next |
-| 6 persistence, 7 performance | not started | |
+| 6 persistence, 7 performance | deferred until iOS starts (owner decision) | |
 
 The official `./unixnu userdata` image (7.8 GiB, `SHNGROOT` v1, OS 5,635,081,728 B at
 `0x100000`, SystemOS 2,743,074,816 B at `0x150000000`) is flashed to `userdata` at LBA 4,875,048
@@ -212,28 +212,37 @@ individual files). Vendor-derived tables are data recovered from the device's ow
 
 ## Current status — 2026-11-22
 
-Stage 6 conditions 1-4 are done and both root windows publish. The prelink now keeps Apple's
-complete IOStorageFamily and applies one verified literal patch that supplies `Apple_APFS` to
-`IOBlockStorageDriver::instantiateMediaObject()`:
+Stage 6 now uses a dynamic `NXROOTP1` tail anchor instead of a fixed LBA, and VerifiedRoot
+authenticates both original APFS windows: 1,375,753 OS blocks and 669,696 SystemOS blocks. The
+real volume UUIDs are set in `board.toml`, and the prelink keeps Apple's complete IOStorageFamily
+while applying the pinned `Apple_APFS` content hint.
 
-```
-NATIVE_UFS: cold init 0
-NATIVE_UFS: adopt bind 1
-NATIVE_UFS root: fixed lba=eb3c3fb
-NATIVE_UFS read: lba=eb3c3fb b0=53484e47      (SHNG manifest)
-NativeUfs: published SystemOS
-NativeUfs: SystemOS window started (noverify)
-NativeUfs: published OS
-NativeUfs: OS window started (noverify)
-NATIVE_UFS: publication done=1 published=2
+The default payload is now the normal root path:
+
+```text
+native-source-storage=1 native-ufs-root=1 sheng-pmgr=2
+native-ufs-cold-init=1 native-ufs-keepqueue=2
 ```
 
-The current kernel/prelink and QEMU boot path are reproducible. QEMU reaches `BootEntry`,
-`MARK #29` and `EBS ok, entering the kernel`. APFS volume selection and `launchd` still require
-hardware validation, and the real `root_match_volume_uuid` is intentionally unset.
+The PMGR ABI builder passes its 340-entry virtual-table audit and the final native kernel contains
+`_sheng_pmgr_run`; its report still says `runtime_qualified: false`. Kernel, root payload and UEFI
+firmware build successfully. QEMU reaches `BootEntry`, `MARK #29` and
+`EBS ok, entering the kernel`.
 
-The repository also carries the complete UniXNU-side delta in
-`patches/framework/UniXNU-ba9e14fb-nx741j.patch`, with an idempotent apply script and a clean
-round-trip test. See [docs/INTEGRATION-2026-11-22.md](docs/INTEGRATION-2026-11-22.md) and
-[docs/STATUS-2026-11-22.md](docs/STATUS-2026-11-22.md). The aggregate smoke gate is deferred after
-an intermittent AAVMF/TCG boot stall; six scenarios had passed in an earlier run.
+Final host hashes:
+
+| File | SHA-256 |
+|---|---|
+| `kernel.macho` | `14e63ca1526f9b956fb9a41b33269b7a13390937a7a743bbba17009e9476207a` |
+| `payload.img` | `219817f9c2428b0c3cadf758228462569f257ce63b5c47b8a44ddd3abcd114b0` |
+| `SILICIUM_UEFI.fd` | `3ce5c6d2c61891975c52846358bff3f3d9744413d61fd732ea48f7507a49a009` |
+
+No phone was attached, so the new root image and tail anchor have not been written, and APFS
+selection, `launchd`, display, brightness, touch and keys remain unverified. Step 7 and persistent
+Data/performance work stay deferred until iOS starts. The aggregate smoke suite remains separate
+from the green direct QEMU gate.
+
+The complete UniXNU-side delta is in `patches/framework/UniXNU-ba9e14fb-nx741j.patch`; a clean
+no-hardlinks clone passes apply and reverse checks. See
+[docs/INTEGRATION-2026-11-22.md](docs/INTEGRATION-2026-11-22.md) and
+[docs/STATUS-2026-11-22.md](docs/STATUS-2026-11-22.md).

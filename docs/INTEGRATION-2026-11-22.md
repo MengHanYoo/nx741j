@@ -1,41 +1,83 @@
-# NX741J 移植整合记录（2026-11-22）
+# NX741J 整合记录（2026-11-22）
 
-本文件记录本轮仓库整合后的可复现状态。设备仓库可以单独克隆，再将
-`patches/framework/UniXNU-ba9e14fb-nx741j.patch` 应用到固定版本的 UniXNU。
+本文件记录当前可复现源码、框架补丁、产物和验证边界。设备仓库可以单独
+克隆，然后将固定 pin 的框架补丁应用到 UniXNU。
 
-## 已完成
+## 结果摘要
 
 | 项 | 状态 | 证据 |
 |---|---|---|
-| 工作区和 WSL 移至 E 盘 | 完成 | C 盘旧树归档并逐文件 SHA-256 校验；WSL VHDX 位于 `E:\wsl\Ubuntu` |
-| WSL 构建环境 | 通过 | 24 vCPU、约 19.5 GiB RAM、工具链、dtc、clang、QEMU 均由 `check-wsl-env.sh` 识别 |
-| 构建资源默认值 | 完成 | 内核 16 jobs、smoke 8 jobs、QEMU fixture 16 GiB / 16 vCPU；四项均可独立覆盖 |
-| 4K 内核构建 | 通过 | `./unixnu kernel` 完成归档、链接和 prelink |
-| prelink 私有指针闭包 | 通过 | 保留完整 Apple IOStorageFamily，避免 86 个私有函数/数据绑定被拆断 |
-| APFS media content hint | 已生成候选 | 对 `instantiateMediaObject()` 的 ADRP/ADD 做 8 字节机器码固定校验，注入 `Apple_APFS` |
-| trust cache | 可重建 | 原始 IM4P 自动转换为 1496 B bundle，SHA-256 `29dcf050…eefae4f` |
-| QEMU 引导门禁 | 通过 | `UNIXNU: BootEntry`、`MARK #29`、`QEMU: EBS ok, entering the kernel` |
-| XnuPrelink 单元测试 | 通过 | 67 tests OK |
+| 工作区、输入和 WSL 磁盘在 E 盘 | 完成 | 旧 C 盘树归档；WSL VHDX 为 `E:\wsl\Ubuntu\ext4.vhdx` |
+| WSL 冷启动配置 | 通过 | `.wslconfig` 134 B、UTF-8/CRLF；重启后不再出现旧警告 |
+| 构建资源 | 完成 | kernel 16 jobs、smoke 8 jobs、QEMU 16 GiB/16 vCPU，均可独立覆盖 |
+| 4K XNU 内核 | 通过 | 归档、native link 和 prelink 成功 |
+| PMGR | 主机 ABI 完成 | `ShengPlatformPower` 340 项审计通过，`_sheng_pmgr_run` 已链接 |
+| 正常 UFS 根 payload | 通过 | `native-ufs-root=1` + `sheng-pmgr=2` 通过 payload 检查 |
+| QEMU 引导门禁 | 通过 | `BootEntry`、`MARK #29`、`EBS ok`；panic=0 |
+| 最终记录 | 完成 | 本文件、`STATUS-2026-11-22.md`、`OPEN-ITEMS.md` 已更新 |
 
-## 本轮纠偏
+## 关键修复
 
-最初方案是源码重建 IOStorageFamily并排除旧 bundle。实测该闭包需要解析
-86 个跨组件私有函数/数据地址，其中多数不在本机内核导出中；继续执行会变成
-整个 IOStorageFamily ABI 重实现。最终改为保留 Apple 原 bundle，仅补丁
-`instantiateMediaObject()` 的唯一 content-hint 调用点。
+### IOStorageFamily
 
-prelink 增加通用 `text_literals` 配置：
+保留 Apple 原 bundle，只对
+`IOBlockStorageDriver::instantiateMediaObject()` 的 ADRP/ADD 空字符串
+加载点注入 `Apple_APFS`。补丁前必须匹配 8 字节原始指令
+`a7bfff90e7ec1691`，并验证除该点外的可执行字节不变。
 
-- 固定原始 8 字节指令；
-- 只接受相邻 ADRP/ADD；
-- 校验原目标可映射、新目标在 ±4 GiB 范围；
-- 只允许补丁点本身变化，其余可执行字节必须逐字节一致；
-- patch 与字符串地址写入 prelink JSON 报告。
+### 动态根锚点
 
-Libm 中 9 个看似“跨组件 PC-relative 指令”的地址已核实为 1224 B 常量池，
-使用完整 SHA-256 指纹排除，而不是放宽代码检查。
+根镜像不再依赖固定 `nxroot-lba`。尾部 4 KiB 的
+`NXROOTP1` 锚点绑定：
 
-## 构建命令
+- userdata 分区 first/last LBA；
+- manifest LBA；
+- 镜像字节数和扇区数；
+- manifest SHA-256；
+- 锚点前 96 字节自己的 SHA-256。
+
+### VerifiedRoot
+
+两个原始窗口的 544 字节签名头编译进 `Policy.o`；每个窗口的块哈希表作为
+version-2 `<window>.vroot` 对象放进 `userdata-root.img`。宿主 C/RSA 验证器
+逐块通过了 OS 和 SystemOS。
+
+### PMGR
+
+设备 package 提供
+`package/sheng/build-sheng-platform-power.py`，框架 wrapper
+`scripts/build-sheng-platform-power.py` 在组装树中执行它。设备补丁
+`patches/xnu/nx741j-pmgr-hook.patch` 在 `bsd_init` 中调用
+`sheng_pmgr_run()`。
+
+当前 ABI 报告：
+
+```text
+virtual_entries: 340
+runtime_qualified: false
+original_executable_modified: false
+not a functional power backend
+```
+
+因此 PMGR 可以构建、链接并接受正常根 payload 的启动参数，但不能替代真机
+电源验证。
+
+## 最终产物
+
+主机产物放在 `out/final-pmgr/`：
+
+| 文件 | SHA-256 |
+|---|---|
+| `kernel.macho` | `14e63ca1526f9b956fb9a41b33269b7a13390937a7a743bbba17009e9476207a` |
+| `payload.img` | `219817f9c2428b0c3cadf758228462569f257ce63b5c47b8a44ddd3abcd114b0` |
+| `SILICIUM_UEFI.fd` | `3ce5c6d2c61891975c52846358bff3f3d9744413d61fd732ea48f7507a49a009` |
+| `boot.img` | `8074e86236ae3e158fa30b76d0a1085206aecb80d27e6396f55fe30d4fdb5a9b` |
+| `pmgr-report.json` | `aed984979c4b864b581d1877d922f960ce48faacedc827a3e0278443202bf0a9` |
+
+`kernel.json`、`kernel.log`、`pmgr-build.log`、`qemu-serial.log` 和
+`qemu-int.log` 也保留在同一目录。`out/` 是主机产物目录，不表示设备已刷入。
+
+## 复现命令
 
 ```sh
 git clone git@github.com:MengHanYoo/nx741j.git UniXNU-nx741j
@@ -51,32 +93,24 @@ cd UniXNU
 ./unixnu firmware -D ../UniXNU-nx741j
 ```
 
-`unixnu.local.toml` 是本机输入文件，已被上游 `.gitignore` 排除。至少需要
-指向本机 kernelcache、UEFI 树和 `build/trustcache.bundle`；完整示例见
-`docs/LOCAL-DEVELOPMENT.md` 与本文件的路径表。
+框架补丁为
+`patches/framework/UniXNU-ba9e14fb-nx741j.patch`，SHA-256
+`e58a1f1c72e9269423edba2728444a509efee44a833d4d090ca421ac85f455d3`。
+本轮在一个新建的 no-hardlinks clone 上完成了 `apply --check`、应用和反向校验。
 
-## 未完成 / 边界
+## 边界
 
-- QEMU 已完成引导链门禁，但未在 QEMU 中验证 APFS 根卷与 `launchd`。
-- smoke 的六个场景曾完整通过；本轮最后总门禁遇到 AAVMF/TCG 单场偶发卡死。
-  按用户决定暂停继续修 smoke，不把最新总门禁宣称全绿。
-- `root_match_volume_uuid` 必须从真机 APFS 超级块读取，当前未填。
-- IOStorageFamily 的 `Apple_APFS` 是 bring-up 定点补丁，需真机验证后再决定是否
-  替换为完整的 provider property 读取实现。
-- 存储持久化/性能、显示与亮度、Synaptics TouchComm、PMIC/TLMM 按键、Adreno
-  840v2、USB、ADSP/音频、电池/温控、WCN7880、基带、相机、背屏仍未完成。
-- 真机验证与刷机未在本轮执行。
+- 没有 ADB/9008 设备，未写根镜像或尾锚点，未观察 APFS 选卷和 `launchd`。
+- PMGR 只完成 ABI/链接资格，原始 nub 运行仍未硬件合格。
+- QEMU 只验证引导链交接，不模拟面板、UFS、TouchCom 或 PMGR。
+- smoke 六场景仍是独立套件；旧 AAVMF/TCG 偶发卡死没有伪装成通过。
+- 第 7 步和持久 Data/性能按用户要求冻结到能启动 iOS 后。
 
-## 机器码补丁定位
+## 安全与边界
 
-```text
-bundle:  com.apple.iokit.IOStorageFamily
-section: __TEXT_EXEC
-offset:  0x55f0
-expect:  a7bfff90e7ec1691
-literal: Apple_APFS
-```
-
-该地址属于旧 `IOBlockStorageDriver::instantiateMediaObject()`，原始目标为
-空字符串加载。补丁后的目标字符串存放在 `__PRELINK_INFO` 尾部，并记录在
-`kernel.json` 的 `text_literal_patches`。
+- `native-ufs-noverify` 和 `nxroot-lba` 不在最终源码或内核中。
+- owner 私钥位于
+  `E:\default-workspace\z80u-collect\secrets\nx741j-owner.pem`，
+  不提交到 Git。
+- 未安装锚点前不能只写 `NXROOTP1`；新镜像必须先完整写入并回读，避免
+  manifest SHA、长度或分区边界不一致。
