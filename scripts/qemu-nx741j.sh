@@ -97,7 +97,16 @@ umount "$MNT"; rmdir "$MNT"
 # QEMU_ADT=real feeds the phone's own 5,332-node tree instead, with only the
 # DRAM window moved to QEMU RAM; every other address is the real one, so the
 # kernel stops where the model has no device (scripts/mk-qemu-adt.py).
-if [ "${QEMU_ADT:-fixture}" = "real" ]; then
+if [ "${QEMU_ADT:-fixture}" = "payload" ]; then
+  TMP_ADT=$(mktemp)
+  rm -f "$TMP_ADT"
+  mcopy -o -i "$DEV/payload/payload.img" \
+    ::/EFI/UniXNU/Payloads/kernel.macho.adt "$TMP_ADT"
+  python3 "$REPO/scripts/adapt-adt-qemu.py" \
+    --input "$TMP_ADT" --output "$ESP/EFI/UniXNU/Payloads/kernel.macho.adt" \
+    --ram-base 0x40000000 --ram-size 0x400000000
+  rm -f "$TMP_ADT"
+elif [ "${QEMU_ADT:-fixture}" = "real" ]; then
   python3 "$REPO/scripts/mk-qemu-adt.py" --device "$REPO" \
     --tree "$TREE" --out "$ESP/EFI/UniXNU/Payloads/kernel.macho.adt"
 else

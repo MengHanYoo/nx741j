@@ -88,7 +88,7 @@ dsc = "Platforms/ZTE/nx741jPkg/nx741j.dsc"
 fd = "Build/nx741jPkg/{target}_CLANGPDB/FV/SILICIUM_UEFI.fd"
 preflight = ["kits/nx741j/firmware-preflight.py"]
 submodules = []
-patches = []
+patches = ["patches/0001-locate-handle-buffer-unlock.patch"]
 packages = ["{uefi}", "{uefi}/Mu_Basecore", "{uefi}/Common/Mu", "{uefi}/Common/Mu_OEM_Sample", "{uefi}/Silicon/Qualcomm", "{uefi}/Silicon/Silicium", "{uefi}/Platforms/ZTE", "{tree}/package", "{tree}/drivers/DarwinBoot", "{edk2}"]
 
 [firmware.defines]

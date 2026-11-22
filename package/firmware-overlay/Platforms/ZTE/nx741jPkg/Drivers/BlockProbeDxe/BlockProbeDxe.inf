@@ -1,0 +1,25 @@
+[Defines]
+  INF_VERSION                    = 0x00010005
+  BASE_NAME                      = BlockProbeDxe
+  FILE_GUID                      = 7b14a4d0-29f3-4d6c-a0f2-2c23ea5a9031
+  MODULE_TYPE                    = DXE_DRIVER
+  VERSION_STRING                 = 1.0
+  ENTRY_POINT                    = BlockProbeEntry
+
+[Sources]
+  BlockProbeDxe.c
+
+[Packages]
+  MdePkg/MdePkg.dec
+
+[LibraryClasses]
+  BaseMemoryLib
+  MemoryAllocationLib
+  UefiBootServicesTableLib
+  UefiDriverEntryPoint
+
+[Protocols]
+  gEfiBlockIoProtocolGuid
+
+[Depex]
+  gEfiBlockIoProtocolGuid

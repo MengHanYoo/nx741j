@@ -1,0 +1,58 @@
+diff --git a/MdeModulePkg/Core/Dxe/Hand/Locate.c b/MdeModulePkg/Core/Dxe/Hand/Locate.c
+index 7afcc25..9f0f1a1 100644
+--- a/MdeModulePkg/Core/Dxe/Hand/Locate.c
++++ b/MdeModulePkg/Core/Dxe/Hand/Locate.c
+@@ -693,47 +693,48 @@ CoreLocateHandleBuffer (
+   CoreAcquireProtocolLock ();
+   Status = InternalCoreLocateHandle (
+              SearchType,
+              Protocol,
+              SearchKey,
+              &BufferSize,
+              *Buffer
+              );
++  CoreReleaseProtocolLock ();
+   //
+   // LocateHandleBuffer() returns incorrect status code if SearchType is
+   // invalid.
+   //
+   // Add code to correctly handle expected errors from CoreLocateHandle().
+   //
+   if (EFI_ERROR (Status) && (Status != EFI_BUFFER_TOO_SMALL)) {
+     if (Status != EFI_INVALID_PARAMETER) {
+       Status = EFI_NOT_FOUND;
+     }
+ 
+-    CoreReleaseProtocolLock ();
+     return Status;
+   }
+ 
+   *Buffer = AllocatePool (BufferSize);
+   if (*Buffer == NULL) {
+-    CoreReleaseProtocolLock ();
+     return EFI_OUT_OF_RESOURCES;
+   }
+ 
++  CoreAcquireProtocolLock ();
+   Status = InternalCoreLocateHandle (
+              SearchType,
+              Protocol,
+              SearchKey,
+              &BufferSize,
+              *Buffer
+              );
+ 
+   *NumberHandles = BufferSize / sizeof (EFI_HANDLE);
++  CoreReleaseProtocolLock ();
++
+   if (EFI_ERROR (Status)) {
+     *NumberHandles = 0;
+     if (*Buffer != NULL) {
+       CoreFreePool (*Buffer);
+       *Buffer = NULL;
+     }
+   }
+ 
+-  CoreReleaseProtocolLock ();
+   return Status;
+ }

@@ -10,9 +10,55 @@
 extern VOID UniXNUProgress (UINT32 Step, UINT64 Status);
 
 // ---- boot progress record (rawdump + 79 MiB) -------------------------------
-#define BP_OFFSET  (4743976ULL * 4096ULL + 79ULL * 1024 * 1024)
+/* The efisp loader records its pre-jump step at +79 MiB. Keep the firmware
+ * progress in the next sector so the next loader run cannot overwrite it.
+ *
+ * Keep this path deliberately small: the firmware has already handed storage
+ * over from ABL, and probing every BlockIo handle can stall before the menu is
+ * visible on SM8850. The whole-disk handle has the greatest media size and its
+ * LBAs are absolute, so use it directly. */
+#define BP_ABSOLUTE_LBA  4764201ULL
 typedef struct { UINT32 Magic; UINT32 Step; UINT64 Status; UINT64 A; UINT64 B; UINT64 C; } BP_RECORD;
 STATIC BP_RECORD mBp;
+STATIC __attribute__((aligned(4096))) UINT8 mBpSector[4096];
+
+STATIC EFI_STATUS
+FindProgressDisk (
+  OUT EFI_BLOCK_IO_PROTOCOL  **FoundBio,
+  OUT UINT32                 *FoundBlockSize
+  )
+{
+  EFI_STATUS             Status;
+  EFI_HANDLE             *Handles = NULL;
+  EFI_BLOCK_IO_PROTOCOL  *Bio;
+  EFI_BLOCK_IO_PROTOCOL  *Best = NULL;
+  UINTN                  Count = 0;
+  UINTN                  Index;
+
+  Status = gBS->LocateHandleBuffer (ByProtocol, &gEfiBlockIoProtocolGuid, NULL, &Count, &Handles);
+  if (EFI_ERROR (Status)) {
+    return Status;
+  }
+  for (Index = 0; Index < Count; Index++) {
+    Bio = NULL;
+    if (EFI_ERROR (gBS->HandleProtocol (Handles[Index], &gEfiBlockIoProtocolGuid, (VOID **)&Bio)) ||
+        (Bio == NULL) || (Bio->Media == NULL) ||
+        !Bio->Media->MediaPresent ||
+        (Bio->Media->BlockSize < 512) || (Bio->Media->BlockSize > 4096)) {
+      continue;
+    }
+    if ((Best == NULL) || (Bio->Media->LastBlock > Best->Media->LastBlock)) {
+      Best = Bio;
+    }
+  }
+  FreePool (Handles);
+  if (Best == NULL) {
+    return EFI_NOT_FOUND;
+  }
+  *FoundBio = Best;
+  *FoundBlockSize = Best->Media->BlockSize;
+  return EFI_SUCCESS;
+}
 
 VOID
 UniXNUProgress (
@@ -20,32 +66,28 @@ UniXNUProgress (
   IN UINT64  Status
   )
 {
-  EFI_STATUS  S;
-  UINTN       Count = 0, Index;
-  EFI_HANDLE  *Handles = NULL;
-  EFI_BLOCK_IO_PROTOCOL *Bio = NULL, *Best = NULL;
+  EFI_STATUS             WriteStatus;
+  EFI_BLOCK_IO_PROTOCOL  *Bio = NULL;
+  UINT32                 BlockSize = 0;
+  UINT64                 Lba;
 
+  ZeroMem (mBpSector, sizeof (mBpSector));
   mBp.Magic = 0x32444244;
   mBp.Step = Step;
   mBp.Status = Status;
-  if (EFI_ERROR (gBS->LocateHandleBuffer (ByProtocol, &gEfiBlockIoProtocolGuid, NULL, &Count, &Handles))) {
+  CopyMem (mBpSector, &mBp, sizeof (mBp));
+  if (EFI_ERROR (FindProgressDisk (&Bio, &BlockSize))) {
     return;
   }
-  for (Index = 0; Index < Count; Index++) {
-    Bio = NULL;
-    if (EFI_ERROR (gBS->HandleProtocol (Handles[Index], &gEfiBlockIoProtocolGuid, (VOID **)&Bio)) || Bio == NULL || Bio->Media == NULL) {
-      continue;
-    }
-    if (Best == NULL || Bio->Media->LastBlock > Best->Media->LastBlock) {
-      Best = Bio;
-    }
-  }
-  FreePool (Handles);
-  if (Best == NULL || Best->Media->BlockSize == 0) {
-    return;
-  }
-  S = Best->WriteBlocks (Best, Best->Media->MediaId, BP_OFFSET / Best->Media->BlockSize, 4096, &mBp);
-  (VOID)S;
+  Lba = (BP_ABSOLUTE_LBA * 4096ULL) / BlockSize;
+  WriteStatus = Bio->WriteBlocks (
+                         Bio,
+                         Bio->Media->MediaId,
+                         Lba,
+                         sizeof (mBpSector),
+                         mBpSector
+                         );
+  (VOID)WriteStatus;
 }
 // ---------------------------------------------------------------------------
 
@@ -105,11 +147,15 @@ UniXNURun (
   UNIXNU_ENTRY         *Entry;
   UNIXNU_ENTRY         BootCopy;
 
+  UniXNUProgress (16, (UINT64)Host);
+
   //
   // A boot manager waits for people; the 5 minute BDS watchdog does not.
   //
   gBS->SetWatchdogTimer (0, 0, 0, NULL);
+  UniXNUProgress (17, 0);
   UniXNULogInit ();
+  UniXNUProgress (18, 0);
   UniXNULog (
     "UniXNU %a starting as %a, firmware %s rev 0x%x",
     UNIXNU_VERSION_STRING,
@@ -124,8 +170,11 @@ UniXNURun (
   if (Host == UniXNUHostFirmware) {
     UniXNUConnectAll ();
   }
+  UniXNUProgress (19, 0);
+  UniXNUProgress (20, 0);
 
   UniXNUConfigLoad (ImageHandle, &Config);
+  UniXNUProgress (21, (UINT64)Config.EntryCount);
   UniXNULog (
     "config: %u entries, %u drivers, %u dt patches, %u acpi tables, %u slices, %u kits loaded, %u skipped",
     (UINT32)Config.EntryCount,
@@ -146,8 +195,10 @@ UniXNURun (
   ZeroMem (&Stats, sizeof (Stats));
   UniXNUInjectDrivers (ImageHandle, &Config, &Stats);
   UniXNUInjectAcpi (&Config, &Stats);
+  UniXNUProgress (22, (UINT64)Stats.DriversLoaded);
 
   UniXNUUiInit (&Config, &Ui);
+  UniXNUProgress (23, 0);
 
   UnicodeSPrint (
     Ui.Info,

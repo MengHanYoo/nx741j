@@ -250,6 +250,9 @@ static UINT32 gBlockSize;
 typedef struct { UINT32 Magic; UINT32 Step; UINT64 Status; UINT64 A; UINT64 B; UINT64 C; } BP_RECORD;
 static UINT64 gRawBase;
 static UINT32 gRawBs;
+/* Unique to the MMU-safe P7 hand-off so a stale record cannot be mistaken for
+ * a fresh boot. Keep 10/11 as the last firmware-side milestones. */
+#define P7_PROGRESS_TAG  0x5037001120221130ULL
 
 static void write_progress(UINT32 step, UINT64 status)
 {
@@ -360,6 +363,76 @@ static void dump_ufs_state(void)
     ((EFI_STATUS (*)(EFI_BLOCK_IO_PROTOCOL *, UINT32, UINT64, UINTN, void *))gIo->WriteBlocks)
         (gIo, gIo->Media->MediaId, 4764488ULL, bs3, rec);
     out_ascii("ufs snapshot "); out_hex(vals[6]); out_ascii("/"); out_hex(vals[4]); out_ascii("\r\n");
+}
+
+/* Read-only GIC snapshot used to validate the redistributor walk before DXE. */
+static void dump_gic_state(void)
+{
+    static UINT8 rec[4096] __attribute__((aligned(4096)));
+    UINTN bs3 = gRawBs ? gRawBs : 4096;
+    UINT64 gicd = 0x17000000ULL;
+    UINT64 gicr = 0x17080000ULL;
+    UINT64 mpidr;
+    UINT64 cpu_affinity;
+    UINT32 match = 0xffffffffU;
+    UINT32 count = 0;
+    UINTN i;
+
+    for (i = 0; i < sizeof(rec); i++) rec[i] = 0;
+    rec[0] = 'G'; rec[1] = 'I'; rec[2] = 'C'; rec[3] = 'S';
+    rec[4] = 'T'; rec[5] = 'A'; rec[6] = 'T'; rec[7] = '1';
+    *(UINT32 *)(rec + 8) = *(volatile UINT32 *)(gicd + 0x0);
+    *(UINT32 *)(rec + 12) = *(volatile UINT32 *)(gicd + 0x4);
+    __asm__ volatile("mrs %0, mpidr_el1" : "=r"(mpidr));
+    cpu_affinity = (mpidr & 0xffffffULL) | ((mpidr & 0xff00000000ULL) >> 8);
+    *(UINT64 *)(rec + 16) = mpidr;
+    *(UINT64 *)(rec + 24) = cpu_affinity;
+
+    for (i = 0; i < 16; i++) {
+        UINT64 base = gicr + i * 0x40000ULL;
+        UINT64 typer = *(volatile UINT64 *)(base + 0x8);
+        UINT64 affinity = typer >> 32;
+        UINT8 *entry = rec + 0x30 + i * 0x20;
+        *(UINT64 *)(entry + 0) = base;
+        *(UINT64 *)(entry + 8) = typer;
+        *(UINT64 *)(entry + 16) = affinity;
+        *(UINT32 *)(entry + 24) =
+          ((typer & 0x2ULL) ? 1U : 0U) | ((typer & 0x10ULL) ? 2U : 0U);
+        count++;
+        if (affinity == cpu_affinity) {
+            match = (UINT32)i;
+        }
+        if ((typer & 0x10ULL) != 0) {
+            break;
+        }
+    }
+    *(UINT32 *)(rec + 0x20) = match;
+    *(UINT32 *)(rec + 0x24) = count;
+    ((EFI_STATUS (*)(EFI_BLOCK_IO_PROTOCOL *, UINT32, UINT64, UINTN, void *))gIo->WriteBlocks)
+        (gIo, gIo->Media->MediaId, 4764560ULL, bs3, rec);
+    out_ascii("gic snapshot match "); out_hex(match); out_ascii(" frames "); out_hex(count); out_ascii("\r\n");
+}
+
+/* Persist the reserved-RAM markers written by StageProbeDxe. */
+static void dump_ram_stage(void)
+{
+    static UINT8 rec[4096] __attribute__((aligned(4096)));
+    UINTN bs3 = gRawBs ? gRawBs : 4096;
+    UINT64 bases[4] = { 0xC6D00000ULL, 0xC6D01000ULL, 0xC6D02000ULL, 0xC6D03000ULL };
+    UINTN i;
+    UINTN page;
+
+    for (page = 0; page < 4; page++) {
+        volatile UINT64 *stage = (volatile UINT64 *)(UINTN)bases[page];
+        for (i = 0; i < sizeof(rec); i++) rec[i] = 0;
+        rec[0] = 'R'; rec[1] = 'A'; rec[2] = 'M'; rec[3] = 'S';
+        rec[4] = 'T'; rec[5] = 'G'; rec[6] = '0'; rec[7] = '1';
+        for (i = 0; i < 8; i++) {
+            *(UINT64 *)(rec + 0x10 + i * 8) = stage[i];
+        }
+        ((EFI_STATUS (*)(EFI_BLOCK_IO_PROTOCOL *, UINT32, UINT64, UINTN, void *))gIo->WriteBlocks)
+            (gIo, gIo->Media->MediaId, 4764561ULL + page, bs3, rec);
+    }
 }
 
 /*
@@ -510,7 +583,10 @@ EFI_STATUS EFIAPI EfiMain(EFI_HANDLE image, EFI_SYSTEM_TABLE *st)
     }
     gRawBase = base;
     gRawBs = gBlockSize;
+    dump_ram_stage();
+#ifndef P7_QEMU_TEST
     dump_ufs_state();
+#endif
     out_ascii("rawdump lba "); out_hex(base); out_ascii(" bs "); out_hex(gBlockSize); out_ascii("\r\n");
 
     // payload (64 MiB) at rawdump + 0
@@ -561,6 +637,23 @@ EFI_STATUS EFIAPI EfiMain(EFI_HANDLE image, EFI_SYSTEM_TABLE *st)
     UINT8 *fdt = fdt_build(payload_addr, payload_addr + done, &fdt_size);
     out_ascii("fdt "); out_hex(fdt_size); out_ascii(" @ "); out_hex((UINT64)fdt); out_ascii("\r\n");
 
+    // Run every diagnostic that allocates pool memory before copying the FD.
+    // The ABL map can still describe FD_BASE as conventional memory, so a pool
+    // allocation after the copy may overwrite SEC/PEI before the first branch.
+    write_progress(10, P7_PROGRESS_TAG);
+#ifndef P7_QEMU_TEST
+    dump_gic_state();
+    dump_smmu_gcd();
+    capture_previous_log();
+#endif
+    // Also record the hand-off before copying. Once the FD is at FD_BASE, do
+    // not enter any storage driver: its internal DMA/pool buffers can overlap
+    // the conventional-memory window ABL reports for the firmware volume.
+    write_progress(11, P7_PROGRESS_TAG);
+    for (int i = 0; i < 400000; i++) __asm__ volatile("" ::: "memory");   // let the console flush
+    out_ascii("mask irq, own stack, mmu off\r\n");
+    for (int i = 0; i < 200000; i++) __asm__ volatile("" ::: "memory");
+
     // copy the firmware volume to its link address
     UINT64 *src = (UINT64 *)fv_addr;
     UINT64 *dst = (UINT64 *)FD_BASE;
@@ -580,14 +673,6 @@ EFI_STATUS EFIAPI EfiMain(EFI_HANDLE image, EFI_SYSTEM_TABLE *st)
 
     out_ascii("el "); out_hex(current_el()); out_ascii(" sctlr "); out_hex(read_sctlr()); out_ascii("\r\n");
 
-
-
-    dump_smmu_gcd();
-    capture_previous_log();
-    for (int i = 0; i < 400000; i++) __asm__ volatile("" ::: "memory");   // let the console flush
-    out_ascii("mask irq, own stack, mmu off\r\n");
-    for (int i = 0; i < 200000; i++) __asm__ volatile("" ::: "memory");
-
     // Mask IRQ/FIQ/SError/debug first: with the MMU off a stray IRQ would vector through
     // the previous stage's VBAR and fault. Then switch to our own stack, disable the MMU
     // and caches, and branch into the firmware volume.
@@ -597,6 +682,5 @@ EFI_STATUS EFIAPI EfiMain(EFI_HANDLE image, EFI_SYSTEM_TABLE *st)
     __asm__ volatile("mov sp, %0" :: "r"(sp_top) : "memory");
     for (int i = 0; i < 100000; i++) __asm__ volatile("" ::: "memory");
     disable_mmu_caches();
-    write_progress(11, 0);
     jump_to_fd(FD_BASE, (UINT64)fdt);
 }

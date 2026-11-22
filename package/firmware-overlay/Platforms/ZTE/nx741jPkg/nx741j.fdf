@@ -89,6 +89,14 @@ READ_LOCK_STATUS   = TRUE
   INF UniXNUPkg/Driver/AdvancedLogDxe/AdvancedLogDxe.inf
 # INF nx741jPkg/Drivers/LogDumpDxe/LogDumpDxe.inf
 
+  # NX741J storage and boot-chain probes.
+  INF Binaries/nx741j/QcomPkg/Drivers/UFSDxe/UFSDxe.inf
+  INF nx741jPkg/Drivers/EarlyProbeDxe/EarlyProbeDxe.inf
+  INF nx741jPkg/Drivers/PostGicProbeDxe/PostGicProbeDxe.inf
+  INF nx741jPkg/Drivers/StageProbeDxe/StageProbeDxe.inf
+  INF nx741jPkg/Drivers/RamDiskProbeDxe/RamDiskProbeDxe.inf
+  INF nx741jPkg/Drivers/BlockProbeDxe/BlockProbeDxe.inf
+
   # RAM Manager
 # V60 disabled (non-essential, Not Found spam): INF SiliciumPkg/Drivers/RamManagerDxe/RamManagerDxe.inf
 

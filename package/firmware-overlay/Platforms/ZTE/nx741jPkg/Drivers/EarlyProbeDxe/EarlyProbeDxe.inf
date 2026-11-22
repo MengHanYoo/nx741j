@@ -1,0 +1,20 @@
+[Defines]
+  INF_VERSION                    = 0x00010005
+  BASE_NAME                      = EarlyProbeDxe
+  FILE_GUID                      = 2cd61872-8c80-4c42-a6b0-88a083ac9980
+  MODULE_TYPE                    = DXE_DRIVER
+  VERSION_STRING                 = 1.0
+  ENTRY_POINT                    = EarlyProbeEntry
+
+[Sources]
+  EarlyProbeDxe.c
+
+[Packages]
+  MdePkg/MdePkg.dec
+
+[LibraryClasses]
+  UefiBootServicesTableLib
+  UefiDriverEntryPoint
+
+[Depex]
+  TRUE

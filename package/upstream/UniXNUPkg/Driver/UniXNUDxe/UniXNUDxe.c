@@ -36,6 +36,164 @@ STATIC CONST CHAR16  mFirmwareMarker[] = L"unixnu:firmware";
 STATIC CONST CHAR16  mDescription[]    = L"UniXNU";
 
 STATIC
+EFI_STATUS
+StartApplicationFromOwnFv (
+  IN EFI_HANDLE  ImageHandle
+  )
+{
+  EFI_STATUS                       Status;
+  EFI_LOADED_IMAGE_PROTOCOL        *Loaded;
+  EFI_FIRMWARE_VOLUME2_PROTOCOL    *Fv;
+  CONST EFI_GUID                   *File;
+  VOID                             *Source;
+  UINTN                            SourceSize;
+  EFI_FV_FILETYPE                  Type;
+  EFI_FV_FILE_ATTRIBUTES           Attributes;
+  UINT32                           AuthStatus;
+  EFI_HANDLE                       AppImage;
+  struct {
+    MEDIA_FW_VOL_FILEPATH_DEVICE_PATH  File;
+    EFI_DEVICE_PATH_PROTOCOL           End;
+  } AppPath;
+
+  Loaded = NULL;
+  Status = gBS->HandleProtocol (
+                  ImageHandle,
+                  &gEfiLoadedImageProtocolGuid,
+                  (VOID **)&Loaded
+                  );
+  if (EFI_ERROR (Status) || (Loaded == NULL) || (Loaded->DeviceHandle == NULL)) {
+    Print (L"UNIXNU-DXE FV: LoadedImage=%r device=%p\n", Status, Loaded ? Loaded->DeviceHandle : NULL);
+    return EFI_NOT_FOUND;
+  }
+
+  Fv = NULL;
+  Status = gBS->HandleProtocol (
+                  Loaded->DeviceHandle,
+                  &gEfiFirmwareVolume2ProtocolGuid,
+                  (VOID **)&Fv
+                  );
+  if (EFI_ERROR (Status) || (Fv == NULL)) {
+    Print (L"UNIXNU-DXE FV: FirmwareVolume2=%r\n", Status);
+    return EFI_NOT_FOUND;
+  }
+
+  File = (CONST EFI_GUID *)PcdGetPtr (PcdUniXNUApplicationFile);
+  Source     = NULL;
+  SourceSize = 0;
+  Status = Fv->ReadFile (
+                 Fv,
+                 File,
+                 &Source,
+                 &SourceSize,
+                 &Type,
+                 &Attributes,
+                 &AuthStatus
+                 );
+  if (EFI_ERROR (Status) || (Source == NULL) || (SourceSize == 0)) {
+    Print (L"UNIXNU-DXE FV: ReadFile=%r size=%Lu\n", Status, (UINT64)SourceSize);
+    return EFI_NOT_FOUND;
+  }
+
+  ZeroMem (&AppPath, sizeof (AppPath));
+  EfiInitializeFwVolDevicepathNode (&AppPath.File, File);
+  AppPath.End.Type      = END_DEVICE_PATH_TYPE;
+  AppPath.End.SubType   = END_ENTIRE_DEVICE_PATH_SUBTYPE;
+  AppPath.End.Length[0] = sizeof (EFI_DEVICE_PATH_PROTOCOL);
+  AppPath.End.Length[1] = 0;
+
+  AppImage = NULL;
+  Status = gBS->LoadImage (
+                  FALSE,
+                  ImageHandle,
+                  (EFI_DEVICE_PATH_PROTOCOL *)&AppPath,
+                  Source,
+                  SourceSize,
+                  &AppImage
+                  );
+  FreePool (Source);
+  if (EFI_ERROR (Status)) {
+    Print (L"UNIXNU-DXE FV: source LoadImage=%r\n", Status);
+    DEBUG ((DEBUG_ERROR, "UniXNUDxe: own-FV LoadImage: %r\n", Status));
+    return Status;
+  }
+
+  Print (L"UNIXNU-DXE FV: StartImage\n");
+  DEBUG ((DEBUG_ERROR, "UniXNUDxe: starting UniXNU from own firmware volume\n"));
+  return gBS->StartImage (AppImage, NULL, NULL);
+}
+
+STATIC
+EFI_STATUS
+StartApplicationFromOwnPath (
+  IN EFI_HANDLE  ImageHandle
+  )
+{
+  EFI_STATUS                 Status;
+  EFI_LOADED_IMAGE_PROTOCOL  *Loaded;
+  EFI_DEVICE_PATH_PROTOCOL   *Path;
+  EFI_DEVICE_PATH_PROTOCOL   *Node;
+  CONST EFI_GUID             *File;
+  BOOLEAN                    Replaced;
+  EFI_HANDLE                 AppImage;
+
+  Loaded = NULL;
+  Status = gBS->HandleProtocol (
+                  ImageHandle,
+                  &gEfiLoadedImageProtocolGuid,
+                  (VOID **)&Loaded
+                  );
+  if (EFI_ERROR (Status) || (Loaded == NULL) || (Loaded->FilePath == NULL)) {
+    Print (L"UNIXNU-DXE PATH: LoadedImage=%r\n", Status);
+    return EFI_NOT_FOUND;
+  }
+
+  Path = DuplicateDevicePath (Loaded->FilePath);
+  if (Path == NULL) {
+    return EFI_OUT_OF_RESOURCES;
+  }
+
+  File     = (CONST EFI_GUID *)PcdGetPtr (PcdUniXNUApplicationFile);
+  Replaced = FALSE;
+  for (Node = Path; !IsDevicePathEnd (Node); Node = NextDevicePathNode (Node)) {
+    if ((DevicePathType (Node) == MEDIA_DEVICE_PATH) &&
+        (DevicePathSubType (Node) == MEDIA_PIWG_FW_FILE_DP)) {
+      CopyMem (
+        &((MEDIA_FW_VOL_FILEPATH_DEVICE_PATH *)Node)->FvFileName,
+        File,
+        sizeof (*File)
+        );
+      Replaced = TRUE;
+      break;
+    }
+  }
+
+  if (!Replaced) {
+    FreePool (Path);
+    Print (L"UNIXNU-DXE PATH: no firmware file node\n");
+    return EFI_NOT_FOUND;
+  }
+
+  AppImage = NULL;
+  Status = gBS->LoadImage (
+                  TRUE,
+                  ImageHandle,
+                  Path,
+                  (VOID *)mFirmwareMarker,
+                  sizeof (mFirmwareMarker),
+                  &AppImage
+                  );
+  FreePool (Path);
+  if (EFI_ERROR (Status)) {
+    Print (L"UNIXNU-DXE PATH: LoadImage=%r\n", Status);
+    return Status;
+  }
+
+  Print (L"UNIXNU-DXE PATH: StartImage\n");
+  return gBS->StartImage (AppImage, NULL, NULL);
+}
+
+STATIC
 BOOLEAN
 FvHasFile (
   IN EFI_HANDLE      Handle,
@@ -155,6 +313,21 @@ UniXNUDxeEntry (
   VOID                      *Existing;
   UINTN                     ExistingSize;
   BOOLEAN                   Found;
+  EFI_HANDLE                AppImage;
+  EFI_STATUS                AppStatus;
+
+  Print (L"UNIXNU-DXE: entry\n");
+  Status = StartApplicationFromOwnFv (ImageHandle);
+  if (!EFI_ERROR (Status)) {
+    return Status;
+  }
+  Print (L"UNIXNU-DXE: own-FV skipped %r\n", Status);
+
+  Status = StartApplicationFromOwnPath (ImageHandle);
+  if (!EFI_ERROR (Status)) {
+    return Status;
+  }
+  Print (L"UNIXNU-DXE: own-path skipped %r\n", Status);
 
   Path = FindApplication (ImageHandle);
   if (Path == NULL) {
@@ -205,7 +378,14 @@ UniXNUDxeEntry (
 
       DEBUG ((DEBUG_ERROR, "UniXNUDxe: cannot write %s: %r, starting directly\n", Name, Status));
       AppImage   = NULL;
-      LoadStatus = gBS->LoadImage (TRUE, ImageHandle, Path, NULL, 0, &AppImage);
+      LoadStatus = gBS->LoadImage (
+                          TRUE,
+                          ImageHandle,
+                          Path,
+                          (VOID *)mFirmwareMarker,
+                          sizeof (mFirmwareMarker),
+                          &AppImage
+                          );
       DEBUG ((DEBUG_ERROR, "UniXNUDxe: direct LoadImage %r\n", LoadStatus));
       FreePool (Option);
       FreePool (Path);
@@ -248,6 +428,27 @@ UniXNUDxeEntry (
   FreePool (NewOrder);
   if (Order != NULL) {
     FreePool (Order);
+  }
+
+  //
+  // Do not depend on this platform's BDS handle database. Mu returns no
+  // handles on NX741J, so BDS falls through to MsBootPolicy and never reaches
+  // the UniXNU Boot#### we just registered. Start the application directly,
+  // while still keeping the Boot#### as a fallback.
+  //
+  AppImage  = NULL;
+  AppStatus = gBS->LoadImage (
+                     TRUE,
+                     ImageHandle,
+                     Path,
+                     (VOID *)mFirmwareMarker,
+                     sizeof (mFirmwareMarker),
+                     &AppImage
+                     );
+  if (!EFI_ERROR (AppStatus)) {
+    Status = gBS->StartImage (AppImage, NULL, NULL);
+  } else {
+    Status = AppStatus;
   }
 
   FreePool (Path);

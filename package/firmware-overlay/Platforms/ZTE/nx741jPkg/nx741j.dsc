@@ -46,6 +46,11 @@
   # DDR Memory
   #
   gArmTokenSpaceGuid.PcdSystemMemoryBase|0x80000000
+  #
+  # SM8850 / NX741J GICv3, matching the live ADT intc node.
+  #
+  gArmTokenSpaceGuid.PcdGicDistributorBase|0x17000000
+  gArmTokenSpaceGuid.PcdGicRedistributorsBase|0x17080000
 
   #
   # UEFI Stack
@@ -104,6 +109,11 @@
   Binaries/nx741j/QcomPkg/Drivers/DALSYSDxe/DALSYSDxe.inf
   Binaries/nx741j/QcomPkg/Drivers/SPMIDxe/SPMIDxe.inf
   nx741jPkg/Drivers/Nx741jKeysDxe/Nx741jKeysDxe.inf
+  nx741jPkg/Drivers/EarlyProbeDxe/EarlyProbeDxe.inf
+  nx741jPkg/Drivers/PostGicProbeDxe/PostGicProbeDxe.inf
+  nx741jPkg/Drivers/StageProbeDxe/StageProbeDxe.inf
+  nx741jPkg/Drivers/RamDiskProbeDxe/RamDiskProbeDxe.inf
+  nx741jPkg/Drivers/BlockProbeDxe/BlockProbeDxe.inf
   nx741jPkg/Drivers/SmemDumpDxe/SmemDumpDxe.inf
   UniXNUPkg/Application/UniXNU/UniXNU.inf
   UniXNUPkg/Driver/UniXNUDxe/UniXNUDxe.inf

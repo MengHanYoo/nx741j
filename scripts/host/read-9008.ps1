@@ -83,6 +83,10 @@ Start-Process -FilePath (Join-Path $ToolDir 'fh_loader.exe') -ArgumentList @(
 
 $src = Join-Path $work 'read.bin'
 if (-not (Test-Path $src)) { Fail "read failed; see $work" }
+$outParent = Split-Path -Parent $OutFile
+if ($outParent -and -not (Test-Path -LiteralPath $outParent)) {
+    New-Item -ItemType Directory -Path $outParent -Force | Out-Null
+}
 Copy-Item $src $OutFile -Force
 $sha = (Get-FileHash $OutFile -Algorithm SHA256).Hash.ToLower()
 $fs = [System.IO.File]::OpenRead($OutFile)

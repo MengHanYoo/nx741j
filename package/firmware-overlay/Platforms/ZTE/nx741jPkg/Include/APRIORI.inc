@@ -1,5 +1,6 @@
 APRIORI DXE {
   INF MdeModulePkg/Core/Dxe/DxeMain.inf
+  INF nx741jPkg/Drivers/EarlyProbeDxe/EarlyProbeDxe.inf
   INF MdeModulePkg/Universal/PCD/Dxe/Pcd.inf
 # V15 pruned: INF QcomPkg/Drivers/IortDtDxe/IortDtDxe.inf
 
@@ -11,9 +12,11 @@ APRIORI DXE {
   INF ArmPkg/Drivers/ArmGicDxe/ArmGicDxe.inf
   INF EmbeddedPkg/MetronomeDxe/MetronomeDxe.inf
   INF ArmPkg/Drivers/TimerDxe/TimerDxe.inf
+  INF nx741jPkg/Drivers/PostGicProbeDxe/PostGicProbeDxe.inf
 
   INF nx741jPkg/Drivers/KernelStubDxe/KernelStubDxe.inf
   INF nx741jPkg/Drivers/SmemStubDxe/SmemStubDxe.inf
+  INF nx741jPkg/Drivers/StageProbeDxe/StageProbeDxe.inf
 #  INF Binaries/nx741j/QcomPkg/Drivers/SmemDxe/SmemDxe.inf  # replaced by SmemStubDxe
 # V41 disabled: INF Binaries/nx741j/QcomPkg/Drivers/DALSYSDxe/DALSYSDxe.inf
 # V15 pruned: INF Binaries/nx741j/QcomPkg/Drivers/HWIODxe/HWIODxe.inf
@@ -50,7 +53,9 @@ APRIORI DXE {
   INF MdeModulePkg/Universal/Disk/UnicodeCollation/EnglishDxe/EnglishDxe.inf
 
 # V15 pruned: INF Binaries/nx741j/QcomPkg/Drivers/SdccDxe/SdccDxe.inf
-# V15 pruned: INF Binaries/nx741j/QcomPkg/Drivers/UFSDxe/UFSDxe.inf
+  # NX741J rawdump/payload transport, also required by the BDS menu.
+  INF Binaries/nx741j/QcomPkg/Drivers/UFSDxe/UFSDxe.inf
+  INF nx741jPkg/Drivers/BlockProbeDxe/BlockProbeDxe.inf
 
   INF FatPkg/EnhancedFatDxe/Fat.inf
 
@@ -78,6 +83,14 @@ APRIORI DXE {
   INF MdeModulePkg/Universal/HiiDatabaseDxe/HiiDatabaseDxe.inf
   INF EmbeddedPkg/Drivers/DtPlatformDxe/DtPlatformDxe.inf
   INF UniXNUPkg/Driver/UniXNURamDiskDxe/UniXNURamDiskDxe.inf
+  INF nx741jPkg/Drivers/RamDiskProbeDxe/RamDiskProbeDxe.inf
+!if $(USE_CUSTOM_DISPLAY_DRIVER) == 1
+#   INF Binaries/nx741j/QcomPkg/Drivers/DisplayDxe/DisplayDxe.inf
+!else
+  INF SiliciumPkg/Drivers/SimpleFbDxe/SimpleFbDxe.inf
+!endif
+  # Must register and start the application before BDS consumes BootOrder.
+  INF UniXNUPkg/Driver/UniXNUDxe/UniXNUDxe.inf
 # V41 disabled: INF SiliciumPkg/Drivers/KeypadDxe/KeypadDxe.inf
   INF DarwinBootPkg/Driver/DarwinBoot.inf
   # Keys and the console splitter must exist before BDS connects ConIn.
@@ -105,12 +118,6 @@ APRIORI DXE {
 # V15 pruned: INF Binaries/nx741j/QcomPkg/Drivers/UsbDeviceDxe/UsbDeviceDxe.inf
 # V15 pruned: INF Binaries/nx741j/QcomPkg/Drivers/UsbConfigDxe/UsbConfigDxe.inf
 # V41 disabled: INF Binaries/nx741j/QcomPkg/Drivers/ButtonsDxe/ButtonsDxe.inf
-
-!if $(USE_CUSTOM_DISPLAY_DRIVER) == 1
-#   INF Binaries/nx741j/QcomPkg/Drivers/DisplayDxe/DisplayDxe.inf
-!else
-  INF SiliciumPkg/Drivers/SimpleFbDxe/SimpleFbDxe.inf
-!endif
 
 # V15 pruned: INF Binaries/nx741j/QcomPkg/Drivers/TsensDxe/TsensDxe.inf
 !if $(USE_CUSTOM_DISPLAY_DRIVER) == 1

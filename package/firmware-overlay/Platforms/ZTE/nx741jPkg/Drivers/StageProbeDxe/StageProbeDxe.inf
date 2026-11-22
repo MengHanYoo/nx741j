@@ -1,0 +1,23 @@
+[Defines]
+  INF_VERSION                    = 0x00010005
+  BASE_NAME                      = StageProbeDxe
+  FILE_GUID                      = eed4a69e-b03a-4c2a-8824-3d47d47f9127
+  MODULE_TYPE                    = DXE_DRIVER
+  VERSION_STRING                 = 1.0
+  ENTRY_POINT                    = StageProbeEntry
+
+[Sources]
+  StageProbeDxe.c
+
+[Packages]
+  MdePkg/MdePkg.dec
+
+[LibraryClasses]
+  UefiBootServicesTableLib
+  UefiDriverEntryPoint
+
+[Protocols]
+  gEfiBlockIoProtocolGuid
+
+[Depex]
+  TRUE
