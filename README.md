@@ -5,16 +5,16 @@
 Device repository for the **Nubia Z80 Ultra (NX741J)** — Qualcomm **SM8850** (Kaanapali,
 codename `canoe`), 8 cores, Adreno 840, UFS, panel `bf375`/`rm692h5` 1440×3200.
 
-The device-proven NX741J iOS route is:
+The device-proven NX741J iOS route uses the bootloader's `boot_a` entry:
 
 ```
-bootloader -> stock efisp LinuxLoader -> boot_a shim loader
+bootloader -> boot_a shim loader
   -> SWEETXNU payload -> XNU -> HFSX ufsroot0 -> launchd
 ```
 
-The repository also retains the official Mu/UEFI -> DarwinBoot implementation
-and its diagnostics. It is not the final device image: Mu stops at DxeCore/BDS
-handle enumeration on this unit. See
+The separate `efisp -> rawdump -> Mu UEFI -> DarwinBoot` implementation is
+retained for diagnostics. It is not the final device image: Mu stops at
+DxeCore/BDS handle enumeration on this unit. See
 [PROVEN-ROUTE-2026-11-23.md](docs/PROVEN-ROUTE-2026-11-23.md) for the installed
 route and exact hashes.
 

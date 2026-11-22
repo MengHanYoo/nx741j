@@ -8,12 +8,13 @@ Adreno 840，UFS，面板 `bf375`/`rm692h5` 1440×3200。
 本机最终采用的 NX741J iOS 路线是：
 
 ```
-bootloader -> 原厂 efisp LinuxLoader -> boot_a shim loader
+bootloader -> boot_a shim loader
   -> SWEETXNU payload -> XNU -> HFSX ufsroot0 -> launchd
 ```
 
-仓库仍保留官方 Mu/UEFI -> DarwinBoot 实现和诊断，但它不是最终真机镜像：
-本机 Mu 停在 DxeCore/BDS 句柄枚举。已验证路线、哈希和 9008 回读证据见
+另有独立的 `efisp -> rawdump -> Mu UEFI -> DarwinBoot` 入口；仓库仍保留其
+实现和诊断，但它不是最终真机镜像，本机 Mu 停在 DxeCore/BDS 句柄枚举。
+两条入口不能混用。已验证路线、哈希和 9008 回读证据见
 [PROVEN-ROUTE-2026-11-23.md](docs/PROVEN-ROUTE-2026-11-23.md)。
 
 目标系统：**iOS 16.7.16（20H392）**，XNU **8796.141.3**，arm64，4 KiB 页。OS profile 固定在

@@ -4,11 +4,15 @@
 > path. The source tree keeps the UEFI work for later cleanup, but the image
 > installed on the phone uses the locally proven shim-loader route.
 
-## Final route
+## Two independent entry points
+
+The device has two separate mechanisms that can transfer control from the
+bootloader. They must not be mixed in one diagnosis.
+
+### A. ABL -> boot_a (current proven iOS route)
 
 ```text
 XBL/ABL
-  -> stock efisp LinuxLoader
   -> boot_a: Android v4 header + NX741J loader Image
   -> embedded SWEETXNU payload
   -> XNU 8796.141.3
@@ -17,15 +21,26 @@ XBL/ABL
 ```
 
 This is the route that previously reached the iOS lockscreen, userspace,
-display, touch and Metal work on this unit. It replaces:
+display, touch and Metal work on this unit. The current `boot_a` contains the
+loader and its SWEETXNU payload directly. The stock efisp is restored when
+removing a custom P7 image, but efisp is not the source of the `boot_a` payload.
+
+### B. efisp -> rawdump -> Mu UEFI (diagnostic route)
 
 ```text
-efisp P7 -> Mu BDS -> UniXNUDxe -> UniXNU.efi -> DarwinBoot -> XNU
+efisp P7
+  -> rawdump payload + SILICIUM_UEFI.fd
+  -> Mu BDS
+  -> UniXNUDxe -> UniXNU.efi -> DarwinBoot -> XNU
 ```
 
-The latter stopped at Mu handle enumeration (`SmemStubDxe: no handles to
-connect`, `msbootpolicy.efi`, `Image not found`) and is not the final device
-route.
+This route stopped at Mu handle enumeration (`SmemStubDxe: no handles to
+connect`, `msbootpolicy.efi`, `Image not found`). It is retained for
+diagnostics and is not the final device iOS route.
+
+The most recent device write selected route A: it wrote the integrated
+`boot_a`, restored the stock efisp to remove the custom P7 entry, and did not
+write the Mu payload/FD or depend on Mu BDS.
 
 ## Inputs
 
