@@ -70,7 +70,7 @@ $readArgs = @{
 if ($SkipSahara) { $readArgs.SkipSahara = $true }
 if ($SkipSahara) { $readArgs.SkipConfigure = $true }
 & $ReadScript @readArgs
-if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $current)) {
+if (-not $? -or -not (Test-Path -LiteralPath $current)) {
     Fail 'could not read the current super sector'
 }
 
@@ -112,5 +112,5 @@ $writeArgs = @{
 if ($SkipSahara) { $writeArgs.SkipSahara = $true }
 if ($NoReboot) { $writeArgs.NoReboot = $true }
 & $WriteScript @writeArgs
-if ($LASTEXITCODE -ne 0) { Fail 'sector restore failed' }
+if (-not $?) { Fail 'sector restore failed' }
 Write-Host ("restored super LBA {0} without rewriting the partition" -f $Sector) -ForegroundColor Green

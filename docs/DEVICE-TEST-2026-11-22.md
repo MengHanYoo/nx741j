@@ -22,8 +22,10 @@ NativeUfs；但仍不能声称 APFS 或 `launchd` 已在真机启动。
 | userdata 锚点 | LUN0 sector `248838138` | `out/userdata-anchor.bin` 4 KiB | 回读一致；manifest `246662139`，manifest SHA `443e0fda…` |
 | rawdump payload（第一次） | LUN0 sector `4743976` | 旧 normal-root payload | 回读 SHA-256 `219817f9…` |
 | rawdump FD | LUN0 sector `4760360` | `out/final-pmgr/SILICIUM_UEFI.fd` | 回读 SHA-256 `3ce5c6d2…` |
-| efisp loader（当前实机） | LUN4 sector `748894` | 旧 `loader/images/efisp-p7.img` | 回读 SHA-256 `e61814d4…` |
-| rawdump probe=12 | LUN0 sector `4743976` | `out/payload-modes/payload-probe12.img` | 2026-11-22 13:13 写入并完整回读 SHA-256 `8221c727…` |
+| efisp loader（旧） | LUN4 sector `748894` | 旧 `loader/images/efisp-p7.img` | 历史回读 SHA-256 `e61814d4…` |
+| rawdump probe=12（旧） | LUN0 sector `4743976` | 当时的 `payload-probe12.img` | 13:13 写入并完整回读 SHA-256 `8221c727…` |
+| efisp loader（当前实机） | LUN4 sector `748894` | 修复后的 `loader/images/efisp-p7.img` | 13:32 写入并完整回读 SHA-256 `73b56bf2…` |
+| rawdump probe=12（当前实机） | LUN0 sector `4743976` | 最终 `payload-probe12.img` | 13:32 写入并完整回读 SHA-256 `fa777aeb…` |
 
 ## 旧 loader 捕获的内核日志
 
@@ -60,8 +62,8 @@ XNU 已经运行到存储驱动，随后旧正常根路径错误进入 `hostBrin
 - 旧日志显示 payload/FD 读取、跳转、early VM 和 kext collection 都已执行；
   最后的明确应用日志是 NativeUfs，而不是 loader 阶段。
 
-启动 `probe=12` 对照 payload 后，设备再次枚举为同一 QUSB_BULK；要读取这轮
-日志必须先让设备重新进入 9008。当前新产物为：
+旧、新两次 `probe=12` 对照 payload 启动后，设备都再次枚举为同一
+QUSB_BULK；要读取最终这轮日志必须先让设备重新进入 9008。当前新产物为：
 
 ```text
 kernel.macho           255cdf323d1d00bc5e077a628d9f6687c6f354de7dc2d9739f2923a70dbd3c9b
@@ -85,22 +87,24 @@ LBA `20224` 位于 `super`（`8968..4727559`）。
 
 2026-11-09 的 `super.img` 备份中，对应扇区 SHA-256 为
 `068f6bf100cff09305a6eaad2ef72522af3647f16b9c5a2c24c0251cbff0c2ee`。
-`scripts/host/repair-super-progress-sector.ps1` 只读当前 LBA `20224`，
-确认它是已知 BP_RECORD 后，仅恢复这 4 KiB；不会重写整个 `super`。
+`scripts/host/repair-super-progress-sector.ps1` 已只读当前 LBA `20224`；
+结果与备份完全一致，因此没有执行写回。脚本仍保留 fail-closed 的精确恢复能力，
+且不会重写整个 `super`。
 
 ## 优先恢复与下一步
 
 先在设备侧强制断电并重新进入 EDL（电源键 + 音量组合；具体按设备当前
 按键状态执行），不要继续向未知分区写入。进入 9008 后：
 
-1. 先读取并修复 `super` LBA `20224`：
+1. 重新进入 9008 后读取新 loader 的 progress、NXLOG 和 UFS snapshot。
+   `super` LBA `20224` 已核对为备份原值；只有在以后再次异常时才运行：
 
    ```powershell
    powershell -File E:\default-workspace\z80u-collect\wsl\repair-super-progress-sector.ps1 `
      -SkipSahara -NoReboot
    ```
 
-2. 写入修复后的 loader，再读取 rawdump 的 loader 进度记录：
+2. 读取 rawdump 的 loader 进度记录：
 
    ```powershell
    powershell -File E:\default-workspace\z80u-collect\wsl\read-9008.ps1 `
@@ -114,8 +118,7 @@ LBA `20224` 位于 `super`（`8968..4727559`）。
 4. 如只需恢复 Android，刷回原厂 `efisp.img`（SHA-256
    `4df183594a63af28c681e48b1d9fdb0305ee055ea8fde92118a1e0af7a5f6f17`），
    不要重写 `userdata`。
-5. 只有读到最后完成阶段后，才重新调整 FD/payload 或切回 probe
-   payload。
+5. 读取最终 probe 日志后，再决定是否切换到 normal-root payload。
 
 ## 边界
 

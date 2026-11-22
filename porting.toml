@@ -347,7 +347,7 @@ completion = [
 limits = [
   "Host-verified on 2026-11-22: dynamic NXROOTP1, both real UUIDs, VerifiedRoot headers/hash objects, normal native-ufs-root=1 payload and the QEMU hand-off gate all build/run.",
   "The 8,445,677,568-byte root image and out/userdata-anchor.bin were installed through 9008 and read back. The old loader capture reached NativeUfs; APFS and launchd are still unobserved.",
-  "The old p7 progress record was written to super LBA 20224 because gRawBase was zero. The source is fixed and a fail-closed single-sector restore helper is included, but the repaired loader and super sector are not yet applied.",
+  "The old p7 progress record targeted super LBA 20224 because gRawBase was zero. The source is fixed and a fail-closed single-sector restore helper is included. The repaired loader and final probe payload were written and read back; the checked super sector already matched the backup, so no write was needed.",
   "PMGR is linked but runtime_qualified is false; the original nub publication and power-refusal path require a real phone.",
   "No Mu-side UFS BlockIo: UFSDxe/HALIOMMU cannot be enabled without DTBExtn, NPA and RPMH providers",
   "No hardware observation yet for APFS volume selection, IOMedia root publication or launchd.",

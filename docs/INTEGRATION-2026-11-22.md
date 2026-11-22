@@ -14,9 +14,9 @@
 | PMGR | 主机 ABI 完成 | `ShengPlatformPower` 340 项审计通过，`_sheng_pmgr_run` 已链接 |
 | 正常 UFS 根 payload | 通过 | `native-ufs-root=1` + `sheng-pmgr=2` 通过 payload 检查 |
 | QEMU 引导门禁 | 通过 | `BootEntry`、`MARK #29`、`EBS ok`；panic=0 |
-| 9008 镜像安装 | 已完成 | 根镜像、锚点、payload、FD、efisp-p7 全部写入并回读 |
+| 9008 镜像安装 | 已完成 | 根镜像、锚点、FD、旧 normal-root payload、修复后的 loader 和最终 probe payload 均写入并回读 |
 | 真机启动 | 未通过 | 捕获日志已过 VM/kext collection 并进入 NativeUfs；复位后为 `QUSB_BULK` |
-| loader 进度记录 | 已修源码 | 旧 loader 的 `gRawBase=0` 误写 `super` LBA `20224`；新 loader 为 `73b56bf2…`，待写入 |
+| loader 进度记录 | 已修并写入实机 | 旧 loader 的 `gRawBase=0` 会定位到 `super` LBA `20224`；新 loader `73b56bf2…` 已回读一致 |
 | 最终记录 | 完成 | 本文件、`STATUS-2026-11-22.md`、`OPEN-ITEMS.md` 已更新 |
 
 ## 关键修复
@@ -78,7 +78,7 @@ archive sha256: bb7e253cd9a945e34985db2078e0f7d4ff5978280883915bdb9a35a697e11032
 | `SILICIUM_UEFI.fd` | `3ce5c6d2c61891975c52846358bff3f3d9744413d61fd732ea48f7507a49a009` |
 | `boot.img` | `dbb6c35c9e133c35fe3b7c2d52a4b129239db68ca3d3018309acce7aa10e004d` |
 | `pmgr-report.json` | `6ce58fe5e41e6eb018010824199985ca125b98da527c688f345d93945fab5ee6` |
-| `efisp-p7.img`（修复版，待写入） | `73b56bf2b2192706ec724974f832457d5b95ab1382038e3442bc392127b4b246` |
+| `efisp-p7.img`（修复版，已写入实机） | `73b56bf2b2192706ec724974f832457d5b95ab1382038e3442bc392127b4b246` |
 
 `kernel.json`、`kernel.log`、`pmgr-build.log`、`qemu-serial.log` 和
 `qemu-int.log` 也保留在同一目录。`out/` 是主机产物目录，不表示设备已刷入。
@@ -92,7 +92,9 @@ archive sha256: bb7e253cd9a945e34985db2078e0f7d4ff5978280883915bdb9a35a697e11032
 - 4 KiB `NXROOTP1` 锚点写入 `248838138`，回读一致；
 - 旧 normal-root payload、FD 和旧 `efisp-p7.img` 分别写入 rawdump/efisp
   并回读一致；
-- probe=12 payload `8221c727…` 于 13:13 写入 rawdump，64 MiB 完整回读一致。
+- 旧 probe=12 payload `8221c727…` 于 13:13 写入 rawdump，64 MiB 完整回读一致；
+- 修复后的 `efisp-p7.img` `73b56bf2…` 和最终 probe payload `fa777aeb…`
+  于 13:32 分别写入 efisp/rawdump，并完整回读一致。
 
 重新进入 9008 后，旧 loader 捕获的日志显示 XNU 已完成 early VM、OSLog 和
 kext collection，并到达：
@@ -109,10 +111,13 @@ NATIVE_UFS bringup: hc=fffffff6bc035000 cap=d5c7031f
 [DEVICE-TEST-2026-11-22.md](DEVICE-TEST-2026-11-22.md)。
 
 旧 loader 的 `write_progress()` 从未设置 `gRawBase`，所以约定位置
-`4764200` 是全零，记录被写到绝对 LBA `20224`。该 LBA 位于 `super`。
+`4764200` 是全零，代码会把记录定位到绝对 LBA `20224`。该 LBA 位于
+`super`。
 修复后的 loader 显式设置 rawdump 基址并启用 UFS snapshot；
 `scripts/host/repair-super-progress-sector.ps1` 可从 2026-11-09 的
 `super.img` 备份只恢复受影响 4 KiB，且在写入前校验当前 BP_RECORD。
+本轮只读核对发现 LBA `20224` 当前已与备份一致（`068f6bf1…`），没有执行
+写回。
 
 ## 复现命令
 

@@ -57,8 +57,7 @@ if ($SkipSahara) { $first.SkipSahara = $true }
 # the session and the firmware write would have no programmer loaded
 if ($NoReboot -or $Fd) { $first.NoReboot = $true }
 & $Inner -Img $Payload @first
-$code = $LASTEXITCODE
-if ($null -ne $code -and $code -ne 0) { Fail "payload write failed (exit $code)" }
+if (-not $?) { Fail 'payload write failed' }
 Write-Host "payload written and verified"
 
 if ($Fd) {
@@ -69,8 +68,7 @@ if ($Fd) {
     if ($DryRun) { $second.DryRun = $true }
     if ($NoReboot) { $second.NoReboot = $true }
     & $Inner -Img $Fd @second
-    $code = $LASTEXITCODE
-    if ($null -ne $code -and $code -ne 0) { Fail "firmware write failed (exit $code)" }
+    if (-not $?) { Fail 'firmware write failed' }
     Write-Host "firmware written and verified"
 }
 

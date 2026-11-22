@@ -189,8 +189,10 @@ loader 没跑，而是旧正常根路径随后误入 `hostBringUp()`；该路径
 另外确认旧 loader 因 `gRawBase` 未赋值，把进度记录误写到 `super` LBA
 `20224`；源码已修复并以 rawdump 基址 fail-closed，新 loader SHA-256 为
 `73b56bf2b2192706ec724974f832457d5b95ab1382038e3442bc392127b4b246`。
+修复后的 loader 和最终 probe payload `fa777aeb…` 已于 13:32 写入手机并回读一致。
+`super` LBA `20224` 的实际内容与 2026-11-09 备份完全一致，因此没有执行写回。
 下次进入 9008 时按 [DEVICE-TEST-2026-11-22.md](docs/DEVICE-TEST-2026-11-22.md)
-先精确恢复该 4 KiB，再写入新 loader 和读取新一轮日志。
+读取新的 progress、NXLOG 和 UFS snapshot。
 
 完整的 UniXNU 框架差异在 `patches/framework/UniXNU-ba9e14fb-nx741j.patch`，应用与复现方法见
 [docs/INTEGRATION-2026-11-22.md](docs/INTEGRATION-2026-11-22.md)，当前验收边界见

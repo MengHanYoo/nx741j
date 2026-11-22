@@ -248,10 +248,16 @@ kernel's captured log: XNU completed early VM and kext collection, then reached
 progress record to `super` LBA 20224 because `gRawBase` was never initialized. The source now
 binds the rawdump base explicitly, enables the UFS snapshot, and builds `efisp-p7.img` with
 SHA-256 `73b56bf2b2192706ec724974f832457d5b95ab1382038e3442bc392127b4b246`. Recovery and the
-single-sector repair are documented in
+single-sector check are documented in
 [docs/DEVICE-TEST-2026-11-22.md](docs/DEVICE-TEST-2026-11-22.md). Step 7 and persistent
 Data/performance work stay deferred until iOS starts. The aggregate smoke suite remains separate
 from the green direct QEMU gate.
+
+The repaired loader and final probe payload
+`fa777aeb86eab4b60c573b3086d2b309ffeed1972f00b4a91e18c34337cf0036` were written to the phone
+and read back at 13:32. The checked `super` sector already matched the 2026-11-09 backup, so no
+repair write was needed. The next hardware step is another 9008 entry to read the new progress,
+NXLOG and UFS snapshot records.
 
 The complete UniXNU-side delta is in `patches/framework/UniXNU-ba9e14fb-nx741j.patch`; a clean
 no-hardlinks clone passes apply and reverse checks. See

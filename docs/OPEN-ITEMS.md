@@ -34,7 +34,7 @@ GPU 与电源后端仍缺，步骤 7 已按要求冻结，步骤 8 的本地整�
 | 触摸/HID/按键 | 源码完成，待真机 | Synaptics TouchCom、GPIO SPI、HID service、PON/GPIO101 worker 已链接；供电和 GPIO 状态未在手机验证 |
 | CPU idle | 源码完成，待真机 | PSCI core retention state 0x4；连续拒绝会回退 WFI；调频 governor 未做 |
 | APFS 选卷与 `launchd` | 待真机 | 复位后停在 `QUSB_BULK_CID`；捕获日志已到 NativeUfs，但尚无 APFS/launchd |
-| loader 进度记录 | 已修源码，待刷入 | 旧 `gRawBase=0` 把记录误写到 `super` LBA `20224`；新 loader 显式绑定 rawdump 并启用 UFS snapshot |
+| loader 进度记录 | 已修复并写入实机 | 旧 `gRawBase=0` 会定位到 `super` LBA `20224`；新 loader 显式绑定 rawdump 并启用 UFS snapshot，回读一致 |
 | 持久 Data / 性能 | 冻结（用户要求） | 等能启动 iOS 后再做 |
 | GPU/Metal | 未完成 | Adreno 840v2 仍需要 A740 接口适配、GMEM 和 Metal/Turnip 路径 |
 | 电池/温控 | 未完成 | 需要真实 PMIC 电量和温度源 |
